@@ -1,0 +1,20 @@
+============================
+ GENERAL BUILD INSTRUCTIONS
+============================
+
+1. Install CMake version 3.7 or later.
+2. Initialize the build environment using the CMake command:
+	cmake ..
+3. Then, builds can be performed normally using the make command:
+	make
+
+
+
+
+============
+ MPI BUILDS
+============
+
+To build binaries for MPI parallel runs, substitute the command in step 2 with:
+	cmake .. -DMPI=on
+	
