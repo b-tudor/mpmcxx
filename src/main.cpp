@@ -1,7 +1,9 @@
 // Space Research Group
 // Department of Chemistry
 // University of South Florida
+#ifndef VERSION
 #define VERSION "0.8"
+#endif
 #ifdef _MPI
 #include <mpi.h>
 #endif
