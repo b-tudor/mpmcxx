@@ -864,6 +864,10 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 			return fail;
 		return ok;
 	}
+#ifndef QM_ROTATION
+	sys.spinflip_probability = 0;
+#endif // !QM_ROTATION
+
 	
 	// parallel tempering options 
 	if( SafeOps::iequals(token[0], "parallel_tempering") ) {

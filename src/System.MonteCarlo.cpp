@@ -22,7 +22,8 @@ bool System::mc() {
 
 	double  initial_energy  = 0, 
 	        final_energy    = 0,
-	        current_energy  = 0;
+	        current_energy  = 0,
+			rot_parfunc;
 	
 	if( sorbateCount > 1 ) SafeOps::calloc( sorbateGlobal, sorbateCount, sizeof(sorbateAverages_t), __LINE__, __FILE__ );
 	if( cavity_bias      ) cavity_update_grid(); // update the grid for the first time 
@@ -52,13 +53,15 @@ bool System::mc() {
 				quantum_system_rotational_energies(system);
 		#endif // QM_ROTATION 
 
+			rot_parfunc = checkpoint->molecule_altered->rot_partfunc;
+
 		// treat a bad contact as a reject 
 		if( !std::isfinite(final_energy) ) {
 			observables->energy = MAXVALUE;
 			nodestats->boltzmann_factor = 0;
 		} 
 		else 
-			boltzmann_factor( initial_energy, final_energy );
+			boltzmann_factor( initial_energy, final_energy, rot_parfunc );
 
 		// Metropolis function 
 		if(  (get_rand() < nodestats->boltzmann_factor)   &&   ! iterator_failed  ) {
@@ -896,11 +899,19 @@ void System::make_move() {
 		case MOVETYPE_SPINFLIP :
 	
 			// XXX - should have separate function do spinfip move 
+#ifdef XXX
+
+
+
 			if( checkpoint->molecule_altered->nuclear_spin == NUCLEAR_SPIN_PARA )
 				checkpoint->molecule_altered->nuclear_spin = NUCLEAR_SPIN_ORTHO;
 			else
 				checkpoint->molecule_altered->nuclear_spin = NUCLEAR_SPIN_PARA;
-	
+#endif // XXX
+			if (get_rand() < 0.5)
+				checkpoint->molecule_altered->nuclear_spin = NUCLEAR_SPIN_PARA;
+			else
+				checkpoint->molecule_altered->nuclear_spin = NUCLEAR_SPIN_ORTHO;
 		break;
 		case MOVETYPE_VOLUME :
 			volume_change(); // I don't want to contribute to the god damned mess -- kmclaugh
@@ -1355,7 +1366,7 @@ void System::volume_change_Gibbs(std::vector<System*> &sys) {
 
 
 
-void System::boltzmann_factor( double initial_energy, double final_energy) {
+void System::boltzmann_factor( double initial_energy, double final_energy, double rot_partfunc) {
 // the prime quantity of interest 
 	double delta_energy   = final_energy - initial_energy,
 	       u              = 0,
@@ -1418,14 +1429,15 @@ void System::boltzmann_factor( double initial_energy, double final_energy) {
 						nodestats->boltzmann_factor = exp(-delta_energy/temperature);
 					break;
 					case MOVETYPE_SPINFLIP :
-						g = checkpoint->molecule_altered->rot_partfunc_g;
+						/*g = checkpoint->molecule_altered->rot_partfunc_g;
 						u = checkpoint->molecule_altered->rot_partfunc_u;
 						if( checkpoint->molecule_altered->nuclear_spin == NUCLEAR_SPIN_PARA ) 
 							partfunc_ratio = g/(g+u);
 						else
 							partfunc_ratio = u/(g+u);
 						// set the boltz factor, including ratio of partfuncs for different symmetry rotational levels
-						nodestats->boltzmann_factor = partfunc_ratio;
+						nodestats->boltzmann_factor = partfunc_ratio;*/
+						nodestats->boltzmann_factor = rot_partfunc * exp(-delta_energy / temperature);
 						break;
 					default:
 						Output::err("MC: invalid mc move (not implemented for binary mixtures?)\n");
@@ -1437,14 +1449,15 @@ void System::boltzmann_factor( double initial_energy, double final_energy) {
 		case ENSEMBLE_NVT :
 			switch ( checkpoint->movetype ) {
 				case MOVETYPE_SPINFLIP : 
-					g = checkpoint->molecule_altered->rot_partfunc_g;
+					/*g = checkpoint->molecule_altered->rot_partfunc_g;
 					u = checkpoint->molecule_altered->rot_partfunc_u;
 					if ( checkpoint->molecule_altered->nuclear_spin == NUCLEAR_SPIN_PARA ) 
 						partfunc_ratio = g/(g+u);
 					else
 						partfunc_ratio = u/(g+u);
 					// set the boltz factor, including ratio of partfuncs for different symmetry rotational levels
-					nodestats->boltzmann_factor = partfunc_ratio;
+					nodestats->boltzmann_factor = partfunc_ratio;*/
+					nodestats->boltzmann_factor = rot_partfunc * exp(-delta_energy / temperature);
 				break;
 				default: // DISPLACE
 					nodestats->boltzmann_factor = exp(-delta_energy/temperature);

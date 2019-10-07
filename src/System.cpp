@@ -1200,15 +1200,17 @@ void System::read_pqr_box( char * input_file ) {
 
 
 void System::update_pbc() {
-
+/*
 	if(  (pbc.cutoff != 0.0)  &&  (checkpoint->movetype != MOVETYPE_VOLUME)  &&  (ensemble != ENSEMBLE_REPLAY)  )
 		// If the cutoff is unset, the movetype is MOVETYPE_VOLUME or it is a replay,
 		// then this computation needs to happen. Otherwise 
 		return; // nothing to do.
-
+*/
 
 	// compute the unit cell volume, cutoff and reciprocal space lattice vectors
-	pbc.update();
+	pbc.compute_volume;
+	if (pbc.cutoff == 0.) pbc.compute_cutoff;
+	pbc.compute_reciprocal;
 
 	// calculate ewald_alpha and polar_ewald_alpha unless manually set
 	if (ewald_alpha_set != 1)
@@ -1262,7 +1264,7 @@ void System::countN() {
 			// update the molecule counter
 			observables->N += 1.0;
 			// update the nuclear spin ratio
-			if(molecule_ptr->nuclear_spin == NUCLEAR_SPIN_ORTHO)
+			if(molecule_ptr->nuclear_spin == NUCLEAR_SPIN_PARA)
 				observables->spin_ratio += 1.0;
 		}
 

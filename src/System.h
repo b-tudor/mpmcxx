@@ -438,7 +438,7 @@ public:
 	void        displace( Molecule *molecule, const PeriodicBoundary &pbc, double trans_scale, double rot_scale );
 	void        volume_change();
 	static void volume_change_Gibbs( std::vector<System*> &sys );
-	void        boltzmann_factor( double initial_energy, double final_energy);
+	void        boltzmann_factor( double initial_energy, double final_energy, double rot_partfunc);
 	void        register_accept();
 	void        restore();
 	void        unupdate_pairs_insert();

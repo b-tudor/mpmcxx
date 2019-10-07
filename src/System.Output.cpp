@@ -457,7 +457,7 @@ int System::write_averages( const char *sysID ) {
 	}
 
 	if(averages->spin_ratio > 0.0) {
-		sprintf( linebuf, "OUTPUT%s: ortho spin ratio = %.5lf +- %.5lf %%\n", sysID, averages->spin_ratio*100.0, averages->spin_ratio_error*100.0 );
+		sprintf( linebuf, "OUTPUT%s: para spin ratio = %.5lf +- %.5lf %%\n", sysID, averages->spin_ratio*100.0, averages->spin_ratio_error*100.0 );
 		Output::out(linebuf);
 	}
 	
