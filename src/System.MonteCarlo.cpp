@@ -53,7 +53,10 @@ bool System::mc() {
 				quantum_system_rotational_energies(system);
 		#endif // QM_ROTATION 
 
-			rot_parfunc = checkpoint->molecule_altered->rot_partfunc;
+			if (checkpoint->movetype != MOVETYPE_REMOVE)
+				rot_parfunc = checkpoint->molecule_altered->rot_partfunc;
+			else
+				rot_parfunc = checkpoint->molecule_backup->rot_partfunc;
 
 		// treat a bad contact as a reject 
 		if( !std::isfinite(final_energy) ) {
@@ -867,6 +870,7 @@ void System::make_move() {
 			}
 			//free_molecule( system, system->checkpoint->molecule_altered );
 			delete checkpoint->molecule_altered;
+			checkpoint->molecule_altered = NULL;
 			update_pairs_remove();
 
 			//reset atom and molecule id's
@@ -1552,7 +1556,7 @@ void System::restore() {
 			unupdate_pairs_insert();
 			delete checkpoint->molecule_altered;
 			// Previously, delete was: free_molecule(system, system->checkpoint->molecule_altered);
-
+			checkpoint->molecule_altered = NULL;
 			//reset atom and molecule id's
 			enumerate_particles();
 
@@ -1567,6 +1571,7 @@ void System::restore() {
 			}
 			checkpoint->molecule_backup->next = checkpoint->tail;
 			unupdate_pairs_remove();
+			checkpoint->molecule_altered = NULL;
 			checkpoint->molecule_backup = nullptr;
 
 			//reset atom and molecule id's
