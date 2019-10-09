@@ -645,7 +645,10 @@ public:
 	               halgren_mixing,
 	         
 	               midzuno_kihara_approx,
-	               schmidt_ff,
+	               schmidt_mixing,
+				   gilbert_smith_mixing,
+				   bohm_ahlrichs_mixing,
+				   wilson_popelier_mixing,
 	               use_sg,
 	               waldmanhagler;
 

@@ -1158,11 +1158,35 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 		else return fail;
 		return ok;
 	}
-	if( SafeOps::iequals(token[0], "schmidt_ff") ) {
+	if( SafeOps::iequals(token[0], "schmidt_mixing") ) {
 		if( SafeOps::iequals(token[1], "on") )
-			sys.schmidt_ff = 1;
+			sys.schmidt_mixing = 1;
 		else if( SafeOps::iequals(token[1], "off") )
-			sys.schmidt_ff = 0;
+			sys.schmidt_mixing = 0;
+		else return fail;
+		return ok;
+	}
+	if (SafeOps::iequals(token[0], "gilbert_smith_mixing")) {
+		if (SafeOps::iequals(token[1], "on"))
+			sys.gilbert_smith_mixing = 1;
+		else if (SafeOps::iequals(token[1], "off"))
+			sys.gilbert_smith_mixing = 0;
+		else return fail;
+		return ok;
+	}
+	if (SafeOps::iequals(token[0], "bohm_ahlrichs_mixing")) {
+		if (SafeOps::iequals(token[1], "on"))
+			sys.bohm_ahlrichs_mixing = 1;
+		else if (SafeOps::iequals(token[1], "off"))
+			sys.bohm_ahlrichs_mixing = 0;
+		else return fail;
+		return ok;
+	}
+	if (SafeOps::iequals(token[0], "wilson_popelier_mixing")) {
+		if (SafeOps::iequals(token[1], "on"))
+			sys.wilson_popelier_mixing = 1;
+		else if (SafeOps::iequals(token[1], "off"))
+			sys.wilson_popelier_mixing = 0;
 		else return fail;
 		return ok;
 	}
@@ -1723,8 +1747,14 @@ bool SimulationControl::check_system() {
 		Output::out1("SIM_CONTROL: Extrapolating the C10 coefficient from the C6 and C8 coefficients with disp_expansion.\n");
 	if( sys.damp_dispersion )
 		Output::out1("SIM_CONTROL: Using Tang-Toennies damping for dispersion interactions with disp_expansion.\n");
-	if( sys.schmidt_ff )
+	if( sys.schmidt_mixing )
 		Output::out1("SIM_CONTROL: Using the Schmidt mixing rule for exponential repulsions with disp_expansion.\n");
+	if (sys.gilbert_smith_mixing)
+		Output::out1("SIM_CONTROL: Using the Gilbert Smith mixing rule for exponential repulsions with disp_expansion.\n");
+	if (sys.bohm_ahlrichs_mixing)
+		Output::out1("SIM_CONTROL: Using the Bohm Ahlrichs mixing rule for exponential repulsions with disp_expansion.\n");
+	if (sys.wilson_popelier_mixing)
+		Output::out1("SIM_CONTROL: Using the Wilson Popelier mixing rule for exponential repulsions with disp_expansion.\n");
 	if( sys.feynman_hibbs   &&   ! check_feynman_hibbs_options() ) 
 		return fail;
 	if( sys.simulated_annealing   &&   ! check_simulated_annealing_options() ) 
