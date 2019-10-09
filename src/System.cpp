@@ -240,7 +240,10 @@ System::System() {
 	halgren_mixing          = 0;
 	using_lj_buffered_14_7  = false;
 	midzuno_kihara_approx   = 0;
-	schmidt_ff              = 0;
+	schmidt_mixing          = 0;
+	gilbert_smith_mixing	= 0;
+	bohm_ahlrichs_mixing	= 0;
+	wilson_popelier_mixing	= 0;
 	use_sg                  = false;
 	waldmanhagler           = 0;
 
@@ -589,7 +592,10 @@ System::System( const System &sd ) {
 	halgren_mixing                = sd.halgren_mixing;
 	using_lj_buffered_14_7        = sd.using_lj_buffered_14_7;
 	midzuno_kihara_approx         = sd.midzuno_kihara_approx;
-	schmidt_ff                    = sd.schmidt_ff;
+	schmidt_mixing                = sd.schmidt_mixing;
+	gilbert_smith_mixing		  = sd.gilbert_smith_mixing;
+	bohm_ahlrichs_mixing		  = sd.bohm_ahlrichs_mixing;
+	wilson_popelier_mixing		  = sd.wilson_popelier_mixing;
 	use_sg                        = sd.use_sg;
 	waldmanhagler                 = sd.waldmanhagler;
 
