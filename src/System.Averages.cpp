@@ -208,6 +208,9 @@ void System::update_root_averages( observables_t *obs )
 		avg_observables->qst += temperature;
 		avg_observables->qst *= kB*NA/1000.0;	// convert to kJ/mol
 
+		// and the NVT-style QST
+		avg_observables->qst_nvt = -avg_observables->energy * kB * NA / 1000.0 / avg_observables->N;
+
 	}
 
 	return;
