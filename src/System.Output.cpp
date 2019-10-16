@@ -436,7 +436,7 @@ int System::write_averages( const char *sysID ) {
 		if(  (averages->qst > 0.0)   &&   std::isfinite(averages->qst)  ) {
 			sprintf( linebuf, "OUTPUT%s: qst = %.5lf kJ/mol\n", sysID, averages->qst);
 			Output::out(linebuf);
-			sprintf(linebuf, "OUTPUT%S: qst_NVT = %.5lf kJ/mol\n", sysID, averages->qst_nvt);
+			sprintf(linebuf, "OUTPUT%S: Energy/particle = %.5lf kJ/mol\n", sysID, averages->qst_nvt);
 			Output::out(linebuf);
 		}
 		if( (averages->compressibility > 0.0) && std::isfinite(averages->compressibility) ) {
