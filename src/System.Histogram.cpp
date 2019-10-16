@@ -233,7 +233,8 @@ void System::write_histogram( FILE *fp_out, int ***grid )
 	fprintf( fp_out, "\n" );
 	fprintf( fp_out, "object 2 class gridconnections counts %d %d %d\n", xdim, ydim, zdim );
 	fprintf( fp_out, "\n" );
-	fprintf( fp_out, "object 3 class array type float rank 0 items %d data follows\n", grids->histogram->n_data_points );
+	//This line is deprecated for viewing .dx files in current VMD software.
+	//fprintf( fp_out, "object 3 class array type float rank 0 items %d data follows\n", grids->histogram->n_data_points );
 
 	for( int i=0; i < xdim; i++ ) {
 		for( int j=0; j < ydim; j++ ) {
@@ -406,4 +407,9 @@ void System::setup_deltas( histogram_t *hist )
 		for( int j=0; j<3; j++ )
 			hist->delta[i][j] = pbc.basis[j][i] / hist->count[i]; 
 	// we divide by the count to get our actual step size in each dimension
+	//Correction for non-orthorhombic systems
+	hist->delta[1][0] = hist->delta[0][1];
+	hist->delta[0][1] = 0.0;
+	hist->delta[2][0] = hist->delta[0][2];
+	hist->delta[0][2] = 0.0;
 }

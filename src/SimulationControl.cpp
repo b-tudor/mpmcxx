@@ -2602,8 +2602,8 @@ bool SimulationControl::check_hist_options()
 		sys.hist_resolution = defaultHistResolution;
 	}
 	else if( ! sys.histogram_output[0] ){
-		Output::out("SIM_CONTROL: No histogram outputfile selected, defaulting to histogram.dat\n");
-		strcpy( sys.histogram_output, "histogram.dat" );
+		Output::out("SIM_CONTROL: No histogram outputfile selected, defaulting to histogram.dx\n");
+		strcpy( sys.histogram_output, "histogram.dx" );
 	}
 	else{
 		sprintf(linebuf,"SIM_CONTROL: histogram resolution set to %.3f A\n", sys.hist_resolution);
