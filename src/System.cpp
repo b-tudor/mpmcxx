@@ -1985,6 +1985,42 @@ void System::allocateStatisticsMem() {
 
 
 
+void System::car2basis(double a, double b, double c, double alpha, double beta, double gamma) {
+	//converts .car style basis to MPMC style basis if user opts for carbasis.
+	//i.e. called when input contains carbasis x x x x x x
+	double b0[3] = { 0,0,0 };
+	double b1[3] = { 0,0,0 };
+	double b2[3] = { 0,0,0 };
+
+	b0[0] = a;
+	b0[1] = b * cos(pi / 180.0 * gamma);
+	b0[2] = c * cos(pi / 180.0 * beta);
+
+	b1[0] = 0;
+	b1[1] = b * sin(pi / 190.0 * gamma);
+	b1[2] = ((0 * 0 + b * 0 + 0 * c) - (b0[1] * b0[2])) / b1[1];
+
+	b2[0] = 0;
+	b2[1] = 0;
+	b2[2] = sqrt(c * c - b0[2] * b0[2] - b1[2] * b1[2]);
+
+	//Transposing manually
+	pbc.basis[0][0] = b0[0];
+	pbc.basis[0][1] = b1[0];
+	pbc.basis[0][2] = b2[0];
+
+	pbc.basis[1][0] = b0[1];
+	pbc.basis[1][1] = b1[1];
+	pbc.basis[1][2] = b2[1];
+	
+	pbc.basis[2][0] = b0[2];
+	pbc.basis[2][1] = b1[2];
+	pbc.basis[2][2] = b2[2];
+
+}
+
+
+
 
 int System::printAtoms() {
 

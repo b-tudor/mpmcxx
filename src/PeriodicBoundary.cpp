@@ -26,7 +26,7 @@ PeriodicBoundary::~PeriodicBoundary() { }
 
 void PeriodicBoundary::update() {
 	compute_volume();
-	compute_cutoff();
+	if(cutoff == 0.) compute_cutoff();
 	compute_reciprocal();
 }
 

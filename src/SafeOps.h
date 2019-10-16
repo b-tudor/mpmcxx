@@ -42,7 +42,6 @@ public:
 	
 	// returns true if all elements of string are identical, compared case-insensitively
 	static bool iequals( const char *A, const char *B );
-	
 
 
 	// The following memory functions were written to hopefully deal with some memory  

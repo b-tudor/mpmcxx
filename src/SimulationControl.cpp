@@ -1513,7 +1513,7 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 	}
 	
 	// set basis
-	
+	// normal way
 	if( SafeOps::iequals(token[0], "basis1") ) {
 		if( !SafeOps::atod(token[1], sys.pbc.basis[0][0]) ) return fail;
 		if( !SafeOps::atod(token[2], sys.pbc.basis[0][1]) ) return fail; 
@@ -1531,6 +1531,11 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 		if( !SafeOps::atod(token[2], sys.pbc.basis[2][1]) ) return fail;
 		if( !SafeOps::atod(token[3], sys.pbc.basis[2][2]) ) return fail;
 		return ok;
+	}
+	// .car file way
+	// so if both carbasis and basis1/2/3 are in the input file, the last one will overwrite
+	if (SafeOps::iequals(token[0], "carbasis")) {
+		sys.car2basis(atof(token[1]), atof(token[2]), atof(token[3]), atof(token[4]), atof(token[5]), atof(token[6]));
 	}
 	if( SafeOps::iequals(token[0], "pop_histogram") ) {
 		if( SafeOps::iequals(token[1], "on") )

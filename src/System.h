@@ -272,6 +272,7 @@ public:
 	void calc_system_mass();
 	void count_sorbates();
 	void allocateStatisticsMem();
+	void car2basis(double a, double b, double c, double alpha, double beta, double gamma);
 	
 
 
