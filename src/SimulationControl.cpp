@@ -2073,7 +2073,7 @@ bool SimulationControl::check_mc_options( ) {
 					Output::err("SIM_CONTROL: co2_fugacity called, but fugacities are already set.\n");
 					return fail;
 				}
-				sys.fugacities[0] = Fugacity::co2_fugacity(sys.temperature, sys.pressure);
+				sys.fugacities[0] = Fugacity::get_peng_robinson_fugactiy(sys.temperature, sys.pressure, "co2");
 				if( sys.co2_fugacity <= 0.0 ) {
 					Output::err("SIM_CONTROL: error in CO2 fugacity assignment\n");
 					return fail;

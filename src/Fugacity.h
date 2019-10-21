@@ -5,6 +5,12 @@ class Fugacity
 {
 	Fugacity() {};
 	~Fugacity() {};
+	//constants for peng_robinson equation of state
+	typedef struct _peng_robinson_constants {
+		double Tc;
+		double Pc;
+		double w;
+	} peng_robinson_constants;
 
 public:
 
@@ -57,11 +63,11 @@ public:
 
 
 	
-
+	static void get_peng_robinson_constants(_peng_robinson_constants peng_robinson_constants, std::string species);
 	// reads in temperature in K, and pressure (of the ideal gas in the resevoir) in atm 
 	// return the CO2 fugacity via the Peng-Robinson equation of state
 	// else return 0.0 on error - I don't have an error statement
 	// units are K, atmstatic
-	static double co2_fugacity(double temperature, double pressure);
+	static double get_peng_robinson_fugacity(double temperature, double pressure, std::string species);
 	
 };

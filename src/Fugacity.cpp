@@ -1,9 +1,10 @@
 #include "Fugacity.h"
 #include <cmath>
 #include <stdio.h>
-
+#include <string>
 #include "constants.h"
 #include "Output.h"
+#include "System.h"
 
 
 double Fugacity::h2_fugacity(double temperature, double pressure) {
@@ -173,7 +174,7 @@ double Fugacity::h2_fugacity_zhou(double pressure) {
 
 // ***************************** CH4 EQUATION OF STATE ***************************************
 double Fugacity::ch4_fugacity(double temperature, double pressure) {
-
+	std::string species = "ch4";
 	if((temperature >= 298.0) && (temperature <= 300.0) && (pressure <= 500.0)) {
 
 		Output::out("INPUT: CH4 fugacity calculation using BACK EoS\n");
@@ -183,7 +184,7 @@ double Fugacity::ch4_fugacity(double temperature, double pressure) {
 	else if((temperature == 150.0) && (pressure <= 200.0)) {
 
 		Output::out("INPUT: CH4 fugacity calculation using Peng-Robinson EoS\n");
-		return ch4_fugacity_PR(temperature, pressure);
+		return get_peng_robinson_fugacity(temperature, pressure,species);
 
 	} 
 	else {
@@ -368,7 +369,7 @@ double Fugacity::ch4_fugacity_PR(double temperature, double pressure) {
 // *************************** N2 BACK EQUATION OF STATE ************************************* 
 	
 double Fugacity::n2_fugacity(double temperature, double pressure) {
-
+	std::string species = "n2";
 	if((temperature == 78.0) && (pressure <= 1.0)) {
 	
 		Output::out("INPUT: N2 fugacity calculation using Zhou\n");
@@ -377,12 +378,12 @@ double Fugacity::n2_fugacity(double temperature, double pressure) {
 	else if((temperature == 78.0) && (pressure >= 10.0) && (pressure <= 300.0)) {
 	
 		Output::out("INPUT: N2 fugacity calculation using Peng-Robinson EoS\n");
-		return n2_fugacity_PR(temperature, pressure);
+		return get_peng_robinson_fugacity(temperature, pressure,species);
 	}
 	else if((temperature == 150.0) && (pressure < 175.0)) {
 	
 		Output::out("INPUT: N2 fugacity calculation using Peng-Robinson EoS\n");
-		return n2_fugacity_PR(temperature, pressure);
+		return get_peng_robinson_fugacity(temperature, pressure,species);
 	}
 	else if((temperature == 150.0) && (pressure >= 175.0) && (pressure <= 325.0)) {
 	
@@ -392,11 +393,11 @@ double Fugacity::n2_fugacity(double temperature, double pressure) {
 	else if((temperature >= 298.0) && (temperature <= 300.0) && (pressure <= 350.0)) {
 	
 		Output::out("INPUT: N2 fugacity calculation using Peng-Robinson EoS\n");
-		return n2_fugacity_PR(temperature, pressure);
+		return get_peng_robinson_fugacity(temperature, pressure,species);
 	}
 	else {
 		Output::out( "INPUT: Using PR EoS to calculate N2 Fugacity.\nINPUT: Correct N2 fugacity at the requested temperature and pressure has NOT been asserted.\n");
-		return n2_fugacity_PR(temperature, pressure);
+		return get_peng_robinson_fugacity(temperature, pressure,species);
 	}
 }
 
@@ -591,30 +592,76 @@ double Fugacity::n2_fugacity_zhou( double pressure ) {
 
 
 
-// reads in temperature in K, and pressure (of the ideal gas in the resevoir) in atm 
-// return the CO2 fugacity via the Peng-Robinson equation of state
-// else return 0.0 on error - I don't have an error statement
-// units are  atm, K
-
-double Fugacity::co2_fugacity(double temperature, double pressure) {
+/************************************
+ * BEGIN PENG-ROBINSON
+ ************************************/
+void Fugacity::get_peng_robinson_constants(_peng_robinson_constants peng_robinson_constants, std::string species) {
+	if (species == "co2") {
+		peng_robinson_constants.Tc = 304.2;
+		peng_robinson_constants.Pc = 72.854676;
+		peng_robinson_constants.w = 0.228;
+	}
+	else if (species == "n2") {
+		peng_robinson_constants.Tc = 126.1;
+		peng_robinson_constants.Pc = 33.496176;
+		peng_robinson_constants.w = 0.040;
+	}
+	else if (species == "h2") {
+		peng_robinson_constants.Tc = 33.3;
+		peng_robinson_constants.Pc = 12.800395;
+		peng_robinson_constants.w = -0.215;
+	}
+	else if (species == "ch4") {
+		peng_robinson_constants.Tc = 190.6;
+		peng_robinson_constants.Pc = 45.437947;
+		peng_robinson_constants.w = 0.011;
+	}
+	else if (species == "he") {
+		peng_robinson_constants.Tc = 5.2;
+		peng_robinson_constants.Pc = 2.250185;
+		peng_robinson_constants.w = 0.000;
+	}
+	else if (species == "ne") {
+		peng_robinson_constants.Tc = 44.4;
+		peng_robinson_constants.Pc = 26.183074;
+		peng_robinson_constants.w = -0.041;
+	}
+	else if (species == "xe") {
+		peng_robinson_constants.Tc = 289.7;
+		peng_robinson_constants.Pc = 57.63632;
+		peng_robinson_constants.w = 0.012;
+	}
+	else if (species == "kr") {
+		peng_robinson_constants.Tc = 209.4;
+		peng_robinson_constants.Pc = 54.300518;
+		peng_robinson_constants.w = 0.001;
+	}
+	else if (species == "ar") {
+		peng_robinson_constants.Tc = 150.9;
+		peng_robinson_constants.Pc = 48.339502;
+		peng_robinson_constants.w = -0.004;
+	}
+}
+double Fugacity::get_peng_robinson_fugacity(double temperature, double pressure, std::string species) {
 
 	double Z, A, B, aa, bb, Tc, Pc, Tr;
 	double alpha,alpha2, w, R, Q, X, j,k,l;
 	double theta,  Q3;
 	double uu,U,V,root1,root2,root3, stuff1, stuff2, stuff3; //, answer;  (unused variable)
-	double f1, f2, f3, f4, fugacity, lnfoverp;
 	double Pi=acos(-1.0);
 
-	// Peng Robinson variables and equations for CO2 units K,atm, L, mole
-	Tc=304.12;        // K  
-	Pc=73.74/1.01325; // bar to atm
-	w=0.225;
-	R=0.08206;        // gas constant atmL/moleK 
-	
-	aa=0.45724*R*R*Tc*Tc/Pc;
-	bb=0.07780*R*Tc/Pc;
-	Tr=temperature/Tc;
-	stuff1=0.37464+1.54226*w -0.26992*w*w;
+	/*Peng Robinson variables  units K,atm, L, mole*/
+	peng_robinson_constants PRC;
+	get_peng_robinson_constants(PRC, species);
+	Tc = PRC.Tc;
+	Pc = PRC.Pc;
+	w = PRC.w;
+	R = 0.08206;   /* gas constant atmL/moleK */
+
+	aa = (0.45724 * R * R * Tc * Tc) / Pc;
+	bb = (0.07780 * R * Tc) / Pc;
+	Tr = temperature / Tc;
+	stuff1 = 0.37464 + 1.54226 * w - 0.26992 * w * w;
 	stuff2=1.0-sqrt(Tr);
 	alpha=1.0+stuff1*stuff2;
 	alpha2=alpha*alpha;
@@ -658,6 +705,7 @@ double Fugacity::co2_fugacity(double temperature, double pressure) {
 	}
 
 	// using Z calculate the fugacity 
+	double f1, f2, f3, f4, lnfoverp, fugacity;
 	f1=(Z-1.0)-log(Z-B);
 	f2=A/(2.0*sqrt(2.0)*B);
 	f3=Z+(1.0+sqrt(2.0))*B;
@@ -666,5 +714,8 @@ double Fugacity::co2_fugacity(double temperature, double pressure) {
 	fugacity=exp(lnfoverp)*pressure;
 	
 	return fugacity ;
+	/************************************
+	 * END PENG-ROBINSON
+	 ************************************/
 }
 
