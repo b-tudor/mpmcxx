@@ -42,6 +42,30 @@ double System::energy() {
 	if(   last_volume != pbc.volume   ||   ensemble == ENSEMBLE_REPLAY   ||   observables->energy == 0.0  )
 		flag_all_pairs();
 
+	// get the repulsion/dispersion potential
+	if (rd_anharmonic)
+		rd_energy = anharmonic();
+	else if (use_sg)
+		rd_energy = sg();
+	else if (use_dreiding)
+		rd_energy = dreiding();
+	else if (using_lj_buffered_14_7)
+		rd_energy = lj_buffered_14_7();
+	else if (using_disp_expansion)
+		rd_energy = disp_expansion();
+	else if (cdvdw_exp_repulsion)
+		rd_energy = exp_repulsion();
+	else if (!gwp)
+		rd_energy = lj();
+	observables->rd_energy = rd_energy;
+
+	if (using_axilrod_teller)
+	{
+		three_body_energy = axilrod_teller();
+		observables->three_body_energy = three_body_energy;
+	}
+
+
 	// get the electrostatic potential
 	if(  ! ( use_sg || rd_only )  ) {
 
@@ -109,28 +133,6 @@ double System::energy() {
 
 
 
-	// get the repulsion/dispersion potential
-	if( rd_anharmonic )
-		rd_energy = anharmonic();
-	else if( use_sg )
-		rd_energy = sg();
-	else if( use_dreiding )
-		rd_energy = dreiding();
-	else if( using_lj_buffered_14_7 )
-		rd_energy = lj_buffered_14_7();
-	else if( using_disp_expansion )
-		rd_energy = disp_expansion();
-	else if( cdvdw_exp_repulsion )
-		rd_energy = exp_repulsion();
-	else if( !gwp )
-		rd_energy = lj();
-	observables->rd_energy = rd_energy;
-    
-	if( using_axilrod_teller )
-	{
-		three_body_energy = axilrod_teller();
-		observables->three_body_energy = three_body_energy;
-	}
 
 	// sum the total potential energy 
 	potential_energy = rd_energy + coulombic_energy + polar_energy + vdw_energy + three_body_energy;
