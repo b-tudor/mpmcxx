@@ -595,7 +595,7 @@ double Fugacity::n2_fugacity_zhou( double pressure ) {
 /************************************
  * BEGIN PENG-ROBINSON
  ************************************/
-void Fugacity::get_peng_robinson_constants(_peng_robinson_constants peng_robinson_constants, std::string species) {
+void Fugacity::get_peng_robinson_constants(_peng_robinson_constants &peng_robinson_constants, std::string species) {
 	if (species == "co2") {
 		peng_robinson_constants.Tc = 304.2;
 		peng_robinson_constants.Pc = 72.854676;

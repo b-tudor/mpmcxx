@@ -63,7 +63,7 @@ public:
 
 
 	
-	static void get_peng_robinson_constants(_peng_robinson_constants peng_robinson_constants, std::string species);
+	static void get_peng_robinson_constants(_peng_robinson_constants &peng_robinson_constants, std::string species);
 	// reads in temperature in K, and pressure (of the ideal gas in the resevoir) in atm 
 	// return the CO2 fugacity via the Peng-Robinson equation of state
 	// else return 0.0 on error - I don't have an error statement
