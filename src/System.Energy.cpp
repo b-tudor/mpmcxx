@@ -143,7 +143,7 @@ double System::energy() {
 
 
 	// sum the total potential energy 
-	potential_energy = rd_energy + coulombic_energy + polar_energy + vdw_energy + three_body_energy;
+	potential_energy += rd_energy + coulombic_energy + polar_energy + vdw_energy + three_body_energy;
 	
 	// not truly potential, but stick it there for convenience of MC 
 	//
