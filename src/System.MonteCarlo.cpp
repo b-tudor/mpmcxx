@@ -30,6 +30,7 @@ bool System::mc() {
 	observables->volume = pbc.volume; // set volume observable
 	initial_energy = mc_initial_energy();
 	mpiData mpi = setup_mpi();
+	count_autorejects = 0;
 	
 	// save the initial state 
 	do_checkpoint();
@@ -135,6 +136,7 @@ bool System::mc() {
 	free( mpi.snd_strct     );
 	free( mpi.observables   );
 	free( mpi.avg_nodestats );
+	printf("MC: Total auto-rejected moves: %i\n", count_autorejects);
 
 	return ok;
 }

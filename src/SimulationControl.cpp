@@ -618,14 +618,6 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 			return fail;
 		return ok;
 	}
-	if( SafeOps::iequals(token[0], "cavity_autoreject") ) {
-		if( SafeOps::iequals(token[1], "on") )
-			sys.cavity_autoreject = 1;
-		else if( SafeOps::iequals(token[1], "off") )
-			sys.cavity_autoreject = 0;
-		else return fail; //no match
-		return ok;
-	}
 	if( SafeOps::iequals(token[0], "cavity_autoreject_absolute") ) {
 		if( SafeOps::iequals(token[1], "on") )
 			sys.cavity_autoreject_absolute = 1;
@@ -2170,19 +2162,9 @@ bool SimulationControl::check_mc_options( ) {
 	}
 
 
-	// autoreject insertions closer than some scaling factor of sigma 
-	if( sys.cavity_autoreject ) {
-		Output::out1("SIM_CONTROL: cavity autorejection activated\n");
-		if ((sys.cavity_autoreject_scale <= 0.0) || (sys.cavity_autoreject_scale > 1.0)) {
-			Output::err("SIM_CONTROL: cavity_autoreject_scale either not set or out of range\n");
-			return fail;
-		}
-	}
-
-
 	if( sys.cavity_autoreject_absolute ) { 
 		Output::out1("SIM_CONTROL: cavity autoreject absolute activated\n");
-		if ((sys.cavity_autoreject_scale <= 0.0) || (sys.cavity_autoreject_scale > 1.0)) {
+		if ((sys.cavity_autoreject_scale <= 0.0) || (sys.cavity_autoreject_scale > 1.78)) {
 			Output::err("SIM_CONTROL: cavity_autoreject_scale either not set or out of range\n");
 			return fail;
 		}

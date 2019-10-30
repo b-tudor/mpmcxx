@@ -41,94 +41,102 @@ double System::energy() {
 	// we set last_volume at the end of this function
 	if(   last_volume != pbc.volume   ||   ensemble == ENSEMBLE_REPLAY   ||   observables->energy == 0.0  )
 		flag_all_pairs();
+		
+	if (cavity_autoreject_absolute)
+		potential_energy += cavity_absolute_check();
+	if (potential_energy == 0) {
+		// get the repulsion/dispersion potential
+		if (rd_anharmonic)
+			rd_energy = anharmonic();
+		else if (use_sg)
+			rd_energy = sg();
+		else if (use_dreiding)
+			rd_energy = dreiding();
+		else if (using_lj_buffered_14_7)
+			rd_energy = lj_buffered_14_7();
+		else if (using_disp_expansion)
+			rd_energy = disp_expansion();
+		else if (cdvdw_exp_repulsion)
+			rd_energy = exp_repulsion();
+		else if (!gwp)
+			rd_energy = lj();
+		observables->rd_energy = rd_energy;
 
-	// get the repulsion/dispersion potential
-	if (rd_anharmonic)
-		rd_energy = anharmonic();
-	else if (use_sg)
-		rd_energy = sg();
-	else if (use_dreiding)
-		rd_energy = dreiding();
-	else if (using_lj_buffered_14_7)
-		rd_energy = lj_buffered_14_7();
-	else if (using_disp_expansion)
-		rd_energy = disp_expansion();
-	else if (cdvdw_exp_repulsion)
-		rd_energy = exp_repulsion();
-	else if (!gwp)
-		rd_energy = lj();
-	observables->rd_energy = rd_energy;
-
-	if (using_axilrod_teller)
-	{
-		three_body_energy = axilrod_teller();
-		observables->three_body_energy = three_body_energy;
-	}
+		if (using_axilrod_teller)
+		{
+			three_body_energy = axilrod_teller();
+			observables->three_body_energy = three_body_energy;
+		}
 
 
-	// get the electrostatic potential
-	if(  ! ( use_sg || rd_only )  ) {
+		// get the electrostatic potential
+		if (!(use_sg || rd_only)) {
 
-		if( spectre )
-			coulombic_energy = coulombic_nopbc( molecules );
-		else if( gwp ) {
-			coulombic_energy = coulombic_nopbc_gwp();
-			kinetic_energy   = coulombic_kinetic_gwp();
-			observables->kinetic_energy = kinetic_energy;
-		} else
-			coulombic_energy = coulombic();
+			if (spectre)
+				coulombic_energy = coulombic_nopbc(molecules);
+			else if (gwp) {
+				coulombic_energy = coulombic_nopbc_gwp();
+				kinetic_energy = coulombic_kinetic_gwp();
+				observables->kinetic_energy = kinetic_energy;
+			}
+			else
+				coulombic_energy = coulombic();
 
-		observables->coulombic_energy = coulombic_energy;
+			observables->coulombic_energy = coulombic_energy;
 
-		// get the polarization potential
-		if( polarization ) {
+			// get the polarization potential
+			if (polarization) {
 
-			#ifdef POLARTIMING
+				#ifdef POLARTIMING
 				// get timing of polarization energy function for cuda comparison 
-				Output::GetTimeOfDay( &old_time );
-			#endif
+				Output::GetTimeOfDay(&old_time);
+				#endif
 
-			#ifdef CUDA
-				if(system->cuda)
+				#ifdef CUDA
+				if (system->cuda)
 					polar_energy = (double)polar_cuda(system);
 				else
 					polar_energy = polar(system);
-			#else
+				#else
 				polar_energy = polar();
-			#endif // CUDA 
+				#endif // CUDA 
 
-			#ifdef POLARTIMING
-				Output::GetTimeOfDay( &new_time );
-				timing = timing * (double)count/((double)count+1.0) 
-					+ (double)((new_time.tv_sec-old_time.tv_sec)*1e6+(new_time.tv_usec-old_time.tv_usec)) * 1.0/((double)count +1.0);
+				#ifdef POLARTIMING
+				Output::GetTimeOfDay(&new_time);
+				timing = timing * (double)count / ((double)count + 1.0)
+					+ (double)((new_time.tv_sec - old_time.tv_sec) * 1e6 + (new_time.tv_usec - old_time.tv_usec)) * 1.0 / ((double)count + 1.0);
 				count++;
-				if ( system->corrtime ) {
-					if ( count % system->corrtime == 0 ) sprintf(linebuf, "OUTPUT: Polarization energy function took %lf us\n", timing);
+				if (system->corrtime) {
+					if (count % system->corrtime == 0) sprintf(linebuf, "OUTPUT: Polarization energy function took %lf us\n", timing);
 					output(linebuf);
 				}
-				else	{
+				else {
 					sprintf(linebuf, "OUTPUT: Polarization energy function took %lf us\n", timing);
 					output(linebuf);
 				}
-			#endif
+				#endif
 
-			observables->polarization_energy = polar_energy;
+				observables->polarization_energy = polar_energy;
 
-		}
-		if( polarvdw ) {
+			}
+			if (polarvdw) {
 			#ifdef CUDA
 				if (system->cuda) {
 					error("error: cuda polarvdw not yet implemented!\n");
 					die(-1);
 				}
 				else
-				vdw_energy = vdw(system);
+					vdw_energy = vdw(system);
 			#else
 				vdw_energy = vdw();
 			#endif
 				observables->vdw_energy = vdw_energy;
-		}
+			}
 
+		}
+	}//end if cavity_autoreject_absolute did not find a bad match. (if potential == 0)
+	else {
+		count_autorejects++;
 	}
 
 
@@ -165,9 +173,6 @@ double System::energy() {
 
 	// set last known volume
 	last_volume = pbc.volume;
-
-	if( cavity_autoreject_absolute )
-		potential_energy += cavity_absolute_check();
 
 	return potential_energy;
 }
@@ -1000,12 +1005,7 @@ double System::lj()
 						if (feynman_hibbs)
 							pair_ptr->rd_energy += lj_fh_corr(molecule_ptr, pair_ptr, feynman_hibbs_order, term12, term6);
 
-						// if cavity_autoreject is on (cavity_autoreject_absolute is performed in energy.c)
-						if (cavity_autoreject)
-							if (pair_ptr->rimg < cavity_autoreject_scale*fabs(pair_ptr->sigma))
-								pair_ptr->rd_energy = MAXVALUE;
-
-					} //count contributions
+					} //if qualified contributions
 
 				} // if recalculate
 
@@ -1235,10 +1235,6 @@ double System::lj_buffered_14_7()
 						potential_classical = pair_ptr->epsilon*first_term*second_term;
 						pair_ptr->rd_energy += potential_classical;
 
-						// cavity autoreject
-						if (cavity_autoreject)
-							if (pair_ptr->rimg < cavity_autoreject_scale * pair_ptr->sigma)
-								pair_ptr->rd_energy = MAXVALUE;
 					}
 				}
 				potential += pair_ptr->rd_energy;
@@ -1278,10 +1274,6 @@ double System::lj_buffered_14_7_nopbc()
 						potential_classical = pair_ptr->epsilon*first_term*second_term;
 						pair_ptr->rd_energy += potential_classical;
 
-						// cavity autoreject
-						if (cavity_autoreject)
-							if (pair_ptr->rimg < cavity_autoreject_scale*pair_ptr->sigma)
-								pair_ptr->rd_energy = MAXVALUE;
 					}
 				}
 				potential += pair_ptr->rd_energy;
@@ -1982,13 +1974,7 @@ double System::disp_expansion()
 						else
 							pair_ptr->rd_energy = -c6 / r6 - c8 / r8 - c10 / r10 + repulsion;
 
-						if (cavity_autoreject)
-						{
-							if (r < cavity_autoreject_scale * pair_ptr->sigma)
-								pair_ptr->rd_energy = MAXVALUE;
-							if (cavity_autoreject_repulsion != 0.0   &&   repulsion > cavity_autoreject_repulsion)
-								pair_ptr->rd_energy = MAXVALUE;
-						}
+						
 					}
 
 				}
@@ -2180,11 +2166,6 @@ double System::dreiding() {
 						}
 
 #endif // XXX 
-						// cause an autoreject on insertions closer than a certain amount 
-						if (cavity_autoreject) {
-							if (pair_ptr->rimg < cavity_autoreject_scale * pair_ptr->sigma)
-								pair_ptr->rd_energy = MAXVALUE;
-						}
 
 					}
 

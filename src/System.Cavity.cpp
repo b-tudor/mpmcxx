@@ -207,7 +207,7 @@ void System::setup_cavity_grid() {
 
 
 
-//check cavity_autoreject_absolute -- probably not the most efficient place to put this, but likely the safest
+//check cavity_autoreject_absolute 
 double System::cavity_absolute_check()
 {
 	Molecule * molecule_ptr;

@@ -586,6 +586,7 @@ public:
 	// applies to LJ; latter is in Angstroms and applies to all pairs
 	int            cavity_autoreject;           // Flag: autoreject in terms of sigma--only applies to LJ
 	int            cavity_autoreject_absolute;  // Flag: autoreject in Angstroms and applies to all pairs
+	int			   count_autorejects;
 
 	// Parallel Tempering Options
 	int            parallel_tempering;
