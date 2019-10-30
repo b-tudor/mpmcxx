@@ -106,7 +106,8 @@ private:
 	
 	double PI_system_energy();
 	void   PI_kinetic_E( double &bead_separation, double &orientation_difference);
-	double PI_chain_length();
+	double PI_chain_length(); // Return COM PI "polymer" chain length measure for molecule targeted by MC move
+	double PI_chain_length(std::vector<Molecule*> &m); // Return COM PI "polymer" chain length for molecule represented by m
 	double PI_orientational_distance();
 	double PI_NVT_boltzmann_factor( double delta_energy, double delta_PI_chainLength2, double delta_orientation_dist2 );
 	int    PI_pick_NVT_move();

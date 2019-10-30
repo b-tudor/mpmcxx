@@ -210,15 +210,6 @@ System::mpiData System::setup_mpi() {
 void System::setup_mpi_dataStructs() { setup_mpi_dataStructs(mpi_data); }
 void System::setup_mpi_dataStructs( mpiData &md ) {
 
-	mpi_data.msgsize       = 0;
-	mpi_data.observables   = nullptr;
-	mpi_data.avg_nodestats = nullptr;
-	mpi_data.sinfo         = nullptr;
-	mpi_data.temperature   = nullptr;
-	mpi_data.snd_strct     = nullptr;
-	mpi_data.rcv_strct     = nullptr;
-	
-
 	// allocate the statistics structures 
 	SafeOps::calloc( md.observables,   1, sizeof(  observables_t), __LINE__, __FILE__ );
 	SafeOps::calloc( md.avg_nodestats, 1, sizeof(avg_nodestats_t), __LINE__, __FILE__ );
@@ -237,17 +228,20 @@ void System::setup_mpi_dataStructs( mpiData &md ) {
 		md.msgsize += sorbateCount * sizeof(sorbateInfo_t);
 
 	#ifdef _MPI
+	if (mpi) {
 		// MPI_Datatype msgtype;
-		MPI_Type_contiguous( md.msgsize, MPI_BYTE, &msgtype );
+		MPI_Type_contiguous(md.msgsize, MPI_BYTE, &msgtype);
 		MPI_Type_commit(&msgtype);
+	}
 	#endif
 
 	// allocate MPI structures 
 	SafeOps::calloc( md.snd_strct, md.msgsize, 1, __LINE__, __FILE__ );
 	
-	if( ! rank ) {
-		SafeOps::calloc(   md.rcv_strct, size,     md.msgsize, __LINE__, __FILE__ );
-		SafeOps::calloc( md.temperature, size, sizeof(double), __LINE__, __FILE__ ); //temperature list for parallel tempering
+	if( (! mpi) || (! rank ) ) {
+		// These structs will be allocated on all systems[] in a single-threaded run
+		SafeOps::calloc(md.rcv_strct,   size,     md.msgsize, __LINE__, __FILE__ );
+		SafeOps::calloc(md.temperature, size, sizeof(double), __LINE__, __FILE__ ); //temperature list for parallel tempering
 	}
 }
 

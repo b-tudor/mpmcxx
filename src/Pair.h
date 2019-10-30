@@ -26,7 +26,8 @@ public:
 		recalculate_energy   = 0;
 		lrc                  = 0;
 		last_volume          = 0;
-		epsilon, sigma       = 0;
+		epsilon              = 0;
+		sigma                = 0;
 		r                    = 0;
 		rimg                 = 0;
 		rd_energy            = 0;
@@ -36,7 +37,6 @@ public:
 		c6                   = 0;
 		c8                   = 0;
 		c10                  = 0;
-
 		for (int i = 0; i < 3; i++) {
 			dimg  [i] = 0;
 			d_prev[i] = 0;

@@ -213,7 +213,7 @@ void SimulationControl::read_config(char *inFilename) {
 		// grab a line and parse it out 
 		for( i=0; i<maxTokens; i++)
 			std::memset(token[i], 0, maxLine); //clear a token
-		int ck = scanf(linebuffer, "%s %s %s %s %s %s %s %s %s %s",
+		int ck = sscanf(linebuffer, "%s %s %s %s %s %s %s %s %s %s",
 			token[0], token[1], token[2], token[3], token[4],
 			token[5], token[6], token[7], token[8], token[9]);
 
@@ -2832,14 +2832,13 @@ bool SimulationControl::runSimulation() {
 	bool (SimulationControl::*run_it)();  // run_it is a pointer to the function that we will run in order to execute the 
 	                                      // simulation. The syntax is weird because this is a pointer to a member function
 	                                      // rather than a C or static function. Member fxns invoked via: (this->*run_it)()
-
-	if (mpi) {
-		#ifdef _MPI
-			MPI_Barrier(MPI_COMM_WORLD);
-			sprintf(start_up_msg, "SIM_CONTROL: all %d cores are in sync\n", size);
-			Output::out1(start_up_msg);
-		#endif
+	#ifdef _MPI
+	if (mpi) {	
+		MPI_Barrier(MPI_COMM_WORLD);
+		sprintf(start_up_msg, "SIM_CONTROL: all %d cores are in sync\n", size);
+		Output::out1(start_up_msg);
 	}
+	#endif
 	
 
 
@@ -2940,7 +2939,7 @@ bool SimulationControl::runSimulation() {
 		return fail;
 	}
 	Output::out1("SIM_CONTROL: Simulation complete!\n");
-	Output::out1("Cleaning up & exit. ");
+	Output::out1("Cleaning up & exiting... ");
 	return ok;
 }
 

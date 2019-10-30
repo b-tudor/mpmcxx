@@ -83,6 +83,7 @@ public:
 
 	typedef struct _observables {
 		double energy,
+		       pi_energy,          // energy as computed for the entire path integral rep for the quantum system  
 		       coulombic_energy,
 		       rd_energy,
 		       polarization_energy,

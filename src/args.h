@@ -142,9 +142,9 @@ void signal_handler(int sigtype) {
 
 // Kill MPI before quitting, when neccessary
 void die(int code) {
-#ifdef _MPI
-	MPI_Finalize();
-#endif
+	#ifdef _MPI
+	if (mpi) { MPI_Finalize(); }
+	#endif
 	exit(code);
 }
 
