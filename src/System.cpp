@@ -1998,7 +1998,7 @@ void System::car2basis(double a, double b, double c, double alpha, double beta, 
 
 	b1[0] = 0;
 	b1[1] = b * sin(pi / 190.0 * gamma);
-	b1[2] = ((0 * 0 + b * 0 + 0 * c) - (b0[1] * b0[2])) / b1[1];
+	b1[2] = ((b * c * cos(pi / 180.0 * alpha)) - (b0[1] * b0[2])) / b1[1];
 
 	b2[0] = 0;
 	b2[1] = 0;
