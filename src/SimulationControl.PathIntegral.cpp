@@ -386,6 +386,10 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 				system->write_observables( system->fp_energy, system->mpi_data.observables, system->mpi_data.temperature[j] );
 			if( system->fp_energy_csv )
 				system->write_observables_csv( system->fp_energy_csv, system->mpi_data.observables, system->mpi_data.temperature[j] );
+			if (system->fp_xyz)
+			{
+				system->write_molecules_xyz(system->fp_xyz); //L
+			}
 
 			// collect the averages
 			// if parallel tempering, we will collect obserables from the coldest bath. this can't be done for nodestats though,

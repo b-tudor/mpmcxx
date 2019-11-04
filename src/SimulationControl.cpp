@@ -1405,6 +1405,12 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 		else return fail;
 		return ok;
 	}
+	if (SafeOps::iequals(token[0], "xyz_output")) {
+		if (strlen(token[1]))
+			strcpy(sys.xyz_output, token[1]);
+		else return fail;
+		return ok;
+	}
 	if( SafeOps::iequals(token[0], "pop_histogram_output") ) {
 		if( strlen(token[1]) )
 			strcpy(sys.histogram_output, token[1]);
@@ -2065,7 +2071,7 @@ bool SimulationControl::check_mc_options( ) {
 					Output::err("SIM_CONTROL: co2_fugacity called, but fugacities are already set.\n");
 					return fail;
 				}
-				sys.fugacities[0] = Fugacity::get_peng_robinson_fugactiy(sys.temperature, sys.pressure, "co2");
+				sys.fugacities[0] = Fugacity::get_peng_robinson_fugacity(sys.temperature, sys.pressure, "co2");
 				if( sys.co2_fugacity <= 0.0 ) {
 					Output::err("SIM_CONTROL: error in CO2 fugacity assignment\n");
 					return fail;

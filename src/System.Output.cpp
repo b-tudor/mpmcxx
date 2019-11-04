@@ -39,6 +39,10 @@ int System::open_files()
 		fprintf( fp_energy_csv,	"#step,#energy,#coulombic,#rd,#polar,#vdw,#kinetic,#kin_temp,#N,#spin_ratio,#volume,#core_temp\n" );
 	}
 
+	if (xyz_output[0]) {
+		fp_xyz = SafeOps::openFile(xyz_output, "w", __LINE__, __FILE__);
+	}
+
 	// if we're just calculating energy or replaying a trajectory, we need no other output files
 	if( ensemble == ENSEMBLE_REPLAY || ensemble == ENSEMBLE_TE ) 
 		return 0;
@@ -843,6 +847,37 @@ int System::write_molecules_wrapper( char * filename ) {
 	#endif
 
 	return rval;
+}
+
+void System::write_molecules_xyz(FILE* fp)
+{
+	Molecule* molecule_ptr = nullptr;
+	Atom* atom_ptr = nullptr;
+	int i, j;
+
+	/* write xyz */
+	fprintf(fp, "%d\n\n", countNatoms());
+	for (molecule_ptr = molecules, i = 1, j = 1; molecule_ptr; molecule_ptr = molecule_ptr->next, j++) {
+		for (atom_ptr = molecule_ptr->atoms; atom_ptr; atom_ptr = atom_ptr->next, i++) {
+			fprintf(fp, " %-4.45s", atom_ptr->atomtype);
+			/* Regular (PDB compliant) Coordinate Output */
+			if (wrapall)
+			{
+				fprintf(fp, "%10.3f", atom_ptr->wrapped_pos[0]);
+				fprintf(fp, "%10.3f", atom_ptr->wrapped_pos[1]);
+				fprintf(fp, "%10.3f", atom_ptr->wrapped_pos[2]);
+			}
+			else
+			{
+				fprintf(fp, "%10.3f", atom_ptr->pos[0]);
+				fprintf(fp, "%10.3f", atom_ptr->pos[1]);
+				fprintf(fp, "%10.3f", atom_ptr->pos[2]);
+			}
+			fprintf(fp, "\n");
+		}
+	}
+	fflush(fp);
+	return;
 }
 
 // write out the final system state as a PQR file 

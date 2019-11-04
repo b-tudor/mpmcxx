@@ -472,6 +472,7 @@ public:
 	void print_frozen_colors( FILE *fp_frozen );
 	void write_observables( FILE *fp_energy, observables_t * observables, double core_temp);
 	void write_observables_csv( FILE *fp_energy_csv, observables_t * observables, double core_temp);
+	void write_molecules_xyz(FILE* fp_xyz); //L
 	int  write_averages();
 	int  write_averages(int sysNum);
 	int  write_averages(const char *sysID);
@@ -548,7 +549,8 @@ public:
 	            surf_output       [maxLine],
 	            traj_input        [maxLine],
 	            traj_output       [maxLine],
-	            virial_output     [maxLine];
+	            virial_output     [maxLine],
+				xyz_output		  [maxLine];
 	    
 	 
 
@@ -763,6 +765,7 @@ public:
 
 	FILE               * fp_energy;
 	FILE               * fp_energy_csv;
+	FILE			   * fp_xyz;
 	FILE               * fp_field;
 	FILE               * fp_histogram;
 	FILE               * fp_frozen;
