@@ -34,7 +34,7 @@ SimulationControl::~SimulationControl() {
 SimulationControl::SimulationControl(char *inFilename, bool rAR, bool writeFrames) : report_AR(rAR), write_PI_frames(writeFrames)
 {
 	char linebuf[maxLine];
-	PI_nBeads = 0;
+	nSys = 0;
 	PI_trial_chain_length = 0;
 	
 
@@ -44,15 +44,15 @@ SimulationControl::SimulationControl(char *inFilename, bool rAR, bool writeFrame
 	Output::out1( "SIM_CONTROL: Finished reading config file.\n" );
 
 	if (mpi) {
-		if (PI_nBeads) {
-			if (PI_nBeads != size) {
+		if (nSys) {
+			if (nSys != size) {
 				Output::out1("SIM_CONTROL: When computing path integrals with MPI, the Trotter number is set\n");
 				Output::out1("             by the MPI process count, not the input file. If the 'trotter_number'\n");
 				Output::out1("             option is set, it must match the MPI world size.\n"); 
 				throw invalid_setting;
 			}
 		}
-		PI_nBeads = size;
+		nSys = size;
 	}
 
 	if( check_system() )             // Check system for compatible parameters.
@@ -356,7 +356,7 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 	//////////////////////////////////////////////////
 
 	if (SafeOps::iequals(token[0], "trotter_number")) {
-		if (!SafeOps::atoi(token[1], PI_nBeads ))
+		if (!SafeOps::atoi(token[1], nSys ))
 			return fail;
 		return ok;
 	}
@@ -846,11 +846,6 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 	}
 	if( SafeOps::iequals( token[0], "bead_perturb_probability" )) {
 		if( !SafeOps::atod(token[1], sys.bead_perturb_probability ))
-			return fail;
-		return ok;
-	}
-	if (SafeOps::iequals(token[0], "bead_perturb_factor")) {
-		if (!SafeOps::atod(token[1], sys.PI_bead_perturb_factor ))
 			return fail;
 		return ok;
 	}
@@ -2120,10 +2115,10 @@ bool SimulationControl::check_mc_options( ) {
 	sprintf(linebuf, "SIM_CONTROL: rotation change factor is %.5f\n", sys.rot_factor);
 	Output::out1(linebuf);
 
-	if (ENSEMBLE_PATH_INTEGRAL_NVT == sys.ensemble) {
-		sprintf( linebuf,"SIM_CONTROL: bead perturbation scaling factor is %.5f\n", sys.PI_bead_perturb_factor);
-		Output::out1(linebuf);
-	}
+//	if (ENSEMBLE_PATH_INTEGRAL_NVT == sys.ensemble) {
+//		sprintf( linebuf,"SIM_CONTROL: bead perturbation scaling factor is %.5f\n", sys.PI_bead_perturb_factor);
+//		Output::out1(linebuf);
+//	}
 
 	if( sys.gwp ) {
 		sprintf(linebuf, "SIM_CONTROL: gwp change factor is %.3f\n", sys.gwp_probability);
@@ -2192,7 +2187,7 @@ bool SimulationControl::check_spectre_options() {
 bool SimulationControl::check_io_files_options() {
 
 	char linebuf[maxLine];
-	int file_count = (PI_nBeads) ? PI_nBeads : size;
+	int file_count = (nSys) ? nSys : size;
 
 
 	if (SafeOps::iequals(sys.pqr_restart, "off")) { // Optionally turn off restart configuration output
@@ -2829,9 +2824,9 @@ bool SimulationControl::runSimulation() {
 
 	char start_up_msg[maxLine] = { 0 };   // Message to display when sim starts
 	char err_exit_msg[maxLine] = { 0 };   // Message to display if sim errors out
-	bool (SimulationControl::*run_it)();  // run_it is a pointer to the function that we will run in order to execute the 
-	                                      // simulation. The syntax is weird because this is a pointer to a member function
-	                                      // rather than a C or static function. Member fxns invoked via: (this->*run_it)()
+	bool (SimulationControl::*run_sim)(); // run_sim is a pointer  to the function that we will run in order  to execute the 
+	                                      // simulation. The syntax is weird because this  is a pointer to a member function
+	                                      // rather than a C or static function. Member fxns invoked via: (this->*run_sim)()
 	#ifdef _MPI
 	if (mpi) {	
 		MPI_Barrier(MPI_COMM_WORLD);
@@ -2847,80 +2842,80 @@ bool SimulationControl::runSimulation() {
 
 	switch (sys.ensemble) {
 	case ENSEMBLE_PATH_INTEGRAL_NVT:
-		run_it = &SimulationControl::PI_nvt_mc;
-		strcat(start_up_msg, "SIM_CONTROL: *********************************************************\n");
-		strcat(start_up_msg, "SIM_CONTROL: *** starting Path-Integral Monte Carlo NVT simulation ***\n");
-		strcat(start_up_msg, "SIM_CONTROL: *********************************************************\n");
-		strcat(err_exit_msg, "SIM_CONTROL: PIMC failed\n");
+		run_sim = &SimulationControl::PI_nvt_mc;
+		strcat(start_up_msg, "\nSIM_CONTROL: *********************************************************\n"  );
+		strcat(start_up_msg,   "SIM_CONTROL: *** starting Path-Integral Monte Carlo NVT simulation ***\n"  );
+		strcat(start_up_msg,   "SIM_CONTROL: *********************************************************\n\n");
+		strcat(err_exit_msg,   "SIM_CONTROL: PIMC failed\n");
 		break;
 
 	case ENSEMBLE_NVT_GIBBS:
-		run_it = &SimulationControl::Gibbs_mc;
-		strcat(start_up_msg, "SIM_CONTROL: *************************************************\n");
-		strcat(start_up_msg, "SIM_CONTROL: *** starting Gibbs NVT Monte Carlo simulation ***\n");
-		strcat(start_up_msg, "SIM_CONTROL: *************************************************\n");
+		run_sim = &SimulationControl::Gibbs_mc;
+		strcat(start_up_msg, "\nSIM_CONTROL: *************************************************\n"  );
+		strcat(start_up_msg,   "SIM_CONTROL: *** starting Gibbs NVT Monte Carlo simulation ***\n"  );
+		strcat(start_up_msg,   "SIM_CONTROL: *************************************************\n\n");
 		strcat(err_exit_msg, "SIM_CONTROL: Gibbs failed\n");	
 		break;
 
 	case ENSEMBLE_SURF:
-		run_it = &SimulationControl::surface;
-		strcat(start_up_msg, "SIM_CONTROL: *****************************************************\n");
-		strcat(start_up_msg, "SIM_CONTROL: *** starting potential energy surface calculation ***\n");
-		strcat(start_up_msg, "SIM_CONTROL: *****************************************************\n");
-		strcat(err_exit_msg, "SIM_CONTROL: surface module failed on error, exiting\n");
+		run_sim = &SimulationControl::surface;
+		strcat(start_up_msg, "\nSIM_CONTROL: *****************************************************\n"  );
+		strcat(start_up_msg,   "SIM_CONTROL: *** starting potential energy surface calculation ***\n"  );
+		strcat(start_up_msg,   "SIM_CONTROL: *****************************************************\n\n");
+		strcat(err_exit_msg,   "SIM_CONTROL: surface module failed on error, exiting\n");
 		break;
 
 	case ENSEMBLE_SURF_FIT:
 		if (sys.surf_fit_arbitrary_configs) {
-			run_it = &SimulationControl::surface_fit_arbitrary;
+			run_sim = &SimulationControl::surface_fit_arbitrary;
 			strcat(err_exit_msg, "SIM_CONTROL: surface fitting module (for arbitrary configurations) failed on error, exiting\n");
 		}
 		else {
-			run_it = &SimulationControl::surface_fit;
+			run_sim = &SimulationControl::surface_fit;
 			strcat(err_exit_msg, "SIM_CONTROL: surface fitting module failed on error, exiting\n");
 		}
-		strcat(start_up_msg, "SIM_CONTROL: *************************************************************\n");
-		strcat(start_up_msg, "SIM_CONTROL: *** starting potential energy surface fitting calculation ***\n");
-		strcat(start_up_msg, "SIM_CONTROL: *************************************************************\n");
-		strcat(err_exit_msg, "SIM_CONTROL: surface fitting module (for arbitrary configurations) failed on error, exiting\n");
+		strcat(start_up_msg, "\nSIM_CONTROL: *************************************************************\n"  );
+		strcat(start_up_msg,   "SIM_CONTROL: *** starting potential energy surface fitting calculation ***\n"  );
+		strcat(start_up_msg,   "SIM_CONTROL: *************************************************************\n\n");
+		strcat(err_exit_msg,   "SIM_CONTROL: surface fitting module (for arbitrary configurations) failed on error, exiting\n");
 		break;
 
 	case ENSEMBLE_REPLAY:  // replay trajectory and recalc energies, etc. 
-		run_it = &SimulationControl::replay_trajectory;
-		strcat(start_up_msg, "SIM_CONTROL: **********************************\n");
-		strcat(start_up_msg, "SIM_CONTROL: *** starting trajectory replay ***\n");
-		strcat(start_up_msg, "SIM_CONTROL: **********************************\n");
-		strcat(err_exit_msg, "SIM_CONTROL: trajectory replay failed, exiting\n");
+		run_sim = &SimulationControl::replay_trajectory;
+		strcat(start_up_msg, "\nSIM_CONTROL: **********************************\n");
+		strcat(start_up_msg,   "SIM_CONTROL: *** starting trajectory replay ***\n");
+		strcat(start_up_msg,   "SIM_CONTROL: **********************************\n\n");
+		strcat(err_exit_msg,   "SIM_CONTROL: trajectory replay failed, exiting\n");
 		break;
 
 	case ENSEMBLE_TE:
-		run_it = &SimulationControl::calculate_te;
-		strcat(start_up_msg, "SIM_CONTROL: *************************************************\n");
-		strcat(start_up_msg, "SIM_CONTROL: *** starting single-point energy calculation  ***\n");
-		strcat(start_up_msg, "SIM_CONTROL: *************************************************\n");
-		strcat(err_exit_msg, "SIM_CONTROL: single-point energy calculation failed, exiting\n");
+		run_sim = &SimulationControl::calculate_te;
+		strcat(start_up_msg, "\nSIM_CONTROL: *************************************************\n"  );
+		strcat(start_up_msg,   "SIM_CONTROL: *** starting single-point energy calculation  ***\n"  );
+		strcat(start_up_msg,   "SIM_CONTROL: *************************************************\n\n");
+		strcat(err_exit_msg,   "SIM_CONTROL: single-point energy calculation failed, exiting\n");
 		break;
 
 	
 	// case ENSEMBLE_UVT | ENSEMBLE_NVT | ENSEMBLE_NVE:
 	default:
 
-		run_it = &SimulationControl::mc;
+		run_sim = &SimulationControl::mc;
 
 		if (sys.ensemble == ENSEMBLE_UVT) {
-			strcat(start_up_msg, "SIM_CONTROL: *******************************************************\n");
-			strcat(start_up_msg, "SIM_CONTROL: *** starting Grand Canonical Monte Carlo simulation ***\n");
-			strcat(start_up_msg, "SIM_CONTROL: *******************************************************\n");
+			strcat(start_up_msg, "\nSIM_CONTROL: *******************************************************\n"  );
+			strcat(start_up_msg,   "SIM_CONTROL: *** starting Grand Canonical Monte Carlo simulation ***\n"  );
+			strcat(start_up_msg,   "SIM_CONTROL: *******************************************************\n\n");
 		}
 		else if (sys.ensemble == ENSEMBLE_NVT) {
-			strcat(start_up_msg, "SIM_CONTROL: *******************************************************\n");
-			strcat(start_up_msg, "SIM_CONTROL: ***  starting  Canonical  Monte  Carlo  simulation  ***\n");
-			strcat(start_up_msg, "SIM_CONTROL: *******************************************************\n");
+			strcat(start_up_msg, "\nSIM_CONTROL: *******************************************************\n"  );
+			strcat(start_up_msg,   "SIM_CONTROL: ***  starting  Canonical  Monte  Carlo  simulation  ***\n"  );
+			strcat(start_up_msg,   "SIM_CONTROL: *******************************************************\n\n");
 		}
 		else if (sys.ensemble == ENSEMBLE_NVE) {
-			strcat(start_up_msg, "SIM_CONTROL: *******************************************************\n");
-			strcat(start_up_msg, "SIM_CONTROL: *** starting Microcanonical  Monte Carlo simulation ***\n");
-			strcat(start_up_msg, "SIM_CONTROL: *******************************************************\n");
+			strcat(start_up_msg, "\nSIM_CONTROL: *******************************************************\n"  );
+			strcat(start_up_msg,   "SIM_CONTROL: *** starting Microcanonical  Monte Carlo simulation ***\n"  );
+			strcat(start_up_msg,   "SIM_CONTROL: *******************************************************\n\n");
 		}
 
 		strcat(err_exit_msg, "SIM_CONTROL: MC failed on error, exiting\n");
@@ -2933,7 +2928,7 @@ bool SimulationControl::runSimulation() {
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	Output::out1(start_up_msg);
-	bool sim_completed = (this->*run_it)();
+	bool sim_completed = (this->*run_sim)();
 	if( ! sim_completed ) {
 		Output::err(err_exit_msg);
 		return fail;

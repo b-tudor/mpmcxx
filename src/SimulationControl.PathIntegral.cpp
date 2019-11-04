@@ -23,17 +23,7 @@ extern bool mpi;
 
 bool SimulationControl::PI_nvt_mc() {
 
-	typedef struct  BFC {
-		double init;
-		double trial;
-		double current;
-		inline double change() { return trial - init; }
-	} BoltzFactor_contributor;
-	BoltzFactor_contributor BF_config_energy      = { 0, 0, 0 };
-	BoltzFactor_contributor BF_chain_energy       = { 0, 0, 0 };
-	BoltzFactor_contributor BF_orientation_energy = { 0, 0, 0 };
-	
-	System *system = systems[rank]; // System for *this* MPI thread
+	System *system = systems[rank]; // System that will track observables (on *this* thread)
 	int nSteps = system->numsteps;  // number of MC steps to perform
 	int move = 0;                   // current MC move 
 
@@ -41,6 +31,8 @@ bool SimulationControl::PI_nvt_mc() {
 		system->setup_mpi_dataStructs();
 	}
 	else std::for_each(systems.begin(), systems.end(), [this](System *SYS) {
+		// in non-MPI runs, the mpi data structs will still be used to shuttle
+		// data between systems, in order to simplify coding  on the MPI end.
 		SYS->setup_mpi_dataStructs();
 	});
 
@@ -51,21 +43,31 @@ bool SimulationControl::PI_nvt_mc() {
 		SYS->observables->volume = SYS->pbc.volume; // set volume observable
 	});
 
-	// If starting from scratch, so an initial bead-perturbation and compute the energy 
+	
 	if( ! sys.parallel_restarts )
-		PI_perturb_bead_COMs_ENTIRE_SYSTEM(1.0);
-	BF_config_energy.init = PI_system_energy();
+		// If not using a config file from a previous PI run, we perform an initial bead perturbation
+		// so as not to drop the molecules into the system out of equilibrium wrt thermal wavelength
+		PI_perturb_bead_COMs_ENTIRE_SYSTEM();
+
+	BFC.potential.init = PI_calculate_potential();
+	
 	
 	// solve for the rotational energy levels 
 	//if (systems[rank]->quantum_rotation) quantum_system_rotational_energies(systems[rank]);
 	
 	// be a bit forgiving of the initial state 
-	if( ! std::isfinite(BF_config_energy.init) )
-		BF_config_energy.init = MAXVALUE;
+	if( ! std::isfinite(BFC.potential.init) )
+		BFC.potential.init = MAXVALUE;
 	
-	//|  write initial observables to stdout and logs
-	//|  THIS SECTION MAY NEED TO BE DONE FOR EACH SYSTEM INDIVIDUALLY---NOT SURE WHAT WE WANT YET
-	//|________________________________________________________________________________________________________________________|
+
+
+	////////////////////////////////////////////////////////////
+	// Need to compute the energy that we want to report here 
+	////////////////////////////////////////////////////////////
+	
+
+
+	// write initial observables to stdout and logs
 	if(  ! rank  ) {
 		system->open_files(); // open output files 
 		system->calc_system_mass();
@@ -90,22 +92,27 @@ bool SimulationControl::PI_nvt_mc() {
 	for( sys.step=1; sys.step <= nSteps; sys.step++ ) {
 
 		// update step for each system. 
-		for (int i = 0; i < PI_nBeads; i++) 
+
+		for (int i = 0; i < nSys; i++) 
 			systems[i]->step = sys.step;
 
 		// restore the last accepted energy & chain-length-metric
-		BF_config_energy.init = PI_observable_energy();
-		if (move == MOVETYPE_PERTURB_BEADS)
-			PI_kinetic_E( BF_chain_energy.init, BF_orientation_energy.init );
+		BFC.potential.init = PI_observable_energy();
+		if (move == MOVETYPE_PERTURB_BEADS) {
+			BFC.chain_mass_len2.init = PI_chain_mass_length2();
+			BFC.orient_mu_len2.init = 0;
+		}
 
 		// perturb the system 
 		PI_make_move( move );
 
 		// calculate new energy change, new PI chain length & update obervables
-		BF_config_energy.trial = PI_system_energy();
-		if (move == MOVETYPE_PERTURB_BEADS)
-			PI_kinetic_E( BF_chain_energy.trial, BF_orientation_energy.trial );
-
+		BFC.potential.trial = PI_calculate_potential();
+		if (move == MOVETYPE_PERTURB_BEADS) {
+			BFC.chain_mass_len2.trial = PI_chain_mass_length2();
+			BFC.orient_mu_len2.trial = 0;
+		}
+			
 		#ifdef QM_ROTATION
 			// solve for the rotational energy levels 
 			if (system->quantum_rotation && (system->checkpoint->movetype == MOVETYPE_SPINFLIP))
@@ -113,11 +120,11 @@ bool SimulationControl::PI_nvt_mc() {
 		#endif // QM_ROTATION 
 
 		// treat a bad contact as a reject 
-		if( ! std::isfinite(BF_config_energy.trial) ) {
+		if( ! std::isfinite(BFC.potential.trial) ) {
 			system->observables->energy = MAXVALUE;
 			system->nodestats->boltzmann_factor = 0;
 		} else 
-			PI_NVT_boltzmann_factor( BF_config_energy.change(), BF_chain_energy.change(), BF_orientation_energy.change() );
+			PI_NVT_boltzmann_factor( BFC );
 
 			
 		
@@ -134,10 +141,9 @@ bool SimulationControl::PI_nvt_mc() {
 				case MOVETYPE_PERTURB_BEADS: Output::out1("Bead reorg\n"); break;
 			}}
 
-
-			BF_config_energy.current      =      BF_config_energy.trial;
-			BF_chain_energy.current       =       BF_chain_energy.trial;
-			BF_orientation_energy.current = BF_orientation_energy.trial;
+			BFC.potential.current       = BFC.potential.trial;
+			BFC.chain_mass_len2.current = BFC.chain_mass_len2.trial;
+			BFC.orient_mu_len2.current  = BFC.orient_mu_len2.trial;
 
 			System::backup_observables(systems);
 
@@ -164,7 +170,7 @@ bool SimulationControl::PI_nvt_mc() {
 				case MOVETYPE_PERTURB_BEADS: Output::out1("Bead reorg\n"); break;
 				}
 			}
-			BF_config_energy.current = BF_config_energy.trial; //used in parallel tempering
+			BFC.potential.current = BFC.potential.trial; //used in parallel tempering
 			for_each( systems.begin(), systems.end(), [](System *SYS) {
 				SYS->iterator_failed = 0; // reset the polar iterative failure flag
 				SYS->restore();            
@@ -177,7 +183,7 @@ bool SimulationControl::PI_nvt_mc() {
 
 		// perform parallel_tempering
 		if ((systems[rank]->parallel_tempering) && ((system->step % systems[rank]->ptemp_freq) == 0))
-			systems[rank]->temper_system(BF_config_energy.current);
+			systems[rank]->temper_system(BFC.potential.current);
 
 		// track the acceptance_rate 
 		systems[rank]->track_ar(systems[rank]->nodestats);
@@ -420,9 +426,13 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 
 
 
-double SimulationControl::PI_NVT_boltzmann_factor( double delta_energy, double delta_chain2, double delta_orient2) {
+double SimulationControl::PI_NVT_boltzmann_factor( PI_NVT_BFContributors BF ) {
 
-	const int     P = (int)systems.size(); // Trotter number: number of beads (or "systems") in PI representation
+	double delta_energy  = BF.potential.change();
+	double delta_chain2  = BF.chain_mass_len2.change();
+	double delta_orient2 = BF.orient_mu_len2.change();
+
+	const int     P = nSys; // Trotter number: number of beads (or "systems") in PI representation
 	const double  T = sys.temperature;
 	double        boltzmann_factor = 0;
 
@@ -505,12 +515,12 @@ bool SimulationControl::check_PI_options() {
 	char linebuf[maxLine];
 
 	for( unsigned int i = 0; i < bits; i++ ) {
-		if( PI_nBeads & bitmask )
+		if( nSys & bitmask )
 			bitcount++;
 		bitmask = bitmask << 1;
 	}
 
-	if(  (PI_nBeads<4) || (bitcount != 1)  ) {
+	if(  (nSys<4) || (bitcount != 1)  ) {
 		sprintf(linebuf, "SIMULATION CONTROL: MPI-Reported world-size: %d.\n", size );
 		Output::out("SIMULATION CONTROL: Path Integrals require at least 4 MPI processes to run. One process per PI bead and a total of 2^N 'beads' (N >= 2).\n");
 		Output::err(linebuf);
@@ -523,14 +533,14 @@ bool SimulationControl::check_PI_options() {
 		Output::err("SIMULATION CONTROL: PI_trial_chain_length must be set when using Path Integral ensembles.\n");
 		throw invalid_setting;
 	}
-	if( (PI_trial_chain_length < 0)  ||  (PI_trial_chain_length >= PI_nBeads) ){
+	if( (PI_trial_chain_length < 0)  ||  (PI_trial_chain_length >= nSys) ){
 		Output::err( "SIM_CONTROL: PI_trial_chain_length must be in [1..P-1], where P is the Trotter number,\n"     );
 		Output::err( "             i.e. the number of 'beads' (1 bead per MPI thread). For a single (non-MPI)\n"    );
 		Output::err( "             thread, bead count is set with the 'trotter_number' option in the input file.\n" );
 		if(mpi) 
 			sprintf(linebuf, "SIM_CONTROL: MPI-Reported world-size (PI bead count): %d.\n", size);
 		else 
-			sprintf(linebuf, "SIM_CONTROL: user requested bead count (single thread): %d\n", PI_nBeads );
+			sprintf(linebuf, "SIM_CONTROL: user requested bead count (single thread): %d\n", nSys );
 		Output::err(linebuf);
 		sprintf(linebuf, "SIM_CONTROL: requested length of trial chain: %d.\n", PI_trial_chain_length);
 		Output::err(linebuf);
@@ -551,7 +561,7 @@ void SimulationControl::initialize_PI_NVT_Systems() {
 	// Create a system object for each bead on the Path Integral loop, and populate those systems with the system geometry. 
 
 	
-	for( int i=0; i<PI_nBeads; i++ ) {
+	for( int i=0; i<nSys; i++ ) {
 		
 		systems.push_back( new System(sys) );
 		
@@ -619,7 +629,7 @@ void SimulationControl::write_PI_frame() {
 
 	const int very_first_frame_number = 1;
 
-	int nSys   = (int) systems.size();
+	
 	int nSites = nSys * systems[0]->countNatoms();
 
 	static int frame_number = very_first_frame_number;
@@ -660,30 +670,28 @@ void SimulationControl::write_PI_frame() {
 
 
 
-double SimulationControl::PI_system_energy() {
+double SimulationControl::PI_calculate_potential() {
+
+	double potential_energy = 0;
 
 	static bool first_run = true;
 	if (first_run) {
 		first_run = false;
-		SafeOps::calloc(system_energies, PI_nBeads, sizeof(double), __LINE__, __FILE__); // free'd in ~SimulationControl();
+		SafeOps::calloc(system_energies, nSys, sizeof(double), __LINE__, __FILE__); // free'd in ~SimulationControl();
 	}
 	
-
-	double potential_energy = 0;
-
-
+	
 	if( mpi ) {
 		potential_energy = systems[rank]->energy();
 		#ifdef _MPI
-			MPI_Allgather( &energy, 1, MPI_DOUBLE, system_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+			MPI_Allgather( &potential_energy, 1, MPI_DOUBLE, system_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
 		#endif
 
-		for (int i = 0; i < PI_nBeads; i++) {
+		for (int i = 0; i < nSys; i++) {
 			systems[i]->observables->energy = system_energies[i];
 			// energy += system_energies[i];
 		}
 		
-
 		// Populate these, via allgather, if needed:
 		// systems[i]->observables->coulombic_energy = "allgathered data";
 		// Ditto for (all are quantities updated in energy()):
@@ -694,30 +702,33 @@ double SimulationControl::PI_system_energy() {
 	} else {
 		// For single-threaded systems, energy computations happen on every system
 		// This is done in two passes so that energy values will be populated in all systems...
-		for (int s = 0; s < PI_nBeads; s++)
+		for (int s = 0; s < nSys; s++)
 			system_energies[s] = systems[s]->energy();
 	}
 
 	// ...and on the second pass energies are summed and checked for infinite values.
-	for( int s=0; s < PI_nBeads; s++) {
+	for( int s=0; s < nSys; s++) {
 		double E = system_energies[s];
-		if (!std::isfinite(E)) {
+		if ( ! std::isfinite(E)) {
 			std::for_each(systems.begin(), systems.end(), [](System* SYS) {
 				SYS->observables->pi_energy = MAXVALUE;
 			});
-			return MAXVALUE; // infinite energy short-circuits the sum
+			return E; // infinite energy short-circuits the sum
 		}
 		else
 			potential_energy += E;
 	}
+	/*
+	const double d = 3.0; // dimensionality of the system
+	const double N = systems[0]->countN(); // Number of sorbate (or moveable) molecules in the system
+	const double beta  = 1.0 / (kB * systems[0]->temperature); //  1/kT
+	const double inv_kB = 1.0 /  kB; // for converting Joules -> Kelvin
+	double energy_estimate_term1 = 0.5 * (d * N * nSys * systems[0]->temperature);  // (Kelvin) replace temp with 1/Beta for Joules
+	double energy_estimate_term2 = inv_kB * (nSys*PI_chain_mass_length2_ENTIRE_SYSTEM() / (2.0 * beta * beta * hBar2)); // (Kelvin)
+	double energy_estimate_term3 = potential_energy / nSys; // (Kelvin) potential energy averaged over all images
+	*/
 
-	double avgU = potential_energy / PI_nBeads; // average potential energy over all images of the
-	                                            // system that together comprise the quantum system.
-	double pi_energy = 3.0d * 
-	// If we got here, each system has a finite energy
-	// The energy estimator for the PI system is then 
-
-	return energy/PI_nBeads;
+	return potential_energy / nSys;
 }
 
 
@@ -726,71 +737,110 @@ double SimulationControl::PI_system_energy() {
 double SimulationControl::PI_observable_energy() {
 
 	double energy = 0;
-	int nSystems = (int)systems.size();
-	for (int s = 0; s < nSystems; s++) 
+	for (int s = 0; s < nSys; s++)
 		energy += systems[s]->observables->energy;
-	
-	return energy / (double) nSystems;
+
+	return energy / (double) nSys;
 }
 
 
 
 
-void SimulationControl::PI_kinetic_E(double &bead_separation, double &orientation_difference) {
-
+void SimulationControl::assert_perturb_target_exists() {
 	// Ensure that a molecule has been targeted for perturbation.
-	for_each(systems.begin(), systems.end(), [](System *s) {
+	for_each(systems.begin(), systems.end(), [](System* s) {
 		if (s->checkpoint->molecule_altered == nullptr) {
 			Output::err("System corrupted. No target molecule specified for PI chain measurement request.");
 			throw internal_error;
 		}
-	});
-
-	// Take the measurements
-	bead_separation = PI_chain_length();
-	orientation_difference = PI_orientational_distance();
+		});
 }
 
 
 
-double SimulationControl::PI_chain_length() {
-// This function will compute the Path Integral (PI) polymer length
+
+// In the following functions, "chain mass length2" is a slight misnomer. If A, B and C are Molecule objects which, together, 
+// comprise a PI/quantum representation of a single molecule, AND if dAB is the distance between COMs of molecules A & B, AND
+// if M is the mass of said molecule, then the central quantity in these functions is M * (dAB*dAB + dBC*dBC + dCA*dCA).
+// PI_chain_mass_length2_ENTIRE_SYSTEM() computes the sum of these values for every molecule in the system. 
+double SimulationControl::PI_chain_mass_length2_ENTIRE_SYSTEM() {
+
+	double sum = 0;
+	Molecule* molPtr = nullptr;
+	std::vector<Molecule*> molecules_ptr(nSys);  // this array of ptrs tracks the current molecule in each system 
+
+	// Populate our vector with pointers to the first molecule in each of the images comprising the system. 
+	for (int s = 0; s < nSys; s++) 
+		molecules_ptr[s] = systems[s]->molecules;
+	
+	// Step through each perturb-able molecule in lockstep.
+	//   That is, with each loop iteration, the entire vector of pointers should reference a different instance of
+	//   what is conceptually the same physical molecule in each system image. E.g., if molecules_ptr[0] points to
+	//   molecule 3 in the first system (0), then molecules_ptr[5] should point to sorbate 3 in the sixth system (5).
+	//   In the next iteration, these same pointers should all point to sorbate 4 in their respective systems.
+
+	while (molPtr = molecules_ptr[0]) {
+
+		// Check to see if the current molecule should be perturbed
+		// Corresponding molecules *should* be the same across all systems, so only the version of the molecule in
+		// system 0 (molecules_ptr[0] AKA molptr) is checked for validity
+		if (!(molPtr->frozen || molPtr->adiabatic || molPtr->target)) {
+
+			// If the molecule in image/sys 0 looks good, verify that each member is pointing to something (anything!)
+			for (int s = 0; s < nSys; s++) {
+				if (nullptr == molecules_ptr[s]) {
+					Output::err("ERROR: System images are not consistent, head system has more molecules than at least one other system image.\n");
+					throw internal_error;
+				}
+			}
+			// Compute the chain length for this molecule and add it to our running total for the entire system
+			sum += PI_chain_mass_length2(molecules_ptr);
+		}
+
+		// advance our collection of molecule pointers to the next molecule in their respective system image
+		for (int s = 0; s < nSys; s++)
+			molecules_ptr[s] = molecules_ptr[s]->next;
+	}
+
+	return sum;
+}
+double SimulationControl::PI_chain_mass_length2() {
+// This function only computes the chain length of the molecule targeted for perturbation, that is, the molecule
+// pointed to by system->checkpoint->molecule_altered. For Boltzman Factor computations, this is the only measurement
+// required, as the lengths of all non-changing molecular PI chains will cancel in the Boltzmann factor. Accordingly, if
+// no target is specified something has gone wrong (wrt to the intended context in which this fxn was meant to be called). 
+
 	std::vector<Molecule*> mol;
 	for_each(systems.begin(), systems.end(), [&mol](System* s) {
 		mol.push_back(s->checkpoint->molecule_altered);
 	});
-	return  PI_chain_length(mol);
+	return  PI_chain_mass_length2(mol);
 }
-double SimulationControl::PI_chain_length( std::vector<Molecule*> &molecule ) {
+double SimulationControl::PI_chain_mass_length2( std::vector<Molecule*> &molecule ) {
 	// 'molecule' should be a vector such that each element points  to the the image of a single molecule, as it appears
 	// in each of the P systems. The collection of said molecules, in aggregate, comprises the PI/quantum representation
 	// of a single real-world molecule being simulated.
-
-	// WARNING: This function only computes the chain length of the molecule targeted for perturbation (as the lengths
-	// of all non-changing molecule PI chains will cancel in the Boltzmann factor. As such, if no target is specified,
-	// something has gone wrong.
-
-	const int     P = (int)systems.size();  // Trotter number: number of beads (or "systems") in PI representation
 	
-	// To compute the weighted length of the "polymer chain", we must compute a harmonic-well-type potential between adjacent images
-	// of congruent molecular species. Systems 1 -> P should all have the same number and type of molecular constiutents. Molecule 1
-	// in System 1 is a partial representation of Molecule 1. Molecule 1 in System 2 is another part of that representation and each
-	// system can be thought of as a "many worlds" representation where each member exists in every system but is affected by slightly
-	// different circumstances. The complete representation of Molecule 1 is an average over all the "Molecule 1"'s in every system.
-	// The "polymer chain" of constituent beads for each molecule are connected by a harmonic potential between each of them that makes
-	// said images form a coherent representation of a single particle and prevents the beads from drifting apart independently of each
-	// other. The PI "chain length" for a single molecule is a loop of harmonic "potentials" between the COMs of the adjacent molecule
-	// images that together constitute the representation of that molecule. E.g.:
+	// To compute the mass-weighted length of the "polymer chain", we must compute a harmonic-well-type potential between adjacent 
+	// images of congruent molecular species. Systems 1 -> P should all have the same number and type of molecular constiutents.
+	// Molecule 1 in System 1 is a partial representation of Molecule 1. Molecule 1 in System 2 is another part of that representation
+	//  and each system can be thought of as a "many worlds" representation where each member exists in every system but is affected 
+	// by slightly different circumstances. The complete representation of Molecule 1 is an average over all the "Molecule 1"'s in 
+	// every system. The "polymer chain" of constituent "beads" for each molecule are connected by a harmonic potential between each
+	// of them that makes said images form a coherent representation of a single particle and prevents the beads from drifting apart
+	// independently of each other. The PI "chain length2" for a single molecule is a loop of harmonic "potentials" between the 
+	// COMs of the adjacent molecule images that together constitute the representation of that molecule. E.g.:
+
 	// Mol1COM,Sys1  \___/  Mol1COM,Sys2  \___/  Mol1COM,Sys3  \___/  Mol1COM,Sys1 (and we arrive back at the first system)
 	
+	// Finally, the PI measure of the distance is weighted by the mass of the molecule in question.
 
-	double        PI_chain_length = 0;      // "length", for lack of a better word. It is the mass*(distance^2 + distance^2 + ...) for the
-	                                        // molecule whose bead representation was perturbed. The distances measure the separations 
-	                                        // between adjacent bead COMs on the PI "polymer chain". It is actually some sort of weighted
-	                                        // length quantity, but it plays the same role as energy if we were simulating a harmonic potential.
+	double PI_chain_mass_length2 = 0;   // "length", for lack of a better word. It is the mass*(distance^2 + distance^2 + ...) for the
+	                              // molecule whose bead representation was perturbed. The distances measure the separations 
+	                              // between adjacent bead COMs on the PI "polymer chain". It is actually some sort of weighted
+	                              // length quantity, but it plays the same role as energy if we were simulating a harmonic potential.
 
 
-	
 	// record the COM coordinates of each system's version of the target molecule.
 	std::vector<Vector3D> COMs;
 	
@@ -800,10 +850,10 @@ double SimulationControl::PI_chain_length( std::vector<Molecule*> &molecule ) {
 		COMs.push_back(com);
 	});
 	
-	// Now, 'molecules' points to the respective version of the same molecule in each of the P systems. We have the COM
+	// Now, 'molecules' points to the respective version of the same molecule in each of the nSys systems. We have the COM
 	// coords of each different image of that molecule recorded in x,y,z; so we effectively have the coords of the 'loop'
 	// representation of a single molecule in the x,y,z arrays. The loop being formed in the manner, e.g.:
-	//
+
 	// x[0] <~> x[1] <~> x[2] <~> x[0]      |  where ( x[0], y[0], z[0] ) is the COM position for the current molecule in
 	// y[0] <~> y[1] <~> y[2] <~> y[0]      |  the first system. And where the COM position for the SAME molecule in the 
 	// z[0] <~> z[1] <~> z[2] <~> z[0]      |  second system is ( x[1], y[1], z[1] ).
@@ -812,44 +862,40 @@ double SimulationControl::PI_chain_length( std::vector<Molecule*> &molecule ) {
 	// finding dist^2 values for each pair of coordinates (x[i],y[i],z[i]) & (x[i+1], y[i+1], z[i+1]), such that the
 	// last xyz coords in the list will be paired with the first.
 
-	for (int i = 0; i < P; i++) {
-		int j = (i + 1) % P;
+	for (int i = 0; i < nSys; i++) {
+		int j = (i + 1) % nSys;
 		Vector3D delta = COMs[i] - COMs[j];
-		PI_chain_length += delta.norm2();
+		PI_chain_mass_length2 += delta.norm2();
 	}
-	PI_chain_length *= (ANGSTROM2METER * ANGSTROM2METER); // convert A^2 to m^2
-
-	return PI_chain_length;
+	PI_chain_mass_length2 *= (molecule[0]->mass * AMU2KG) * (ANGSTROM2METER * ANGSTROM2METER);   //  weight chain by the mass and
+	                                                                                  //  convert A^2 to m^2.
+	return PI_chain_mass_length2;
 }
 
 
 
 
-double SimulationControl::PI_orientational_distance() {
+double SimulationControl::PI_orientational_mu_length2() {
 // If each bond is described as a vector, this function computes the difference vector between bonds on adjacent molecules in the PI
 // bead chain. It takes the squared-norm of all these differences and returns the their sum. IT ONLY COMPUTES this difference on the
-// the molecule targeted for perturbation (as this quantity will cancel for all undisturbed PI chains. As such, if no target is specified,
-// something has gone wrong.	
+// the molecule targeted for perturbation (as this quantity will cancel for all the undisturbed PI chains throughout the system. As
+// such, if no target is specified, something has gone wrong.	
 	
-	const int P = (int)systems.size();  // Trotter number: number of beads (or "systems") in PI representation
-	
+	double PI_orient_diff = 0.0;   // "orientational difference", for lack of a better word. It is the (length^2 + length^2 + ...)
+								   // for each of P difference vectors describing the spatial difference between bonds in adjacent 
+	                               // images of a PI representation of a diatomic molecule in the system. 
 
 	// To compute the weighted "orientational distance" of the "polymer chain", we must compute the difference vector between adjacent
 	// bonds in our diatomic molecule. Systems 1 -> P should all have the same number and type of molecular constiutents. Molecule 1 in
 	// System 1 is a partial representation of Molecule 1. Molecule 1 in System 2 is another part of that representation and each system
 	// can be thought of as a "many worlds" representation where each member exists in every system but is affected by slightly different
 	// circumstances. The complete representation is an average over all the "Molecule 1"'s in every system. But the "orientational 
-	// distance" is a harmonic potential of sorts between the bond-vectors of each of these images. It makes the images form a coherent
-	// representation of a single particle and prevents the diatomic beads from orienting themselves independently of each other. 
-
-	double        PI_orient_diff = 0.0;     // "orientational difference", for lack of a better word. It is the (length^2 + length^2 + ...)
-											// for each of P vectors describing the *difference* between bonds in adjacent images of a PI
-	                                        // representation of a diatomic molecule in the system. It plays the role of energy if this were a 
-	                                        // simulation of a harmonic potential. 
+	// distance" is a harmonic potential of sorts (as a function of the length of the difference vector) between the bond-vectors of
+	// each of these images.
 
 	
 	std::vector<Vector3D> bond_vectors;
-	char *moleculeID = systems[rank]->checkpoint->molecule_altered->moleculetype;
+	char  *moleculeID       = systems[rank]->checkpoint->molecule_altered->moleculetype;
 	int    orientation_site = SimulationControl::get_orientation_site( moleculeID );
 	double bond_length      = SimulationControl::get_bond_length(      moleculeID );
 	if (  (orientation_site < 0)   ||   (bond_length <= 0)  )
@@ -863,15 +909,16 @@ double SimulationControl::PI_orientational_distance() {
 		molecule->update_COM();
 		Vector3D rCOM( molecule->com[0], molecule->com[1], molecule->com[2] );
 
-		// Create a vector locating the atomic site that is the designated "handle" for orienting the molecule (i.e. the orientation site)
+		// Create a vector locating the atomic site that is the designated "handle" for orienting
+		// the molecule. This is what we refer to when we reference the "orientation site". 
 		int site = 0;
 		Atom *aPtr = nullptr;
 		for (aPtr = molecule->atoms; site != orientation_site; aPtr = aPtr->next)
 			site++;
 		Vector3D handle_position( aPtr->pos[0], aPtr->pos[1], aPtr->pos[2]);
 
-		// find the difference between the handle and the COM (the bond direction), and scale it such that the length of this vector
-		// equals the bond length of the molecule (thereby representing the bond itself)
+		// find the difference between the handle and the COM (the bond direction), and scale it such that the
+		// length of this vector equals the bond length of the molecule (thereby representing the bond itself)
 		Vector3D bond = handle_position - rCOM;
 		bond = bond_length * bond.normalize();
 		bond_vectors.push_back( bond );
@@ -880,8 +927,8 @@ double SimulationControl::PI_orientational_distance() {
 	// Cycle once through the bond vectors and sum the square-length of the difference vector between each adjacent pair, 
 	// i.e. we will be finding dist^2 values for each pair of coordinates (x[i],y[i],z[i]) & (x[i+1], y[i+1], z[i+1]), 
 	// such that the last difference will be between the last bond vector and the first.
-	for (int i = 0; i < P; i++) {
-		int j = (i + 1) % P;
+	for (int i = 0; i < nSys; i++) {
+		int j = (i + 1) % nSys;
 		Vector3D diff_vector = bond_vectors[i] - bond_vectors[j];
 		PI_orient_diff += diff_vector.norm2();
 	}
@@ -911,7 +958,7 @@ int SimulationControl::PI_pick_NVT_move() {
 	double dice_roll_for_target = Rando::rand();
 
 
-	for( int s=0; s < PI_nBeads; s++ ) {
+	for( int s=0; s < nSys; s++ ) {
 
 		// populate array with pointers to elements in the linked list		
 		for (molecule_ptr = systems[s]->molecules; molecule_ptr; molecule_ptr = molecule_ptr->next) {
@@ -1247,21 +1294,17 @@ void SimulationControl::PI_perturb_beads() {
 
 
 
-void SimulationControl::PI_perturb_bead_COMs_ENTIRE_SYSTEM(double scale) {
+void SimulationControl::PI_perturb_bead_COMs_ENTIRE_SYSTEM() {
 
 	Molecule *molPtr = nullptr;
-	int nSystems = (int)systems.size();
 	std::vector<Molecule *> molecules_ptr;   // this array of ptrs tracks the current molecule in each system 
 	std::vector<Molecule *> altered_backup;   
-	molecules_ptr.resize(nSystems);
-	altered_backup.resize(nSystems);
+	molecules_ptr.resize(nSys);
+	altered_backup.resize(nSys);
 
 	
-	// Backup the perturbation scale factor that was set by the user...
-	double scale_bak = sys.PI_bead_perturb_factor;
-	sys.PI_bead_perturb_factor = scale;
-	// ...as well as the molecules targeted for perturbation (if any)
-	for (int s = 0; s < nSystems; s++) {
+	// Back up the molecules targeted for perturbation (if any)
+	for (int s = 0; s < nSys; s++) {
 		molecules_ptr [s] = systems[s]->molecules; 
 		altered_backup[s] = systems[s]->checkpoint->molecule_altered;
 	}
@@ -1277,7 +1320,7 @@ void SimulationControl::PI_perturb_bead_COMs_ENTIRE_SYSTEM(double scale) {
 		if ( ! (molPtr->frozen || molPtr->adiabatic || molPtr->target)) {
 
 			// If the molecule in image/sys 0 looked good, we target this molecule for perturbation in all system images...
-			for (int s = 0; s < nSystems; s++) {
+			for (int s = 0; s < nSys; s++) {
 				if (nullptr == molecules_ptr[s]) {
 					// ... assuming corresponding molecules exist, that is.
 					Output::err("ERROR: System images are not consistent, head system has more molecules than at least one other system image.\n");
@@ -1286,17 +1329,16 @@ void SimulationControl::PI_perturb_bead_COMs_ENTIRE_SYSTEM(double scale) {
 				systems[s]->checkpoint->molecule_altered = molecules_ptr[s];
 			}
 			// Perturb all the beads for the targeted molecule in every image
-			PI_perturb_bead_COMs(nSystems);
+			PI_perturb_bead_COMs(nSys);
 		}
 		
 		// advance our collection of molecule pointers to the next molecule in their respective lists
-		for( int s=0; s<nSystems; s++ )
+		for( int s=0; s<nSys; s++ )
 			molecules_ptr[s] = molecules_ptr[s]->next;
 	}
 
-	// Restore the targeted molecules and the bead perturbation scaling factor to their original states
-	sys.PI_bead_perturb_factor = scale_bak;
-	for (int s = 0; s < nSystems; s++) 
+	// Restore the targeted molecules 
+	for (int s = 0; s < nSys; s++) 
 		systems[s]->checkpoint->molecule_altered = altered_backup[s];
 
 
@@ -1321,9 +1363,9 @@ void SimulationControl::PI_perturb_bead_COMs(int n) {
 	
 	int prevBead_idx  = starterBead;                   // index of the bead that comes directly before the bead that is currently being moved 
 	                                                   // in the PI chain (this bead will remain stationary).
-	int bead_idx      = (prevBead_idx+1)   % PI_nBeads; // index of the bead that is currently being moved
-	int finalBead_idx = (prevBead_idx+n+1) % PI_nBeads; // final bead of "trial chain"  (this bead is also stationary, and may be the same as prevBead)
-	starterBead       = (starterBead+1)    % PI_nBeads; // advance the index for the starter bead for the next time this function is called
+	int bead_idx      = (prevBead_idx+1)   % nSys; // index of the bead that is currently being moved
+	int finalBead_idx = (prevBead_idx+n+1) % nSys; // final bead of "trial chain"  (this bead is also stationary, and may be the same as prevBead)
+	starterBead       = (starterBead+1)    % nSys; // advance the index for the starter bead for the next time this function is called
 	
 	double Mass = AMU2KG * systems[0]->checkpoint->molecule_altered->mass; // mass of the molecule whose bead configuration is being perturbed
 	
@@ -1333,7 +1375,7 @@ void SimulationControl::PI_perturb_bead_COMs(int n) {
 	// populate a vector of Vecs with the COM data from the selected molecule, and compute the center-of-mass (COM) for the PI bead chain
 	std::vector<Vector3D> beads;
 	Vector3D chain_COM(0, 0, 0);
-	for (int s = 0; s < PI_nBeads; s++) {
+	for (int s = 0; s < nSys; s++) {
 		
 		systems[s]->checkpoint->molecule_altered->update_COM();
 
@@ -1344,19 +1386,19 @@ void SimulationControl::PI_perturb_bead_COMs(int n) {
 		beads.push_back( bead_COM );
 		chain_COM += bead_COM;
 	}
-	chain_COM /= PI_nBeads;
+	chain_COM /= nSys;
 
 	// compute the perturbation for bead COM positions
 
 	double tB = n;       // this corresponds to all non-cancelling factors of t[ i ] in reference
-	double tA = n + 1;   // this corresponds to t[i-1] in the same
+	double tA = 1.0 + n; // this corresponds to t[i-1] in the same
 	                     // the reference has more factors, but they all cancel such that tB/tA is all that remains.
 
 	for( int j=1; j<=n; j++ ) 
 	{
 		double init_factor  = tB-- / tA--;          // t[i] / t[i-1]    Eqs. 3.9 & 3.10  (seq is e.g. 4/5 -> 3/4 -> 2/3 -> 1/2)
 		double term_factor  = 1.0 - init_factor;    // tau  / t[i-1]    Eq.  3.9
-		double sigma_factor = sys.PI_bead_perturb_factor * sqrt(  (hBar2*beta*init_factor) / (PI_nBeads*Mass)  ) * METER2ANGSTROM;  // Eqs. 3.10/3.12 + conv m -> Angstroms
+		double sigma_factor = sqrt(  (hBar2*beta*init_factor) / (nSys*Mass)  ) * METER2ANGSTROM;  // Eqs. 3.10/3.12 + conv m -> Angstroms
 		
 		// create the Vec(tor) along which the target bead will be perturbed out of its 'average' position
 		Vector3D perturbation( Rando::rand_normal(), Rando::rand_normal(), Rando::rand_normal() ); 
@@ -1365,8 +1407,8 @@ void SimulationControl::PI_perturb_bead_COMs(int n) {
 		beads[bead_idx]  =  (init_factor*beads[prevBead_idx]) + (term_factor*beads[finalBead_idx])  +  (sigma_factor*perturbation); // Eq. 3.12 
 		
 
-		prevBead_idx = (prevBead_idx + 1) % PI_nBeads;  // advance prevBead index
-		bead_idx     = (prevBead_idx + 1) % PI_nBeads;  // current bead index will be 1 greater than prevBead
+		prevBead_idx = (prevBead_idx + 1) % nSys;  // advance prevBead index
+		bead_idx     = (prevBead_idx + 1) % nSys;  // current bead index will be 1 greater than prevBead
 	}
 
 	// Compute the center of mass for the chain, post-perturbation
@@ -1374,7 +1416,7 @@ void SimulationControl::PI_perturb_bead_COMs(int n) {
 	for_each(beads.begin(), beads.end(), [&delta_COM](Vector3D bead) {
 		delta_COM += bead;
 	});
-	delta_COM /= PI_nBeads;
+	delta_COM /= nSys;
 	delta_COM = delta_COM - chain_COM;
 
 	// Shift the COM coord of the individual beads, such that the COM of the entire chain leaves this method unchanged 
@@ -1383,7 +1425,7 @@ void SimulationControl::PI_perturb_bead_COMs(int n) {
 	});
 
 	// now impose the perturbations we've computed back onto the actual system representations
-	for (int s = 0; s < PI_nBeads; s++)
+	for (int s = 0; s < nSys; s++)
 		systems[s]->checkpoint->molecule_altered->move_to_(beads[s].x(), beads[s].y(), beads[s].z());
 }
 

@@ -898,19 +898,19 @@ double System::lj()
 {
 
 	Molecule * molecule_ptr = nullptr;
-	Atom     * atom_ptr = nullptr;
-	Pair     * pair_ptr = nullptr;
-	double     sigma_over_r = 0,
-		term12 = 0,
-		term6 = 0,
-		sigma_over_r6 = 0,
-		sigma_over_r12 = 0,
-		r = 0,
-		potential = 0,
-		potential_classical = 0,
-		cutoff = 0;
-	int        i[3] = { 0 };
-	double     a[3] = { 0 };
+	Atom     * atom_ptr     = nullptr;
+	Pair     * pair_ptr     = nullptr;
+	double     sigma_over_r        = 0,
+	           term12              = 0,
+	           term6               = 0,
+	           sigma_over_r6       = 0,
+	           sigma_over_r12      = 0,
+	           r                   = 0,
+	           potential           = 0,
+	           potential_classical = 0,
+	           cutoff              = 0;
+	int        i[3] = { 0, 0, 0 };
+	double     a[3] = { 0, 0, 0 };
 
 	//set the cutoff
 	if (rd_crystal)
@@ -936,7 +936,7 @@ double System::lj()
 						(!pair_ptr->frozen)
 						) { //not frozen
 
-							//loop over unit cells
+						//loop over unit cells
 						if (rd_crystal) {
 							sigma_over_r6 = 0;
 							sigma_over_r12 = 0;
@@ -1036,10 +1036,10 @@ double System::lj()
 double System::lj_lrc_corr(Atom * atom_ptr, Pair * pair_ptr, double cutoff)
 {
 
-	double sig_cut = 0,
-		sig3 = 0,
-		sig_cut3 = 0,
-		sig_cut9 = 0;
+	double sig_cut  = 0,
+	       sig3     = 0,
+	       sig_cut3 = 0,
+	       sig_cut9 = 0;
 
 	// include the long-range correction.    I'm  not sure that I'm handling spectre pairs correctly
 	// we can't use rd_excluded flag, since that disqualifies inter-molecular, but that DOES contribute to LRC

@@ -105,6 +105,8 @@ void install_signal_handler(SimulationControl *simControl) {
 }
 
 
+
+
 // on SIGTERM, cleanup and exit 
 void signal_handler(int sigtype) {
 	char linebuf[maxLine];
@@ -112,28 +114,28 @@ void signal_handler(int sigtype) {
 
 
 
-#ifdef __unix__
-	if (sigtype == SIGTERM)
-		Output::out(" ************ SIGTERM received, exiting *************\n");
-	else if (sigtype == SIGUSR1)
-		Output::out(" ************ SIGUSR1 received, exiting *************\n");
-	else if (sigtype == SIGUSR2)
-		Output::out(" ************ SIGUSR2 received, exiting *************\n");
-	else
-		Output::out(" ************ Unknown interrupt signal received, exiting *************\n");
+	#ifdef __unix__
+		if (sigtype == SIGTERM)
+			Output::out(" ************ SIGTERM received, exiting *************\n");
+		else if (sigtype == SIGUSR1)
+			Output::out(" ************ SIGUSR1 received, exiting *************\n");
+		else if (sigtype == SIGUSR2)
+			Output::out(" ************ SIGUSR2 received, exiting *************\n");
+		else
+			Output::out(" ************ Unknown interrupt signal received, exiting *************\n");
 
-	//sc->close_files();
-	//sc->cleanup();
-#ifdef _MPI
-//	if(!rank)
-//		sc->close_files();
-#else
-	die(EXIT_FAILURE);
-#endif // MPI
-#else
-	sprintf(linebuf, " ************ Interrupt signal ( %d ) received, exiting *************\n", sigtype);
-	Output::out(linebuf);
-#endif	
+		//sc->close_files();
+		//sc->cleanup();
+	#ifdef _MPI
+	//	if(!rank)
+	//		sc->close_files();
+	#else
+		die(EXIT_FAILURE);
+	#endif // MPI
+	#else
+		sprintf(linebuf, " ************ Interrupt signal ( %d ) received, exiting *************\n", sigtype);
+		Output::out(linebuf);
+	#endif	
 	return;
 }
 
@@ -152,9 +154,7 @@ void die(int code) {
 
 
 
-
-void processArgs(int argc, char * argv[], params *p)
-{
+void processArgs(int argc, char * argv[], params *p) {
 	std::string fname;
 	int n = 1;
 

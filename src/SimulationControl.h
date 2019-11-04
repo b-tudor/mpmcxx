@@ -20,9 +20,9 @@ class SimulationControl
 
 public:
 
-	System sys;
-	int PI_nBeads; // The Trotter number for Path Integral runs
-	int PI_trial_chain_length;      //  PI option--when perturbing COM configuration, the number of beads to move at a time
+	System sys; // Template system for creating system images. Can be used to retrieve certain info common to all systems (e.g. temperature)
+	int nSys;   // Trotter number for Path Integral runs, i.e. number of beads/images being used to represent each quantum object
+	int PI_trial_chain_length; //  PI option--when perturbing COM configuration, the number of beads to move at a time
 
 	SimulationControl( char * inFilename, bool reportAcceptReject, bool writeXYZFrames );
 	~SimulationControl();
@@ -36,7 +36,21 @@ public:
 	
 	
 private:
+
+	typedef struct  _Boltzmann_Factor_contributor {
+		double init;
+		double trial;
+		double current;
+		inline double change() { return trial - init; }
+	} BoltzFactor_contributor;
+	typedef struct _PI_NVT_BFContributors {
+		BoltzFactor_contributor potential;       // Potential energy in Kelvin
+		BoltzFactor_contributor chain_mass_len2; // kg * m^2
+		BoltzFactor_contributor orient_mu_len2;  // kg * m^2
+	} PI_NVT_BFContributors;
+	PI_NVT_BFContributors BFC;
 	
+
 	bool report_AR; // report Acceptance & Rejections?
 	bool write_PI_frames; // do we want to write the PI frames for visualization?
 
@@ -90,12 +104,12 @@ private:
 	void initialize_PI_NVT_Systems();
 
 	// Standard 
-	inline bool mc() { return sys.mc(); }       // SimulationControl wrapper function for System.mc()
-	inline bool surface()               { return false; } // sys.surface(); } // Simulation Control wrapper for System.surface()
-	inline bool surface_fit()           { return false; } // sys.surface_fit(); }
-	inline bool surface_fit_arbitrary() { return false; } // sys.surface_fit_arbitrary(); }
-	inline bool calculate_te()          { return false; } // sys.calculate_te (); }
-	inline bool replay_trajectory()     { return false; } // sys.replay_trajectory(); }
+	inline bool mc()                    { return sys.mc(); } // SimulationControl wrapper function for System.mc()
+	inline bool surface()               { return false; }    // sys.surface(); } // Simulation Control wrapper for System.surface()
+	inline bool surface_fit()           { return false; }    // sys.surface_fit(); }
+	inline bool surface_fit_arbitrary() { return false; }    // sys.surface_fit_arbitrary(); }
+	inline bool calculate_te()          { return false; }    // sys.calculate_te (); }
+	inline bool replay_trajectory()     { return false; }    // sys.replay_trajectory(); }
 	
 	
 
@@ -104,18 +118,19 @@ private:
 	void   do_PI_corrtime_bookkeeping();
 	bool   check_PI_options();
 	
-	double PI_system_energy();
-	void   PI_kinetic_E( double &bead_separation, double &orientation_difference);
-	double PI_chain_length(); // Return COM PI "polymer" chain length measure for molecule targeted by MC move
-	double PI_chain_length(std::vector<Molecule*> &m); // Return COM PI "polymer" chain length for molecule represented by m
-	double PI_orientational_distance();
-	double PI_NVT_boltzmann_factor( double delta_energy, double delta_PI_chainLength2, double delta_orientation_dist2 );
+	void   assert_perturb_target_exists(); // Check all systems for an existing target molecule for the current MC move
+	double PI_calculate_potential(); // Calculate the potential energy for the aggregate PI system
+	double PI_chain_mass_length2_ENTIRE_SYSTEM(); // Return sum total of all mass-weighted chain length measures for all the molecules in aggregate system
+	double PI_chain_mass_length2(); // Return COM PI "polymer" mass-weighted chain length measure for molecule targeted by MC move
+	double PI_chain_mass_length2(std::vector<Molecule*> &m); // Return COM PI "polymer" mass-weighted chain length for molecule represented by m
+	double PI_orientational_mu_length2();
+	double PI_NVT_boltzmann_factor( PI_NVT_BFContributors BF );
 	int    PI_pick_NVT_move();
 	void   PI_make_move( int move );
 	void   PI_flip_spin();
 	void   PI_displace();
 	void   PI_perturb_beads();
-	void   PI_perturb_bead_COMs_ENTIRE_SYSTEM(double scale);
+	void   PI_perturb_bead_COMs_ENTIRE_SYSTEM();
 	void   PI_perturb_bead_COMs(); // perturb the user-specified number of beads
 	void   PI_perturb_bead_COMs(int n); // specify number of beads to perturb
 	void   PI_perturb_beads_orientations();

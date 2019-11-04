@@ -258,7 +258,7 @@ public:
 	void update_pbc();
 	void thole_resize_matrices();
 	void rebuild_arrays();
-	void countN();
+	int  countN();
 	int  countNatoms();
 	void pairs();
 	void pair_exclusions( Molecule *molecule_i, Molecule *molecule_j, Atom *atom_i, Atom *atom_j, Pair *pair_ptr);
@@ -322,12 +322,8 @@ public:
 	static double anharmonic_fh_second_order(double temperature, double mass, double k, double g, double x);
 	static double anharmonic_fh_fourth_order(double temperature, double mass, double k, double g, double x);
 	
-
-	// System.Energy.AxilrodTeller.cpp
 	double axilrod_teller ();
 	
-
-	// System.Energy.Coulombic.cpp
 	double coulombic();
 	double coulombic_kinetic_gwp();
 	static double coulombic_nopbc( Molecule * molecules );
@@ -338,8 +334,6 @@ public:
 	double coulombic_self();
 	double coulombic_wolf();
 	
-	
-	//System.Energy.DispExp.cpp
 	double disp_expansion();
 	static double tt_damping(int n, double br);
 	double disp_expansion_lrc_self( Atom * atom_ptr, const double cutoff );
@@ -348,18 +342,12 @@ public:
 	double exp_crystal_self( Atom * aptr, double cutoff );
 	double exp_lrc_self( Atom * atom_ptr, double cutoff );
 	
-
-	//System.Energy.Dreiding.cpp
 	double dreiding();
 	static double dreiding_nopbc( Molecule *molecules ); 
 	
-
-	// System.Energy.ExpRepulsion.cpp
 	double exp_repulsion();
 	double exp_lrc_corr( Atom * atom_ptr,  Pair * pair_ptr, double cutoff );
 	
-
-	// System.Energy.LJ.cpp
 	double lj();
 	double lj_lrc_corr( Atom * atom_ptr,  Pair * pair_ptr, double cutoff );
 	double lj_fh_corr( Molecule * molecule_ptr, Pair * pair_ptr, int order, double term12, double term6 );
@@ -368,13 +356,9 @@ public:
 	double lj_buffered_14_7();
 	double lj_buffered_14_7_nopbc();
 	
-
-	// System.Energy.SG.cpp
 	double sg();
 	static double sg_nopbc( Molecule *molecules );
-		
 	
-	// System.Energy.Polar.cpp
 	double   polar();
 	void     thole_amatrix();
 	void     zero_out_amatrix ( int N );
@@ -517,7 +501,7 @@ public:
 
 	double      move_factor;
 	double      rot_factor;
-	double      PI_bead_perturb_factor; // option to shrink or expand PI chain perturbations. Default value is 1 (no change)
+	//double      PI_bead_perturb_factor; // option to shrink or expand PI chain perturbations. Default value is 1 (no change)
 	double      last_volume;            // NPT option
 	double      volume_change_factor;   // NPT option
 	double      adiabatic_probability,

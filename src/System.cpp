@@ -123,7 +123,6 @@ System::System() {
 	volume_probability        = 0.0;
 	transfer_probability      = 0.0;
 	bead_perturb_probability  = 0.0;
-	PI_bead_perturb_factor    = 1.0;
 
 
 	// io filenames
@@ -488,8 +487,6 @@ System::System( const System &sd ) {
 	spinflip_probability          = sd.spinflip_probability;
 	volume_probability            = sd.volume_probability;
 	transfer_probability          = sd.transfer_probability;
-	bead_perturb_probability      = sd.bead_perturb_probability;
-	PI_bead_perturb_factor        = sd.PI_bead_perturb_factor;
 
 	// Observables
 	temperature                   = sd.temperature;
@@ -1249,28 +1246,28 @@ void System::rebuild_arrays () {
 
 
 
-void System::countN() {
+int System::countN() {
 // count the number of molecules currently in the system excluding frozen, adiabatic, etc.
 
 	Molecule * molecule_ptr;
 
+	unsigned int count = 0;
+
 	observables->N = 0;
 	observables->spin_ratio = 0;
-	for(molecule_ptr = molecules, observables->N = 0; molecule_ptr; molecule_ptr = molecule_ptr->next) {
+	for(molecule_ptr = molecules; molecule_ptr; molecule_ptr = molecule_ptr->next) {
 
 		if(!(molecule_ptr->frozen || molecule_ptr->adiabatic || molecule_ptr->target)) {
-			// update the molecule counter
-			observables->N += 1.0;
-			// update the nuclear spin ratio
-			if(molecule_ptr->nuclear_spin == NUCLEAR_SPIN_ORTHO)
-				observables->spin_ratio += 1.0;
+			count++; // update the molecule counter
+			if(molecule_ptr->nuclear_spin == NUCLEAR_SPIN_ORTHO)  // update the nuclear spin ratio
+				observables->spin_ratio += 1.0; 
 		}
 
 		if(ensemble == ENSEMBLE_NVE)
 			N = observables->N;
 	}
-
-	return;
+	observables->N = count;
+	return count;
 }
 
 
