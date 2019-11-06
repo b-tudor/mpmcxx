@@ -99,6 +99,7 @@ double System::energy() {
 					polar_energy = polar(system);
 				#else
 				polar_energy = polar();
+				observables->polarization_energy = polar_energy;
 				#endif // CUDA 
 
 				#ifdef POLARTIMING
