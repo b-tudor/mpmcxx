@@ -124,10 +124,13 @@ private:
 	
 	void   assert_perturb_target_exists(); // Check all systems for an existing target molecule for the current MC move
 	double PI_calculate_potential(); // Calculate the potential energy for the aggregate PI system
+	double PI_calculate_energy(); // Calcualte the total energy for the aggregate PI system for the current point in phase space
 	double PI_chain_mass_length2_ENTIRE_SYSTEM(); // Return sum total of all mass-weighted chain length measures for all the molecules in aggregate system
 	double PI_chain_mass_length2(); // Return COM PI "polymer" mass-weighted chain length measure for molecule targeted by MC move
 	double PI_chain_mass_length2(std::vector<Molecule*> &m); // Return COM PI "polymer" mass-weighted chain length for molecule represented by m
-	double PI_orientational_mu_length2();
+	double PI_orientational_mu_length2_ENTIRE_SYSTEM(); // Return "orientational chain" length measure for all molecules in the system
+	double PI_orientational_mu_length2(); // Return "orientational chain" length measure for the MC move's target molecule
+	double PI_orientational_mu_length2(std::vector<Vector3D*> &o); // Return "orientational chain" length measure for given vector of orientations
 	double PI_NVT_boltzmann_factor( PI_NVT_BFContributors BF );
 	int    PI_pick_NVT_move();
 	void   PI_make_move( int move );

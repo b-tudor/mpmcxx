@@ -27,16 +27,24 @@ SimulationControl::~SimulationControl() {
 		free(systems[s]);
 		systems[s] = nullptr;
 	}
-
-	if( net_potentials ) free( net_potentials );
-	if( rd_energies    ) free( rd_energies    );
+	if (sys.observables      ) free(sys.observables);
+	if (net_potentials       ) free(net_potentials);
+	if (rd_energies          ) free(rd_energies);
+	if (coulombic_energies   ) free(coulombic_energies);
+	if (polarization_energies) free(polarization_energies);
+	if (vdw_energies         ) free(vdw_energies);
 }
 SimulationControl::SimulationControl(char *inFilename, bool rAR, bool writeFrames) : report_AR(rAR), write_PI_frames(writeFrames)
 {
 	char linebuf[maxLine];
 	nSys = 0;
 	PI_trial_chain_length = 0;
-	
+	sys.observables       = nullptr;
+	net_potentials        = nullptr;
+	rd_energies           = nullptr;
+	coulombic_energies    = nullptr;
+	polarization_energies = nullptr;
+	vdw_energies          = nullptr;
 
 	sprintf(linebuf, "SIM_CONTROL: running parameters found in: %s\n", inFilename);
 	Output::out1(linebuf);

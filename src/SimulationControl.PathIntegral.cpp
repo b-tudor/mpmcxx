@@ -50,16 +50,13 @@ bool SimulationControl::PI_nvt_mc() {
 		PI_perturb_bead_COMs_ENTIRE_SYSTEM();
 
 	BFC.potential.init = PI_calculate_potential();
-	
-	
 	// solve for the rotational energy levels 
 	//if (systems[rank]->quantum_rotation) quantum_system_rotational_energies(systems[rank]);
-	
-	// be a bit forgiving of the initial state 
 	if( ! std::isfinite(BFC.potential.init) )
-		BFC.potential.init = MAXVALUE;
+		BFC.potential.init = MAXVALUE; // be a bit forgiving of the initial state 
 	
-
+	PI_calculate_energy();
+	
 
 	////////////////////////////////////////////////////////////
 	// Need to compute the energy that we want to report here 
@@ -100,7 +97,7 @@ bool SimulationControl::PI_nvt_mc() {
 		BFC.potential.init = PI_observable_energy();
 		if (move == MOVETYPE_PERTURB_BEADS) {
 			BFC.chain_mass_len2.init = PI_chain_mass_length2();
-			BFC.orient_mu_len2.init = 0;
+			BFC.orient_mu_len2.init = PI_orientational_mu_length2();
 		}
 
 		// perturb the system 
@@ -670,12 +667,34 @@ void SimulationControl::write_PI_frame() {
 
 
 
+double SimulationControl::PI_calculate_energy() {
+	sys.observables->pi_energy = 0.0;
+	double chain_mass_len2 = PI_chain_mass_length2_ENTIRE_SYSTEM();
+	double orient_mu_len2 = PI_orientational_mu_length2_ENTIRE_SYSTEM();
+	
+	const double d = 3.0; // dimensionality of the system
+	const double N = systems[0]->countN(); // Number of sorbate (or moveable) molecules in the system
+	const double beta  = 1.0 / (kB * systems[0]->temperature); //  1/kT
+	const double inv_kB = 1.0 /  kB; // for converting Joules -> Kelvin
+	double energy_estimate_term1 = 0.5 * (d * N * nSys * systems[0]->temperature);  // (Kelvin) replace temp with 1/Beta for Joules
+	double energy_estimate_term2 = inv_kB * (nSys*PI_chain_mass_length2_ENTIRE_SYSTEM() / (2.0 * beta * beta * hBar2)); // (Kelvin)
+	double KE = energy_estimate_term1 - energy_estimate_term2;
+	sys.observables->kinetic_energy = KE;
+	sys.observables->pi_energy = KE + sys.observables->energy;
+
+	return sys.observables->pi_energy;
+}
+
+
+
+
 double SimulationControl::PI_calculate_potential() {
 
 	static bool first_run = true;
 	if (first_run) {
 		first_run = false;
 		// The following allocations are freed in ~SimulationControl();
+		SafeOps::calloc(      sys.observables, nSys, sizeof(System::observables_t), __LINE__, __FILE__);
 		SafeOps::calloc(       net_potentials, nSys, sizeof(double), __LINE__, __FILE__); 
 		SafeOps::calloc(          rd_energies, nSys, sizeof(double), __LINE__, __FILE__);
 		SafeOps::calloc(   coulombic_energies, nSys, sizeof(double), __LINE__, __FILE__);
@@ -736,17 +755,7 @@ double SimulationControl::PI_calculate_potential() {
 	sys.observables->coulombic_energy    /= nSys;
 	sys.observables->polarization_energy /= nSys;
 	sys.observables->vdw_energy          /= nSys;
-
-	/*
-	const double d = 3.0; // dimensionality of the system
-	const double N = systems[0]->countN(); // Number of sorbate (or moveable) molecules in the system
-	const double beta  = 1.0 / (kB * systems[0]->temperature); //  1/kT
-	const double inv_kB = 1.0 /  kB; // for converting Joules -> Kelvin
-	double energy_estimate_term1 = 0.5 * (d * N * nSys * systems[0]->temperature);  // (Kelvin) replace temp with 1/Beta for Joules
-	double energy_estimate_term2 = inv_kB * (nSys*PI_chain_mass_length2_ENTIRE_SYSTEM() / (2.0 * beta * beta * hBar2)); // (Kelvin)
-	double energy_estimate_term3 = potential_energy / nSys; // (Kelvin) potential energy averaged over all images
-	*/
-
+	
 	return sys.observables->energy;
 }
 
@@ -828,7 +837,7 @@ double SimulationControl::PI_chain_mass_length2() {
 // pointed to by system->checkpoint->molecule_altered. For Boltzman Factor computations, this is the only measurement
 // required, as the lengths of all non-changing molecular PI chains will cancel in the Boltzmann factor. Accordingly, if
 // no target is specified something has gone wrong (wrt to the intended context in which this fxn was meant to be called). 
-
+	assert_perturb_target_exists();
 	std::vector<Molecule*> mol;
 	for_each(systems.begin(), systems.end(), [&mol](System* s) {
 		mol.push_back(s->checkpoint->molecule_altered);
@@ -894,6 +903,9 @@ double SimulationControl::PI_chain_mass_length2( std::vector<Molecule*> &molecul
 
 
 
+double SimulationControl::PI_orientational_mu_length2_ENTIRE_SYSTEM() {
+	return 0.0;
+}
 double SimulationControl::PI_orientational_mu_length2() {
 // If each bond is described as a vector, this function computes the difference vector between bonds on adjacent molecules in the PI
 // bead chain. It takes the squared-norm of all these differences and returns the their sum. IT ONLY COMPUTES this difference on the
@@ -955,7 +967,9 @@ double SimulationControl::PI_orientational_mu_length2() {
 
 	return PI_orient_diff;
 }
-
+double SimulationControl::PI_orientational_mu_length2(std::vector<Vector3D*> &o) {
+	return 0;
+}
 
 
 
