@@ -2027,11 +2027,12 @@ double System::disp_expansion_lrc(Pair * pair_ptr, const double cutoff) // ignor
 
 double System::tt_damping(int n, double br)
 {
-	double sum = 0.0;
+	double sum = 1.0, running_br = br;
 
 	for (int i = 0; i <= n; i++)
 	{
-		sum += pow(br, i) / UsefulMath::factorial(i);
+		sum += running_br / UsefulMath::factorial(i);
+		running_br *= br;
 	}
 
 	const double result = 1.0 - exp(-br)*sum;
