@@ -651,7 +651,7 @@ public:
 	         
 	               midzuno_kihara_approx,
 	               schmidt_mixing,
-				   gilbert_smith_mixing,
+				   force_mixing,
 				   bohm_ahlrichs_mixing,
 				   wilson_popelier_mixing,
 	               use_sg,

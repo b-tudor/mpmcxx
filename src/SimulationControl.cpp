@@ -1158,11 +1158,11 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 		else return fail;
 		return ok;
 	}
-	if (SafeOps::iequals(token[0], "gilbert_smith_mixing")) {
+	if (SafeOps::iequals(token[0], "force_mixing")) {
 		if (SafeOps::iequals(token[1], "on"))
-			sys.gilbert_smith_mixing = 1;
+			sys.force_mixing = 1;
 		else if (SafeOps::iequals(token[1], "off"))
-			sys.gilbert_smith_mixing = 0;
+			sys.force_mixing = 0;
 		else return fail;
 		return ok;
 	}
@@ -1752,8 +1752,8 @@ bool SimulationControl::check_system() {
 		Output::out1("SIM_CONTROL: Using Tang-Toennies damping for dispersion interactions with disp_expansion.\n");
 	if( sys.schmidt_mixing )
 		Output::out1("SIM_CONTROL: Using the Schmidt mixing rule for exponential repulsions with disp_expansion.\n");
-	if (sys.gilbert_smith_mixing)
-		Output::out1("SIM_CONTROL: Using the Gilbert Smith mixing rule for exponential repulsions with disp_expansion.\n");
+	if (sys.force_mixing)
+		Output::out1("SIM_CONTROL: Using the force matching mixing rule for exponential repulsions with disp_expansion.\n");
 	if (sys.bohm_ahlrichs_mixing)
 		Output::out1("SIM_CONTROL: Using the Bohm Ahlrichs mixing rule for exponential repulsions with disp_expansion.\n");
 	if (sys.wilson_popelier_mixing)

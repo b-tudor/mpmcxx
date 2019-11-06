@@ -241,7 +241,7 @@ System::System() {
 	using_lj_buffered_14_7  = false;
 	midzuno_kihara_approx   = 0;
 	schmidt_mixing          = 0;
-	gilbert_smith_mixing	= 0;
+	force_mixing			= 0;
 	bohm_ahlrichs_mixing	= 0;
 	wilson_popelier_mixing	= 0;
 	use_sg                  = false;
@@ -594,7 +594,7 @@ System::System( const System &sd ) {
 	using_lj_buffered_14_7        = sd.using_lj_buffered_14_7;
 	midzuno_kihara_approx         = sd.midzuno_kihara_approx;
 	schmidt_mixing                = sd.schmidt_mixing;
-	gilbert_smith_mixing		  = sd.gilbert_smith_mixing;
+	force_mixing				  = sd.force_mixing;
 	bohm_ahlrichs_mixing		  = sd.bohm_ahlrichs_mixing;
 	wilson_popelier_mixing		  = sd.wilson_popelier_mixing;
 	use_sg                        = sd.use_sg;
@@ -1499,7 +1499,7 @@ void System::pair_exclusions( Molecule *molecule_i, Molecule *molecule_j, Atom *
 				pair_ptr->epsilon = (atom_i->epsilon + atom_j->epsilon) * atom_i->epsilon * atom_j->epsilon / (atom_i->epsilon * atom_i->epsilon + atom_j->epsilon * atom_j->epsilon);
 			}
 
-			else if (gilbert_smith_mixing)
+			else if (force_mixing)
 			{
 				double c = 315.7750382111558307123944638;
 				double Aii = c * exp(atom_i->epsilon * atom_i->sigma);
