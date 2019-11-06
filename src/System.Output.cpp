@@ -50,10 +50,11 @@ int System::open_files()
 	if( frozen_output[0] ) {
 		fp_frozen = SafeOps::openFile( frozen_output, "w", __LINE__, __FILE__ );
 		//go ahead and write the frozen lattice configuration now
-		if(fp_frozen)
-			write_frozen( fp_frozen );
-		fclose( fp_frozen );
-		fp_frozen = nullptr;
+		if (fp_frozen) {
+			write_frozen(fp_frozen);
+			fclose(fp_frozen);
+			fp_frozen = nullptr;
+		}
 	}
 
 	return 0;

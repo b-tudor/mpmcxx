@@ -359,7 +359,7 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 			MPI_Gather( &(system->temperature), 1, MPI_DOUBLE, system->mpi_data.temperature, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 		#endif
 	} else {
-		for (int i = 0; i < systems.size(); i++) {
+		for (size_t i = 0; i < systems.size(); i++) {
 			// ...or if single-threaded, copy data from the each of the send structs into the appropriate part of the receive struct manually
 			std::memcpy( system->mpi_data.rcv_strct + i * system->mpi_data.msgsize, systems[i]->mpi_data.snd_strct, system->mpi_data.msgsize);
 			system->mpi_data.temperature[i] = systems[i]->temperature;
@@ -373,7 +373,7 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 		system->clear_avg_nodestats();
 
 		//loop for each core -> shift data into variable_mpi, then average into avg_observables
-		for( int j = 0; j < size; j++ ) {
+		for( size_t j = 0; j < size; j++ ) {
 			// copy from the mpi buffer
 			std::memcpy( systems[0]->mpi_data.observables,   systems[0]->mpi_data.rcv_strct  +  j * systems[0]->mpi_data.msgsize,  sizeof(System::observables_t )); // copy observable data into observables struct, for one system at a time
 			std::memcpy( systems[0]->mpi_data.avg_nodestats, systems[0]->mpi_data.rcv_strct  +  j * systems[0]->mpi_data.msgsize + sizeof(System::observables_t), sizeof(System::avg_nodestats_t )); // ditto for avg_nodestates
@@ -382,7 +382,7 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 				system->mpi_copy_rcv_histogram_to_data( systems[0]->mpi_data.rcv_strct  +  j * systems[0]->mpi_data.msgsize  +  sizeof(System::observables_t) + sizeof(System::avg_nodestats_t), systems[0]->grids->histogram->grid ); // ditto for histogram grid
 			if( sys.sorbateCount > 1 )
 				std::memcpy( systems[0]->mpi_data.sinfo, // ditto for sorbateInfo
-					systems[0]->mpi_data.rcv_strct   +   j * systems[0]->mpi_data.msgsize   +   sizeof(System::observables_t)   +   sizeof(System::avg_nodestats_t)   +   sys.calc_hist * sys.n_histogram_bins * sizeof(int), //compensate for the size of hist data, if neccessary
+					systems[0]->mpi_data.rcv_strct   +   j * systems[0]->mpi_data.msgsize   +   sizeof(System::observables_t)   +   sizeof(System::avg_nodestats_t)   + sizeof(int) * sys.calc_hist * sys.n_histogram_bins, //compensate for the size of hist data, if neccessary
 					sys.sorbateCount * sizeof(System::sorbateInfo_t)
 				);
 			
@@ -672,52 +672,71 @@ void SimulationControl::write_PI_frame() {
 
 double SimulationControl::PI_calculate_potential() {
 
-	double potential_energy = 0;
-
 	static bool first_run = true;
 	if (first_run) {
 		first_run = false;
-		SafeOps::calloc(system_energies, nSys, sizeof(double), __LINE__, __FILE__); // free'd in ~SimulationControl();
+		// The following allocations are freed in ~SimulationControl();
+		SafeOps::calloc(       net_potentials, nSys, sizeof(double), __LINE__, __FILE__); 
+		SafeOps::calloc(          rd_energies, nSys, sizeof(double), __LINE__, __FILE__);
+		SafeOps::calloc(   coulombic_energies, nSys, sizeof(double), __LINE__, __FILE__);
+		SafeOps::calloc(polarization_energies, nSys, sizeof(double), __LINE__, __FILE__);
+		SafeOps::calloc(         vdw_energies, nSys, sizeof(double), __LINE__, __FILE__);
 	}
 	
-	
-	if( mpi ) {
-		potential_energy = systems[rank]->energy();
-		#ifdef _MPI
-			MPI_Allgather( &potential_energy, 1, MPI_DOUBLE, system_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
-		#endif
 
-		for (int i = 0; i < nSys; i++) {
-			systems[i]->observables->energy = system_energies[i];
-			// energy += system_energies[i];
-		}
+	if (mpi) {
+
+		double potential_energy = systems[rank]->energy();
+		System::observables_t* obs = systems[rank]->observables;
 		
-		// Populate these, via allgather, if needed:
-		// systems[i]->observables->coulombic_energy = "allgathered data";
-		// Ditto for (all are quantities updated in energy()):
-		// observables->kinetic_energy, observables->coulombic_energy, observables->polarization_energy
-		// observables->vdw_energy, observables->rd_energy, observables->three_body_energy, observables->spin_ratio
-		// observables->kinetic_energy (NVE), observables->temperature (NVE), observables->NU
+		#ifdef _MPI
+			MPI_Allgather(        &potential_energy, 1, MPI_DOUBLE,        net_potentials, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+			MPI_Allgather(          &obs->rd_energy, 1, MPI_DOUBLE,           rd_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+			MPI_Allgather(   &obs->coulombic_energy, 1, MPI_DOUBLE,    coulombic_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+			MPI_Allgather(&obs->polarization_energy, 1, MPI_DOUBLE, polarization_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+			MPI_Allgather(         &obs->vdw_energy, 1, MPI_DOUBLE,          vdw_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+		#endif
 
 	} else {
 		// For single-threaded systems, energy computations happen on every system
 		// This is done in two passes so that energy values will be populated in all systems...
-		for (int s = 0; s < nSys; s++)
-			system_energies[s] = systems[s]->energy();
+		for (int s = 0; s < nSys; s++) {
+			net_potentials[s]        = systems[s]->energy();
+			rd_energies[s]           = systems[s]->observables->rd_energy;
+			coulombic_energies[s]    = systems[s]->observables->coulombic_energy;
+			polarization_energies[s] = systems[s]->observables->polarization_energy;
+			vdw_energies[s]          = systems[s]->observables->vdw_energy;
+		}
 	}
 
 	// ...and on the second pass energies are summed and checked for infinite values.
+	sys.observables->energy = 0;
+	sys.observables->rd_energy = 0;
+	sys.observables->coulombic_energy = 0;
+	sys.observables->polarization_energy = 0;
+	sys.observables->vdw_energy = 0;
+
 	for( int s=0; s < nSys; s++) {
-		double E = system_energies[s];
-		if ( ! std::isfinite(E)) {
-			std::for_each(systems.begin(), systems.end(), [](System* SYS) {
-				SYS->observables->pi_energy = MAXVALUE;
-			});
+		double E = net_potentials[s];
+		if ( ! std::isfinite(E)) 
 			return E; // infinite energy short-circuits the sum
+		else {
+			sys.observables->energy              += E;
+			sys.observables->rd_energy           += rd_energies[s];
+			sys.observables->coulombic_energy    += coulombic_energies[s];
+			sys.observables->polarization_energy += polarization_energies[s];
+			sys.observables->vdw_energy          += vdw_energies[s];
 		}
-		else
-			potential_energy += E;
 	}
+
+	// The potential energy of the aggregate/quantum/PI system is the average of all the classical systems. This value is what we
+	// report as the "energy" in the accounting of each of the individual "classical" systems. 
+	sys.observables->energy              /= nSys;
+	sys.observables->rd_energy           /= nSys;
+	sys.observables->coulombic_energy    /= nSys;
+	sys.observables->polarization_energy /= nSys;
+	sys.observables->vdw_energy          /= nSys;
+
 	/*
 	const double d = 3.0; // dimensionality of the system
 	const double N = systems[0]->countN(); // Number of sorbate (or moveable) molecules in the system
@@ -728,7 +747,7 @@ double SimulationControl::PI_calculate_potential() {
 	double energy_estimate_term3 = potential_energy / nSys; // (Kelvin) potential energy averaged over all images
 	*/
 
-	return potential_energy / nSys;
+	return sys.observables->energy;
 }
 
 

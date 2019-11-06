@@ -28,8 +28,8 @@ SimulationControl::~SimulationControl() {
 		systems[s] = nullptr;
 	}
 
-	if( system_energies )
-		free( system_energies );
+	if( net_potentials ) free( net_potentials );
+	if( rd_energies    ) free( rd_energies    );
 }
 SimulationControl::SimulationControl(char *inFilename, bool rAR, bool writeFrames) : report_AR(rAR), write_PI_frames(writeFrames)
 {

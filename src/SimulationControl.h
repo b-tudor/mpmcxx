@@ -73,8 +73,12 @@ private:
 	
 	
 
-
-	double * system_energies = nullptr; // array to accumulate energies across different systems, when using MPI
+	// array to accumulate energies across different systems, when using MPI (or for easy access on single threads)
+	double * net_potentials        = nullptr; 
+	double * rd_energies           = nullptr; 
+	double * coulombic_energies    = nullptr;
+	double * polarization_energies = nullptr;
+	double * vdw_energies          = nullptr;
 	
 		
 	// read_config() parses a simulation input file and populates the Simulation Controller
