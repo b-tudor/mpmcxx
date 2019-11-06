@@ -1975,7 +1975,9 @@ double System::disp_expansion()
 						else
 							pair_ptr->rd_energy = -c6 / r6 - c8 / r8 - c10 / r10 + repulsion;
 
-						
+						if (cavity_autoreject_repulsion != 0.0)
+							if (repulsion > cavity_autoreject_repulsion)
+								pair_ptr->rd_energy = MAXVALUE;
 					}
 
 				}
