@@ -207,44 +207,44 @@ System::mpiData System::setup_mpi() {
 
 
 
-void System::setup_mpi_dataStructs() { setup_mpi_dataStructs(mpi_data); }
-void System::setup_mpi_dataStructs( mpiData &md ) {
+void System::setup_mpi_dataStructs(int qty) { setup_mpi_dataStructs(mpi_data, qty); }
+void System::setup_mpi_dataStructs( mpiData &md ) {	setup_mpi_dataStructs(md, size);}
+void System::setup_mpi_dataStructs( mpiData& md, int qty ) {
 
 	// allocate the statistics structures 
-	SafeOps::calloc( md.observables,   1, sizeof(  observables_t), __LINE__, __FILE__ );
-	SafeOps::calloc( md.avg_nodestats, 1, sizeof(avg_nodestats_t), __LINE__, __FILE__ );
-	
+	SafeOps::calloc(md.observables, 1, sizeof(observables_t), __LINE__, __FILE__);
+	SafeOps::calloc(md.avg_nodestats, 1, sizeof(avg_nodestats_t), __LINE__, __FILE__);
+
 	// if multiple-sorbates, allocate sorbate statistics structs
-	if ( sorbateCount > 1 ) {
-		SafeOps::calloc(     md.sinfo,  sorbateCount, sizeof(    sorbateInfo_t), __LINE__, __FILE__ );
-		SafeOps::calloc( sorbateGlobal, sorbateCount, sizeof(sorbateAverages_t), __LINE__, __FILE__ );
+	if (sorbateCount > 1) {
+		SafeOps::calloc(md.sinfo, sorbateCount, sizeof(sorbateInfo_t), __LINE__, __FILE__);
+		SafeOps::calloc(sorbateGlobal, sorbateCount, sizeof(sorbateAverages_t), __LINE__, __FILE__);
 	}
 
 	// compute MPI message size	(for reporting data to head node)
 	md.msgsize = sizeof(observables_t) + sizeof(avg_nodestats_t);
-	if( calc_hist ) 
+	if (calc_hist)
 		md.msgsize += n_histogram_bins * sizeof(int);
-	if( sorbateCount > 1 )
+	if (sorbateCount > 1)
 		md.msgsize += sorbateCount * sizeof(sorbateInfo_t);
 
 	#ifdef _MPI
-	if (mpi) {
-		// MPI_Datatype msgtype;
-		MPI_Type_contiguous(md.msgsize, MPI_BYTE, &msgtype);
-		MPI_Type_commit(&msgtype);
-	}
+		if (mpi) {
+			// MPI_Datatype msgtype;
+			MPI_Type_contiguous(md.msgsize, MPI_BYTE, &msgtype);
+			MPI_Type_commit(&msgtype);
+		}
 	#endif
 
 	// allocate MPI structures 
-	SafeOps::calloc( md.snd_strct, md.msgsize, 1, __LINE__, __FILE__ );
-	
-	if( (! mpi) || (! rank ) ) {
+	SafeOps::calloc(md.snd_strct, md.msgsize, 1, __LINE__, __FILE__);
+
+	if ((!mpi) || (!rank)) {
 		// These structs will be allocated on all systems[] in a single-threaded run
-		SafeOps::calloc(md.rcv_strct,   size,     md.msgsize, __LINE__, __FILE__ );
-		SafeOps::calloc(md.temperature, size, sizeof(double), __LINE__, __FILE__ ); //temperature list for parallel tempering
+		SafeOps::calloc(   md.rcv_strct, qty,     md.msgsize, __LINE__, __FILE__ );
+		SafeOps::calloc( md.temperature, qty, sizeof(double), __LINE__, __FILE__ ); //temperature list for parallel tempering
 	}
 }
-
 
 
 

@@ -433,8 +433,9 @@ public:
 	void        temper_system( double current_energy );
 	double      mc_initial_energy();
 	mpiData     setup_mpi();
-	void        setup_mpi_dataStructs();
+	void        setup_mpi_dataStructs(int qty);
 	void        setup_mpi_dataStructs( mpiData &md );
+	void        setup_mpi_dataStructs(mpiData& md, int qty);
 	void        do_corrtime_bookkeeping(mpiData &mpi);
 	void        output_file_data();
 
@@ -501,7 +502,6 @@ public:
 
 	double      move_factor;
 	double      rot_factor;
-	//double      PI_bead_perturb_factor; // option to shrink or expand PI chain perturbations. Default value is 1 (no change)
 	double      last_volume;            // NPT option
 	double      volume_change_factor;   // NPT option
 	double      adiabatic_probability,

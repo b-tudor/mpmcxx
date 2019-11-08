@@ -24,10 +24,9 @@ std::vector<SimulationControl::molecular_metadata> SimulationControl::sorbate_da
 SimulationControl::~SimulationControl() {
 
 	for( unsigned int s=0; s<systems.size(); s++ ) {
-		free(systems[s]);
+		delete systems[s];
 		systems[s] = nullptr;
 	}
-	if (sys.observables      ) free(sys.observables);
 	if (net_potentials       ) free(net_potentials);
 	if (rd_energies          ) free(rd_energies);
 	if (coulombic_energies   ) free(coulombic_energies);

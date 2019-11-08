@@ -45,13 +45,13 @@ System::~System() {
 		free( sorbateGlobal );
 
 	if( !rank ) {
-		//if(fp_energy)        fclose(fp_energy);
-		//if(fp_energy_csv)    fclose(fp_energy_csv);
-		//if(fp_field)         fclose(fp_field);
-		//if(fp_histogram)     fclose(fp_field);
-		//if(fp_frozen)        fclose(fp_frozen);
-		//if(fp_traj_replay)   fclose(fp_traj_replay);
-		//if(fp_surf)          fclose(fp_surf);
+		if(fp_energy)        fclose(fp_energy);
+		if(fp_energy_csv)    fclose(fp_energy_csv);
+		if(fp_field)         fclose(fp_field);
+		if(fp_histogram)     fclose(fp_field);
+		if(fp_frozen)        fclose(fp_frozen);
+		if(fp_traj_replay)   fclose(fp_traj_replay);
+		if(fp_surf)          fclose(fp_surf);
 	}
 
 	fp_energy      = nullptr;

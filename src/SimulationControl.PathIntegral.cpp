@@ -28,12 +28,12 @@ bool SimulationControl::PI_nvt_mc() {
 	int move = 0;                   // current MC move 
 
 	if (mpi) {
-		system->setup_mpi_dataStructs();
+		system->setup_mpi_dataStructs(size);
 	}
 	else std::for_each(systems.begin(), systems.end(), [this](System *SYS) {
 		// in non-MPI runs, the mpi data structs will still be used to shuttle
 		// data between systems, in order to simplify coding  on the MPI end.
-		SYS->setup_mpi_dataStructs();
+		SYS->setup_mpi_dataStructs(nSys);
 	});
 
 	
@@ -94,7 +94,7 @@ bool SimulationControl::PI_nvt_mc() {
 			systems[i]->step = sys.step;
 
 		// restore the last accepted energy & chain-length-metric
-		BFC.potential.init = PI_observable_energy();
+		BFC.potential.init = sys.observables->energy; // = PI_observable_energy();
 		if (move == MOVETYPE_PERTURB_BEADS) {
 			BFC.chain_mass_len2.init = PI_chain_mass_length2();
 			BFC.orient_mu_len2.init = PI_orientational_mu_length2();
@@ -195,9 +195,11 @@ bool SimulationControl::PI_nvt_mc() {
 
 		if (system->step == nSteps) {
 			for( int i=0; i<size; i++ ) {
-				#ifdef _MPI
+				if (mpi) {
+					#ifdef _MPI
 					MPI_Barrier(MPI_COMM_WORLD);
-				#endif
+					#endif
+				}
 				if( i==rank )
 					write_PI_frame();
 		}}
@@ -320,7 +322,7 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 			);
 		if (sys.sorbateCount > 1)
 			std::memcpy(
-				system->mpi_data.snd_strct + sizeof(System::observables_t) + sizeof(System::avg_nodestats_t) + system->calc_hist * system->n_histogram_bins * sizeof(int), //compensate for the size of hist data, if neccessary
+				system->mpi_data.snd_strct + sizeof(System::observables_t) + sizeof(System::avg_nodestats_t) + (size_t) system->calc_hist * system->n_histogram_bins * sizeof(int), //compensate for the size of hist data, if neccessary
 				system->sorbateInfo,
 				system->sorbateCount * sizeof(System::sorbateInfo_t)
 			);
@@ -339,7 +341,7 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 			);
 		if (SYS->sorbateCount > 1)
 			std::memcpy(
-				SYS->mpi_data.snd_strct + sizeof(System::observables_t) + sizeof(System::avg_nodestats_t) + SYS->calc_hist * SYS->n_histogram_bins * sizeof(int), //compensate for the size of hist data, if neccessary
+				SYS->mpi_data.snd_strct + sizeof(System::observables_t) + sizeof(System::avg_nodestats_t) + (size_t) SYS->calc_hist * SYS->n_histogram_bins * sizeof(int), //compensate for the size of hist data, if neccessary
 				SYS->sorbateInfo,
 				SYS->sorbateCount * sizeof(System::sorbateInfo_t)
 			);
@@ -347,7 +349,7 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 	
 	
 	if( ! rank )
-		std::memset(system->mpi_data.rcv_strct, 0, size * system->mpi_data.msgsize);
+		std::memset(system->mpi_data.rcv_strct, 0, (size_t) size * system->mpi_data.msgsize);
 
 	if (mpi) {
 		#ifdef _MPI
@@ -359,7 +361,8 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 		for (size_t i = 0; i < systems.size(); i++) {
 			// ...or if single-threaded, copy data from the each of the send structs into the appropriate part of the receive struct manually
 			std::memcpy( system->mpi_data.rcv_strct + i * system->mpi_data.msgsize, systems[i]->mpi_data.snd_strct, system->mpi_data.msgsize);
-			system->mpi_data.temperature[i] = systems[i]->temperature;
+			if(sys.parallel_tempering)
+				system->mpi_data.temperature[i] = systems[i]->temperature;
 		}
 	}
 
@@ -426,8 +429,8 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 double SimulationControl::PI_NVT_boltzmann_factor( PI_NVT_BFContributors BF ) {
 
 	double delta_energy  = BF.potential.change();
-	double delta_chain2  = BF.chain_mass_len2.change();
-	double delta_orient2 = BF.orient_mu_len2.change();
+	double delta_chain   = BF.chain_mass_len2.change();
+	double delta_orient  = BF.orient_mu_len2.change();
 
 	const int     P = nSys; // Trotter number: number of beads (or "systems") in PI representation
 	const double  T = sys.temperature;
@@ -438,39 +441,25 @@ double SimulationControl::PI_NVT_boltzmann_factor( PI_NVT_BFContributors BF ) {
 
 	case MOVETYPE_PERTURB_BEADS:
 	{
+		// Conversion factor that will cast the PI chain length [(dAB)^2 + (dBC)^2 + (dCD)^2 ...] to energy (in Kelvin)
+		// Part of this factor is (1/thermal_wavelength), with the mass factored out, because the COM contribution 
+		// depends on the molecular mass, while the orientational factor depends on the reduced mass. Said masses are
+		// baked into delta_chain and delta_orient. 
+		const double PIchain_2_K = (2.0 * P * pi * pi * kB * T) / (h * h); //  (thermal wavelength)^(-2)  Without mass/reduced_mass
+		                                                                   //  (bc it is baked into the delta variables)
+		double potential_contrib      = delta_energy / T;           //  potential energy contribution
+		double PI_COM_contrib         = delta_chain * PIchain_2_K;  //  PI COM energy contribution
+		double PI_orientation_contrib = 0;                          //  PI orientational energy contribution
 		
-
-		double mol_mass = systems[rank]->checkpoint->molecule_altered->mass * AMU2KG; // mass of the molecule (in kg)
-		double mLambda2 = (h*h) / (2.0 * pi * mol_mass * kB * T); // thermal wavelength squared
-		//double red_mass = 0; // reduced mass of the perturbed molecule
-		//double uLambda2 = 0; // thermal wavelength squared, reduced mass
-		double energy_contrib = delta_energy / T; // potential energy contribution
-		double PI_COM_contrib = 0; // PI COM energy contribution
-		double PI_orientation_contrib = 0; // PI orientational energy contribution
-		double reduced_mass = 0;  // reduced mass of the perturbed molecule
-		double uLambda2 = 0;  // thermal wavelength squared of reduced mass
-
-		// calculate a boltzmann factor for a bead perturbation
 		std::map<std::string, int>::iterator it;
 		it = sorbate_data_index.find(systems[rank]->checkpoint->molecule_altered->moleculetype);
-		if (it == sorbate_data_index.end()) {
-
-			// COM-only case (sorbate metadata not found)
-			// the chain lengths of all the molecules should cancel out, except for the one that was moved (molecule_altered)
-			// and it is the mass of this molecule that we use in the PI_COM_contrib calculation (ditto for 'else' case)
-			PI_COM_contrib = PI_COM_contrib = delta_chain2 * pi * P / mLambda2;
-			PI_orientation_contrib = 0.0;
-			
-		} else {
-
-			// COM + Orientation PI case
-			PI_COM_contrib = delta_chain2 * pi * P / mLambda2;
-			reduced_mass = sorbate_data[it->second].reduced_mass;
-			uLambda2 = (h*h) / (2.0 * pi * reduced_mass * kB * T);
-			PI_orientation_contrib = delta_orient2 * pi * P / uLambda2;
+		if (it != sorbate_data_index.end()) {
+			// calculation for PIs with orientational degree of freedom
+			double reduced_mass = sorbate_data[it->second].reduced_mass;
+			PI_orientation_contrib = delta_orient * PIchain_2_K;
 		}
 
-		boltzmann_factor = exp(-energy_contrib - PI_COM_contrib - PI_orientation_contrib);
+		boltzmann_factor = exp( -potential_contrib - PI_COM_contrib - PI_orientation_contrib );
 	}
 	break;
 
@@ -490,7 +479,7 @@ double SimulationControl::PI_NVT_boltzmann_factor( PI_NVT_BFContributors BF ) {
 	break;
 
 	default: // DISPLACE
-		boltzmann_factor = exp(-delta_energy / sys.temperature);
+		boltzmann_factor = exp(-delta_energy/T);
 
 	}
 	systems[rank]->nodestats->boltzmann_factor = boltzmann_factor;
@@ -774,7 +763,7 @@ double SimulationControl::PI_observable_energy() {
 
 
 
-void SimulationControl::assert_perturb_target_exists() {
+void SimulationControl::assert_all_perturb_targets_exist() {
 	// Ensure that a molecule has been targeted for perturbation.
 	for_each(systems.begin(), systems.end(), [](System* s) {
 		if (s->checkpoint->molecule_altered == nullptr) {
@@ -837,7 +826,7 @@ double SimulationControl::PI_chain_mass_length2() {
 // pointed to by system->checkpoint->molecule_altered. For Boltzman Factor computations, this is the only measurement
 // required, as the lengths of all non-changing molecular PI chains will cancel in the Boltzmann factor. Accordingly, if
 // no target is specified something has gone wrong (wrt to the intended context in which this fxn was meant to be called). 
-	assert_perturb_target_exists();
+	assert_all_perturb_targets_exist();
 	std::vector<Molecule*> mol;
 	for_each(systems.begin(), systems.end(), [&mol](System* s) {
 		mol.push_back(s->checkpoint->molecule_altered);
@@ -1436,7 +1425,7 @@ void SimulationControl::PI_perturb_bead_COMs(int n) {
 		// create the Vec(tor) along which the target bead will be perturbed out of its 'average' position
 		Vector3D perturbation( Rando::rand_normal(), Rando::rand_normal(), Rando::rand_normal() ); 
 
-		//                  |------ weighted average pos on line connecting existing beads ------|     |------ perturbation ------|
+		//                 |---- weighted average position on line connecting existing beads ----|     |------ perturbation ------|
 		beads[bead_idx]  =  (init_factor*beads[prevBead_idx]) + (term_factor*beads[finalBead_idx])  +  (sigma_factor*perturbation); // Eq. 3.12 
 		
 

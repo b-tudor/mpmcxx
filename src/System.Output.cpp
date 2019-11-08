@@ -2,8 +2,8 @@
 #ifdef _MPI
 	#include <mpi.h>
 #endif
-extern int rank;
-extern int size;
+extern int rank, size;
+extern bool mpi;
 
 #include <cstring>
 
@@ -654,9 +654,11 @@ void System::write_states() {
 
 	fprintf(fp, "REMARK step=%d\n", step);
 	#ifdef _MPI
-		fprintf(fp, "REMARK node=%d\n", rank);
-		if ( parallel_tempering ) 
-			fprintf(fp, "REMARK temperature=%.6lf\n",	ptemp->templist[ptemp->index[rank]]);
+		if (mpi) {
+			fprintf(fp, "REMARK node=%d\n", rank);
+		}
+		if (parallel_tempering)
+			fprintf(fp, "REMARK temperature=%.6lf\n", ptemp->templist[ptemp->index[rank]]);
 	#endif
 
 	fprintf(fp, "REMARK total_molecules=%d, total_atoms=%d\n", 
@@ -686,7 +688,7 @@ void System::write_states() {
 
 	// write pqr formatted states
 	int i=1, j=1;
-	for( molecule_ptr = molecules, i = 1, j = 1; molecule_ptr; molecule_ptr = molecule_ptr->next, j++) {
+	for( molecule_ptr = molecules; molecule_ptr; molecule_ptr = molecule_ptr->next, j++) {
 		for( atom_ptr = molecule_ptr->atoms; atom_ptr; atom_ptr = atom_ptr->next, i++) {
 
 			fprintf(fp, "ATOM  ");
@@ -794,52 +796,57 @@ int System::write_molecules_wrapper( char * filename ) {
 	int rval = -1;
 	char  filenameold[maxLine]; 
 	FILE * fp;
+	int successful_rename = 0;
 
-	#ifdef _MPI
-		int    j          = 0;
-		char * filenameno = nullptr;
+	if (mpi) {
 
-		//make a new filename with the core/or bath number appended
-		if( parallel_tempering )
-			filenameno = Output::make_filename( filename, ptemp->index[rank] ); //append bath index to filename
-		else
-			filenameno = Output::make_filename(filename,rank); //append core index to filename
+		#ifdef _MPI
+
+			int    j = 0;
+			char* filenameno = nullptr;
+
+			//make a new filename with the core/or bath number appended
+			if (parallel_tempering)
+				filenameno = Output::make_filename(filename, ptemp->index[rank]); //append bath index to filename
+			else
+				filenameno = Output::make_filename(filename, rank); //append core index to filename
+
+			//move most recent state file to file.last
+			sprintf(filenameold, "%s.last", filenameno);
+			 successful_rename = rename( filenameno, filenameold );
+
+			//open the file and free the filename string
+			fp = SafeOps::openFile( filenameno, "w", __LINE__, __FILE__ );
+			free( filenameno );
+
+			// we write files one at a time to avoid disk congestion
+			for ( j=0; j<size; j++ ) {
+				MPI_Barrier(MPI_COMM_WORLD);
+				if (j == rank)
+					rval = write_molecules(fp);
+			}
+
+			//free the file pointer
+			fclose(fp);
+
+		#endif //non-MPI
+
+	} else {
 
 		//move most recent state file to file.last
-		sprintf(filenameold,"%s.last",filenameno);
-		rename(filenameno, filenameold);
-
-		//open the file and free the filename string
-		fp = SafeOps::openFile( filenameno, "w", __LINE__, __FILE__ );
-		free(filenameno);
-
-		// we write files one at a time to avoid disk congestion
-		for( j=0; j<size; j++ ) {
-			MPI_Barrier(MPI_COMM_WORLD);
-			if ( j == rank )
-				rval = write_molecules( fp );
-		}
-
-		//free the file pointer
-		fclose(fp);
-
-
-	#else //non-MPI
-
-		//move most recent state file to file.last
-		sprintf(filenameold,"%s.last",filename);
-		rename(filename, filenameold);
+		sprintf( filenameold, "%s.last", filename );
+		successful_rename = rename( filename, filenameold );
 
 		//open the new file
 		fp = SafeOps::openFile( filename, "w", __LINE__, __FILE__ );
-		
+
 		//write the file
-		rval = write_molecules( fp );
+		rval = write_molecules(fp);
 
 		//free the file pointer
 		fclose(fp);
 
-	#endif
+	}
 
 	return rval;
 }
