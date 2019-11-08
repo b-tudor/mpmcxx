@@ -2215,8 +2215,10 @@ bool SimulationControl::check_io_files_options() {
 				if (mpi) {
 					#ifdef _MPI
 						MPI_Barrier(MPI_COMM_WORLD);
-						std::string filename = Output::make_filename(sys.pqr_restart, rank);
+						char *filename_cstr  = Output::make_filename(sys.pqr_restart, rank);
+						std::string filename = filename_cstr;
 						pqr_restart_filenames.push_back(filename);
+						free(filename_cstr);
 						if (j == rank) {
 							sprintf(linebuf, "SIM_CONTROL: Thread/SYSTEM %d will be writing restart configuration to ./%s\n", rank, pqr_restart_filenames[rank].c_str());
 							Output::out(linebuf);
@@ -2224,8 +2226,10 @@ bool SimulationControl::check_io_files_options() {
 					#endif
 				}
 				else {
-					std::string filename = Output::make_filename(sys.pqr_restart, j);
+					char* filename_cstr = Output::make_filename(sys.pqr_restart, rank);
+					std::string filename = filename_cstr;
 					pqr_restart_filenames.push_back(filename);
+					free(filename_cstr);
 					sprintf(linebuf, "SIM_CONTROL: SYSTEM %d will be writing restart configuration to ./%s\n", j, pqr_restart_filenames[j].c_str());
 					Output::out1(linebuf);
 				}
@@ -2259,9 +2263,10 @@ bool SimulationControl::check_io_files_options() {
 				if( mpi ) {
 					#ifdef _MPI
 					MPI_Barrier(MPI_COMM_WORLD);
-					
-					std::string filename = Output::make_filename(sys.pqr_output, rank);
+					char *filename_cstr = Output::make_filename(sys.pqr_output, rank);
+					std::string filename = filename_cstr;
 					pqr_final_filenames.push_back(filename);
+					free(filename_cstr);
 					if (j == rank) {
 						sprintf(linebuf, "SIM_CONTROL: Thread/SYSTEM %d will be writing final configuration to ./%s\n", rank, pqr_final_filenames[rank].c_str());
 						Output::out(linebuf);
@@ -2269,8 +2274,10 @@ bool SimulationControl::check_io_files_options() {
 					#endif
 
 				} else {
-					std::string filename = Output::make_filename(sys.pqr_output, j);
+					char * filename_cstr = Output::make_filename(sys.pqr_output, j);
+					std::string filename = filename_cstr;
 					pqr_final_filenames.push_back(filename);
+					free(filename_cstr);
 					sprintf(linebuf, "SIM_CONTROL: SYSTEM %d will be writing final configuration to ./%s\n", j, pqr_final_filenames[j].c_str());
 					Output::out(linebuf);
 				}
@@ -2305,8 +2312,10 @@ bool SimulationControl::check_io_files_options() {
 				
 				} else {
 					// No restart files available, try to open a "last" file
-					std::string basename = Output::make_filename(sys.pqr_restart, rank);
+					char* filename_cstr = Output::make_filename(sys.pqr_restart, rank);
+					std::string basename = filename_cstr;
 					filename = basename + ".last";
+					free(filename_cstr);
 					//SafeOps::calloc(filename, (int)strlen(basename) + 16, sizeof(char), __LINE__, __FILE__);
 					//sprintf(filename, "%s.last", basename);
 					//free(basename);

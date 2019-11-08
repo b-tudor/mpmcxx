@@ -64,7 +64,8 @@ public:
 	template<typename T>
 	static void calloc( T &ptr, size_t qty, size_t size, int line, const char *file )
 	{
-		
+		char linebuf[maxLine];
+
 		// written to hopefully deal with some memory issues that have been plaguing very large
 		// runs on PCN61. I believe that we may be running into memory fragmentation.
 		// I am adding a function that will add an option defrag the thole_matricies every
@@ -73,8 +74,7 @@ public:
 		// malloc, calloc and realloc to make sure we're not getting NULL's, particularly
 		// for larger requests.
 	
-		char linebuf[maxLine];
-
+		
 		if( (qty * size) <= 0 ) {	
 			sprintf(linebuf, "[internal] Requested %ld bytes: [%d] %s", (long)(qty * size), line, file );
 			Output::err(linebuf);
@@ -104,10 +104,8 @@ public:
 	template<typename T>
 	static void malloc( T &ptr, size_t qty, int line, const char *file )
 	{
-		
-
-	
 		char linebuf[maxLine];
+		
 
 		if( qty <= 0 ) {	
 			sprintf(linebuf, "[internal] Requested %ld bytes: [%d] %s", (long) qty, line, file );
@@ -138,9 +136,8 @@ public:
 	template<typename T>
 	static void realloc( T &ptr, size_t qty, int line, const char *file )
 	{
-	
 		char linebuf[maxLine];
-
+		
 		if( qty < 0 ) {	
 			sprintf(linebuf, "[internal] Requested %ld bytes: [%d] %s", (long) qty, line, file );
 			Output::err(linebuf);
