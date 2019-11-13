@@ -6,20 +6,19 @@ extern int size;
 
 void System::update_root_averages( observables_t *obs )
 {
-	static int   counter = 0;
+	Molecule* molecule_ptr = nullptr;
+	static int counter = 0;
 
-	double particle_mass = 0.0;
-	double curr_density  = 0.0;
-	double frozen_mass = obs->frozen_mass;
-
-	Molecule   * molecule_ptr = nullptr;
-	double       m            = 0;
-	double       factor       = 0;
-	double       gammaratio   = 0;
-	double       sdom         = 0; 
-
+	double particle_mass    = 0.0;
+	double curr_density     = 0.0;
+	double       gammaratio = 0;
+	double frozen_mass      = obs->frozen_mass;
+	
+	
 	++counter;
 
+
+	double       m = 0;
 	if( ensemble == ENSEMBLE_NVT_GIBBS )
 		m = (double)((counter-1) / 2);
 	else
@@ -27,14 +26,9 @@ void System::update_root_averages( observables_t *obs )
 
 
 
-	sdom   = 1.0 / sqrt(m-1.0); // common factor in std deviation calcs that follow
-	if (m == 0.0) {
-		factor = 0;
-		m = 1.0;
-	}
-	else
-		factor = (m - 1.0) / m; // % of observable that old average represents after 
-	                            // new data is added to the mix.
+	const double sdom     = 1.0 / sqrt(m-1.0); // common factor in std deviation calcs that follow
+	const double factor   = (m-1.0) / m;       // Weight that previous average carries wrt to the new/updated average
+	                                           // Weight that new data carries wrt the averages is 1/m
 
 
 	// the physical observables 
@@ -358,51 +352,39 @@ void System::clear_avg_nodestats() {
 
 
 
-void System::update_root_nodestats( avg_nodestats_t *avgNodestats, avg_observables_t *avgObservables) {
+void System::update_root_nodestats( avg_nodestats_t *avgNodestats, avg_observables_t *avgObs) {
 
-	double m      = 0,
-	       factor = 0,
-	       sdom   = 0;
+	const double m = (++avgNodestats->counter);
+	const double new_fctr =      1.0  / m; // Weight that new data carries wrt the average
+	const double factor   = (m - 1.0) / m; // Weight that existing average carries wrt the new/updated average
+	
 
-	m = (double)(++avgNodestats->counter);
-	sdom = 1.0 / sqrt(floor((double)((step+1.0)*size)/(double)(corrtime))-1.0);
-	factor = (m - 1.0)/m;
+	avgObs->boltzmann_factor            = factor*avgObs->boltzmann_factor            +            avgNodestats->boltzmann_factor*new_fctr;
+	avgObs->boltzmann_factor_sq         = factor*avgObs->boltzmann_factor_sq         +         avgNodestats->boltzmann_factor_sq*new_fctr;
+	avgObs->acceptance_rate             = factor*avgObs->acceptance_rate             +             avgNodestats->acceptance_rate*new_fctr;
+	avgObs->acceptance_rate_insert      = factor*avgObs->acceptance_rate_insert      +      avgNodestats->acceptance_rate_insert*new_fctr;
+	avgObs->acceptance_rate_remove      = factor*avgObs->acceptance_rate_remove      +      avgNodestats->acceptance_rate_remove*new_fctr;
+	avgObs->acceptance_rate_displace    = factor*avgObs->acceptance_rate_displace    +    avgNodestats->acceptance_rate_displace*new_fctr;
+	avgObs->acceptance_rate_adiabatic   = factor*avgObs->acceptance_rate_adiabatic   +   avgNodestats->acceptance_rate_adiabatic*new_fctr;
+	avgObs->acceptance_rate_spinflip    = factor*avgObs->acceptance_rate_spinflip    +    avgNodestats->acceptance_rate_spinflip*new_fctr;
+	avgObs->acceptance_rate_volume      = factor*avgObs->acceptance_rate_volume      +      avgNodestats->acceptance_rate_volume*new_fctr;
+	avgObs->acceptance_rate_beadPerturb = factor*avgObs->acceptance_rate_beadPerturb + avgNodestats->acceptance_rate_beadPerturb*new_fctr;
+	avgObs->acceptance_rate_ptemp       = factor*avgObs->acceptance_rate_ptemp       +       avgNodestats->acceptance_rate_ptemp*new_fctr;
+	avgObs->cavity_bias_probability     = factor*avgObs->cavity_bias_probability     +     avgNodestats->cavity_bias_probability*new_fctr;
+	avgObs->cavity_bias_probability_sq  = factor*avgObs->cavity_bias_probability_sq  +  avgNodestats->cavity_bias_probability_sq*new_fctr;
+	avgObs->polarization_iterations     = factor*avgObs->polarization_iterations     +     avgNodestats->polarization_iterations*new_fctr;
+	avgObs->polarization_iterations_sq  = factor*avgObs->polarization_iterations_sq  +  avgNodestats->polarization_iterations_sq*new_fctr;
+	
 
-	avgObservables->boltzmann_factor = factor*avgObservables->boltzmann_factor 
-		+ avgNodestats->boltzmann_factor / m;
-	avgObservables->boltzmann_factor_sq = factor*avgObservables->boltzmann_factor_sq 
-		+ avgNodestats->boltzmann_factor_sq / m;
-	avgObservables->boltzmann_factor_error = sdom*sqrt(avgObservables->boltzmann_factor_sq 
-		- avgObservables->boltzmann_factor*avgObservables->boltzmann_factor);
+	const double sdom = 1.0  /  sqrt(  floor(size*(1.0+step)/corrtime)  - 1.0 );
 
-	avgObservables->acceptance_rate = factor*avgObservables->acceptance_rate 
-		+ avgNodestats->acceptance_rate / m;
-	avgObservables->acceptance_rate_insert = factor*avgObservables->acceptance_rate_insert 
-		+ avgNodestats->acceptance_rate_insert / m;
-	avgObservables->acceptance_rate_remove = factor*avgObservables->acceptance_rate_remove 
-		+ avgNodestats->acceptance_rate_remove / m;
-	avgObservables->acceptance_rate_displace = factor*avgObservables->acceptance_rate_displace 
-		+ avgNodestats->acceptance_rate_displace / m;
-	avgObservables->acceptance_rate_adiabatic = factor*avgObservables->acceptance_rate_adiabatic 
-		+ avgNodestats->acceptance_rate_adiabatic / m;
-	avgObservables->acceptance_rate_spinflip = factor*avgObservables->acceptance_rate_spinflip 
-		+ avgNodestats->acceptance_rate_spinflip / m;
-	avgObservables->acceptance_rate_volume = factor*avgObservables->acceptance_rate_volume 
-		+ avgNodestats->acceptance_rate_volume / m;
-	avgObservables->acceptance_rate_ptemp = factor*avgObservables->acceptance_rate_ptemp 
-		+ avgNodestats->acceptance_rate_ptemp / m;
+	avgObs->boltzmann_factor_error = sdom * sqrt(avgObs->boltzmann_factor_sq
+		- avgObs->boltzmann_factor * avgObs->boltzmann_factor);
 
-	avgObservables->cavity_bias_probability = factor*avgObservables->cavity_bias_probability 
-		+ avgNodestats->cavity_bias_probability / m;
-	avgObservables->cavity_bias_probability_sq = factor*avgObservables->cavity_bias_probability_sq 
-		+ avgNodestats->cavity_bias_probability_sq / m;
-	avgObservables->cavity_bias_probability_error = sdom*sqrt(avgObservables->cavity_bias_probability_sq 
-		- avgObservables->cavity_bias_probability*avgObservables->cavity_bias_probability);
+	avgObs->cavity_bias_probability_error = sdom * sqrt(avgObs->cavity_bias_probability_sq
+		- avgObs->cavity_bias_probability * avgObs->cavity_bias_probability);
+	
+	avgObs->polarization_iterations_error = sdom*sqrt(avgObs->polarization_iterations_sq 
+		- avgObs->polarization_iterations*avgObs->polarization_iterations);
 
-	avgObservables->polarization_iterations = factor*avgObservables->polarization_iterations 
-		+ avgNodestats->polarization_iterations / m;
-	avgObservables->polarization_iterations_sq = factor*avgObservables->polarization_iterations_sq 
-		+ avgNodestats->polarization_iterations_sq / m;
-	avgObservables->polarization_iterations_error = sdom*sqrt(avgObservables->polarization_iterations_sq 
-		- avgObservables->polarization_iterations*avgObservables->polarization_iterations);
 }

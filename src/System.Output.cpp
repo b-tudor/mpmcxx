@@ -319,6 +319,11 @@ int System::write_averages( const char *sysID ) {
 			sprintf( linebuf, "/ %.5lf PT", averages->acceptance_rate_ptemp);
 			Output::out(linebuf);
 		}
+		if (averages->acceptance_rate_beadPerturb > 0.0) {
+			sprintf(linebuf, "/ %.5lf BEAD", averages->acceptance_rate_beadPerturb);
+			Output::out(linebuf);
+		}
+		
 		Output::out(")\n");
 	}
 
@@ -535,47 +540,47 @@ int System::write_averages( const char *sysID ) {
 void System::track_ar(nodestats_t *ns) {
 
 	if(ns->accept + ns->reject)
-		ns->acceptance_rate = ((double)ns->accept) / ((double)(ns->accept + ns->reject));
+		ns->acceptance_rate = ns->accept / ((double)(ns->accept) + ns->reject);
 	else
 		ns->acceptance_rate = 0;
 
 	if(ns->accept_insert + ns->reject_insert)
-		ns->acceptance_rate_insert = ((double)ns->accept_insert) / ((double)(ns->accept_insert + ns->reject_insert));
+		ns->acceptance_rate_insert = ns->accept_insert / ((double)(ns->accept_insert) + ns->reject_insert);
 	else
 		ns->acceptance_rate_insert = 0;
 
 	if(ns->accept_remove + ns->reject_remove)
-		ns->acceptance_rate_remove = ((double)ns->accept_remove) / ((double)(ns->accept_remove + ns->reject_remove));
+		ns->acceptance_rate_remove = ns->accept_remove / ((double)(ns->accept_remove) + ns->reject_remove);
 	else
 		ns->acceptance_rate_remove = 0;
 
 	if(ns->accept_displace + ns->reject_displace)
-		ns->acceptance_rate_displace = ((double)ns->accept_displace) / ((double)(ns->accept_displace + ns->reject_displace));
+		ns->acceptance_rate_displace = ns->accept_displace / ((double)(ns->accept_displace) + ns->reject_displace);
 	else
 		ns->acceptance_rate_displace = 0;
 
 	if(ns->accept_adiabatic + ns->reject_adiabatic)
-		ns->acceptance_rate_adiabatic = ((double)ns->accept_adiabatic) / ((double)(ns->accept_adiabatic + ns->reject_adiabatic));
+		ns->acceptance_rate_adiabatic = ns->accept_adiabatic / ((double)(ns->accept_adiabatic) + ns->reject_adiabatic);
 	else
 		ns->acceptance_rate_adiabatic = 0;
 
 	if(ns->accept_spinflip + ns->reject_spinflip)
-		ns->acceptance_rate_spinflip = ((double)ns->accept_spinflip) / ((double)(ns->accept_spinflip + ns->reject_spinflip));
+		ns->acceptance_rate_spinflip = ns->accept_spinflip / ((double)(ns->accept_spinflip) + ns->reject_spinflip);
 	else
 		ns->acceptance_rate_spinflip = 0;
 
 	if(ns->accept_volume + ns->reject_volume)
-		ns->acceptance_rate_volume = ((double)ns->accept_volume) / ((double)(ns->accept_volume + ns->reject_volume));
+		ns->acceptance_rate_volume = ns->accept_volume / ((double)(ns->accept_volume) + ns->reject_volume);
 	else
 		ns->acceptance_rate_volume = 0;
 
 	if(ns->accept_ptemp + ns->reject_ptemp)
-		ns->acceptance_rate_ptemp = ((double)ns->accept_ptemp) / ((double)(ns->accept_ptemp + ns->reject_ptemp));
+		ns->acceptance_rate_ptemp = ns->accept_ptemp / ((double)(ns->accept_ptemp) + ns->reject_ptemp);
 	else
 		ns->acceptance_rate_ptemp = 0;
 
 	if (ns->accept_beadPerturb + ns->reject_beadPerturb)
-		ns->acceptance_rate_beadPerturb = ((double)ns->accept_beadPerturb) / ((double)(ns->accept_beadPerturb + ns->reject_beadPerturb));
+		ns->acceptance_rate_beadPerturb = ns->accept_beadPerturb / ((double)(ns->accept_beadPerturb) + ns->reject_beadPerturb);
 	else
 		ns->acceptance_rate_beadPerturb = 0;
 }
@@ -583,39 +588,39 @@ void System::track_ar(nodestats_t *ns) {
 
 
 // update node statistics related to the processing
-void System::update_nodestats( nodestats_t *nodestats, avg_nodestats_t *avg_nodestats ) {
+void System::update_nodestats( nodestats_t *nstats, avg_nodestats_t *avg_ns ) {
 
 	static int counter = 0;
-	double factor;
+	double    quantity = 0;
+	
+	++counter;
+		
+	double factor   = (counter - 1.0) / counter;   // Weight current average carries in new/updated average
+	double new_fctr =            1.0  / counter;   // Weight new data will carries in the average
 
-	counter++;
-	factor = ((double)(counter - 1))/((double)(counter));
+	quantity = nstats->boltzmann_factor;
+	avg_ns->boltzmann_factor           = factor*avg_ns->boltzmann_factor           +          quantity*new_fctr;
+	avg_ns->boltzmann_factor_sq        = factor*avg_ns->boltzmann_factor_sq        + quantity*quantity*new_fctr;
 
-	avg_nodestats->boltzmann_factor = factor*avg_nodestats->boltzmann_factor 
-		+ nodestats->boltzmann_factor / ((double)counter);
-	avg_nodestats->boltzmann_factor_sq = factor*avg_nodestats->boltzmann_factor_sq 
-		+ nodestats->boltzmann_factor*nodestats->boltzmann_factor / ((double)counter);
+	quantity = nstats->cavity_bias_probability;
+	avg_ns->cavity_bias_probability    = factor*avg_ns->cavity_bias_probability    +          quantity*new_fctr;
+	avg_ns->cavity_bias_probability_sq = factor*avg_ns->cavity_bias_probability_sq + quantity*quantity*new_fctr;
 
-	// these really aren't averages, but accumulative values
-	avg_nodestats->acceptance_rate = nodestats->acceptance_rate;
-	avg_nodestats->acceptance_rate_insert = nodestats->acceptance_rate_insert;
-	avg_nodestats->acceptance_rate_remove = nodestats->acceptance_rate_remove;
-	avg_nodestats->acceptance_rate_displace = nodestats->acceptance_rate_displace;
-	avg_nodestats->acceptance_rate_adiabatic = nodestats->acceptance_rate_adiabatic;
-	avg_nodestats->acceptance_rate_spinflip = nodestats->acceptance_rate_spinflip;
-	avg_nodestats->acceptance_rate_volume = nodestats->acceptance_rate_volume;
-	avg_nodestats->acceptance_rate_ptemp = nodestats->acceptance_rate_ptemp;
-	avg_nodestats->acceptance_rate_beadPerturb = nodestats->acceptance_rate_beadPerturb;
+	quantity = nstats->polarization_iterations;
+	avg_ns->polarization_iterations    = factor*avg_ns->polarization_iterations    +          quantity*new_fctr;
+	avg_ns->polarization_iterations_sq = factor*avg_ns->polarization_iterations_sq + quantity*quantity*new_fctr;
 
-	avg_nodestats->cavity_bias_probability = factor*avg_nodestats->cavity_bias_probability 
-		+ nodestats->cavity_bias_probability / ((double)counter);
-	avg_nodestats->cavity_bias_probability_sq = factor*avg_nodestats->cavity_bias_probability_sq 
-		+ nodestats->cavity_bias_probability*nodestats->cavity_bias_probability / ((double)counter);
+	// the remaining items aren't really averages, but accumulative values
+	avg_ns->acceptance_rate             = nstats->acceptance_rate;
+	avg_ns->acceptance_rate_insert      = nstats->acceptance_rate_insert;
+	avg_ns->acceptance_rate_remove      = nstats->acceptance_rate_remove;
+	avg_ns->acceptance_rate_displace    = nstats->acceptance_rate_displace;
+	avg_ns->acceptance_rate_adiabatic   = nstats->acceptance_rate_adiabatic;
+	avg_ns->acceptance_rate_spinflip    = nstats->acceptance_rate_spinflip;
+	avg_ns->acceptance_rate_volume      = nstats->acceptance_rate_volume;
+	avg_ns->acceptance_rate_ptemp       = nstats->acceptance_rate_ptemp;
+	avg_ns->acceptance_rate_beadPerturb = nstats->acceptance_rate_beadPerturb;
 
-	avg_nodestats->polarization_iterations = factor*avg_nodestats->polarization_iterations 
-		+ nodestats->polarization_iterations / ((double)counter);
-	avg_nodestats->polarization_iterations_sq = factor*avg_nodestats->polarization_iterations_sq 
-		+ nodestats->polarization_iterations*nodestats->polarization_iterations / ((double)counter);
 }
 
 
@@ -760,15 +765,18 @@ FILE * System::open_traj_file() {
 		//open files for append
 	if( traj_output ) {
 
+		if (mpi) {
+			#ifdef _MPI // each node will write it's own file
+				if (parallel_tempering)
+					filename = Output::make_filename(traj_output, ptemp->index[rank]); //append bath index to filename
+				else
+					filename = Output::make_filename(traj_output, rank); //append core index to filename
+			#endif
 
-		#ifdef _MPI // each node will write it's own file
-			if ( parallel_tempering )
-				filename = Output::make_filename( traj_output, ptemp->index[rank] ); //append bath index to filename
-			else 
-				filename = Output::make_filename( traj_output, rank ); //append core index to filename
-		#else
+		} else {
+
 			filename = traj_output;
-		#endif //MPI
+		}
 
 
 
@@ -780,8 +788,9 @@ FILE * System::open_traj_file() {
 			fp = SafeOps::openFile(filename, "a", __LINE__, __FILE__ );
 		}
 
+		
 		#ifdef _MPI
-			free(filename);
+		if (mpi) { free(filename); }
 		#endif
 
 		return fp;
@@ -813,22 +822,23 @@ int System::write_molecules_wrapper( char * filename ) {
 
 			//move most recent state file to file.last
 			sprintf(filenameold, "%s.last", filenameno);
-			 successful_rename = rename( filenameno, filenameold );
+			successful_rename = rename( filenameno, filenameold );
 
-			//open the file and free the filename string
-			fp = SafeOps::openFile( filenameno, "w", __LINE__, __FILE__ );
-			free( filenameno );
+			if (successful_rename) {
+				//open the file and free the filename string
+				fp = SafeOps::openFile(filenameno, "w", __LINE__, __FILE__);
+				free(filenameno);
 
-			// we write files one at a time to avoid disk congestion
-			for ( j=0; j<size; j++ ) {
-				MPI_Barrier(MPI_COMM_WORLD);
-				if (j == rank)
-					rval = write_molecules(fp);
+				// we write files one at a time to avoid disk congestion
+				for (j = 0; j < size; j++) {
+					MPI_Barrier(MPI_COMM_WORLD);
+					if (j == rank)
+						rval = write_molecules(fp);
+				}
+
+				//free the file pointer
+				fclose(fp);
 			}
-
-			//free the file pointer
-			fclose(fp);
-
 		#endif //non-MPI
 
 	} else {
@@ -837,15 +847,16 @@ int System::write_molecules_wrapper( char * filename ) {
 		sprintf( filenameold, "%s.last", filename );
 		successful_rename = rename( filename, filenameold );
 
-		//open the new file
-		fp = SafeOps::openFile( filename, "w", __LINE__, __FILE__ );
+		if (successful_rename) {
+			//open the new file
+			fp = SafeOps::openFile(filename, "w", __LINE__, __FILE__);
 
-		//write the file
-		rval = write_molecules(fp);
+			//write the file
+			rval = write_molecules(fp);
 
-		//free the file pointer
-		fclose(fp);
-
+			//free the file pointer
+			fclose(fp);
+		}
 	}
 
 	return rval;

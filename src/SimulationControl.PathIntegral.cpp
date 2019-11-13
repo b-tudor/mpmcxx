@@ -229,12 +229,6 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 		write_PI_frame();
 
 
-	//  if (sys.calc_hist) {
-	//  	system->zero_grid(sys.grids->histogram->grid);
-	//  	system->population_histogram();
-	//  }
-
-
 	// copy observables and avgs to the mpi send buffer
 	// histogram array is at the end of the message
 	std::for_each(systems.begin(), systems.end(), [](System *SYS) {
@@ -259,30 +253,30 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 	
 	if (mpi) {
 
-		
-		for (int j = 0; j < size; j++) {
-			#ifdef _MPI
+		#ifdef _MPI
+			for (int j = 0; j < size; j++) {
+			
 				MPI_Barrier(MPI_COMM_WORLD);
-			#endif
-			// Write output files, one at a time to avoid disk congestion
-			if (j == rank) {
+				// Write output files, one at a time to avoid disk congestion
+				if (j == rank) {
 
-				// write trajectory files for each node
-				system->write_states();
+					// write trajectory files for each node
+					system->write_states();
 
-				// write restart files for each node
-				if (system->write_molecules_wrapper(system->pqr_restart) < 0) {
-					Output::err("MC: could not write restart state to disk\n");
-					throw unknown_file_error;
-				}
+					// write restart files for each node
+					if (system->write_molecules_wrapper(system->pqr_restart) < 0) {
+						Output::err("MC: could not write restart state to disk\n");
+						throw unknown_file_error;
+					}
 
-				// dipole/field data for each node
-				if (sys.polarization) {
-					systems[j]->write_dipole();
-					systems[j]->write_field();
+					// dipole/field data for each node
+					if (sys.polarization) {
+						systems[j]->write_dipole();
+						systems[j]->write_field();
+					}
 				}
 			}
-		}
+		#endif
 	}
 	else {
 
@@ -349,7 +343,7 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 	
 	
 	if( ! rank )
-		std::memset(system->mpi_data.rcv_strct, 0, (size_t) size * system->mpi_data.msgsize);
+		std::memset(system->mpi_data.rcv_strct, 0, (size_t) (mpi?size:nSys) * system->mpi_data.msgsize);
 
 	if (mpi) {
 		#ifdef _MPI
@@ -358,7 +352,7 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 			MPI_Gather( &(system->temperature), 1, MPI_DOUBLE, system->mpi_data.temperature, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 		#endif
 	} else {
-		for (size_t i = 0; i < systems.size(); i++) {
+		for (size_t i = 0; i < nSys; i++) {
 			// ...or if single-threaded, copy data from the each of the send structs into the appropriate part of the receive struct manually
 			std::memcpy( system->mpi_data.rcv_strct + i * system->mpi_data.msgsize, systems[i]->mpi_data.snd_strct, system->mpi_data.msgsize);
 			if(sys.parallel_tempering)
@@ -373,7 +367,7 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 		system->clear_avg_nodestats();
 
 		//loop for each core -> shift data into variable_mpi, then average into avg_observables
-		for( size_t j = 0; j < size; j++ ) {
+		for( size_t j = 0; j <  (mpi?size:nSys); j++ ) {
 			// copy from the mpi buffer
 			std::memcpy( systems[0]->mpi_data.observables,   systems[0]->mpi_data.rcv_strct  +  j * systems[0]->mpi_data.msgsize,  sizeof(System::observables_t )); // copy observable data into observables struct, for one system at a time
 			std::memcpy( systems[0]->mpi_data.avg_nodestats, systems[0]->mpi_data.rcv_strct  +  j * systems[0]->mpi_data.msgsize + sizeof(System::observables_t), sizeof(System::avg_nodestats_t )); // ditto for avg_nodestates
@@ -665,9 +659,9 @@ double SimulationControl::PI_calculate_energy() {
 	const double N = systems[0]->countN(); // Number of sorbate (or moveable) molecules in the system
 	const double beta  = 1.0 / (kB * systems[0]->temperature); //  1/kT
 	const double inv_kB = 1.0 /  kB; // for converting Joules -> Kelvin
-	double energy_estimate_term1 = 0.5 * (d * N * nSys * systems[0]->temperature);  // (Kelvin) replace temp with 1/Beta for Joules
-	double energy_estimate_term2 = inv_kB * (nSys*PI_chain_mass_length2_ENTIRE_SYSTEM() / (2.0 * beta * beta * hBar2)); // (Kelvin)
-	double KE = energy_estimate_term1 - energy_estimate_term2;
+	double energy_estimator_term1 = 0.5 * (d * N * nSys * systems[0]->temperature);  // (Kelvin) replace temp with 1/Beta for Joules
+	double energy_estimator_term2 = inv_kB * (nSys*PI_chain_mass_length2_ENTIRE_SYSTEM() / (2.0 * beta * beta * hBar2)); // (Kelvin)
+	double KE = energy_estimator_term1 - energy_estimator_term2;
 	sys.observables->kinetic_energy = KE;
 	sys.observables->pi_energy = KE + sys.observables->energy;
 
