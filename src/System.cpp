@@ -41,55 +41,42 @@ System::~System() {
 	// * sorbateInfo 
 	// * sorbateGlobal 
 	// * checkpoint;
-	if( sorbateCount > 1 )
-		free( sorbateGlobal );
+	if (sorbateCount > 1 && sorbateGlobal) { 
+		SafeOps::free(sorbateGlobal); sorbateGlobal = nullptr; 
+	}
 
 	if( !rank ) {
-		if(fp_energy)        fclose(fp_energy);
-		if(fp_energy_csv)    fclose(fp_energy_csv);
-		if(fp_field)         fclose(fp_field);
-		if(fp_histogram)     fclose(fp_field);
-		if(fp_frozen)        fclose(fp_frozen);
-		if(fp_traj_replay)   fclose(fp_traj_replay);
-		if(fp_surf)          fclose(fp_surf);
+		if (fp_energy)      { fclose(fp_energy);           fp_energy = nullptr; }
+		if (fp_energy_csv)  { fclose(fp_energy_csv);   fp_energy_csv = nullptr; }
+		if (fp_field)       { fclose(fp_field);             fp_field = nullptr; }
+		if (fp_histogram)   { fclose(fp_field);         fp_histogram = nullptr; }
+		if (fp_frozen)      { fclose(fp_frozen);           fp_frozen = nullptr; }
+		if (fp_traj_replay) { fclose(fp_traj_replay); fp_traj_replay = nullptr; }
+		if (fp_surf)        { fclose(fp_surf);               fp_surf = nullptr; }
 	}
 
-	fp_energy      = nullptr;
-	fp_energy_csv  = nullptr;
-	fp_field       = nullptr;
-	fp_histogram   = nullptr;
-	fp_frozen      = nullptr;
-	fp_traj_replay = nullptr;
-	fp_surf        = nullptr;
-
-	if(nodestats)        free( nodestats );
-	if(avg_nodestats)    free( avg_nodestats );
-	if(observables)      free( observables );
-    if(avg_observables)  free( avg_observables ); 
-    if(grids) {
-		if(grids->histogram)
-			free( grids->histogram );
-		if(grids->avg_histogram)
-			free( grids->avg_histogram );
-		free( grids );
+	if (nodestats)       { SafeOps::free(nodestats);      }
+	if (avg_nodestats)   { SafeOps::free(avg_nodestats);  }
+	if (observables)     { SafeOps::free(observables);    }
+	if (avg_observables) { SafeOps::free(avg_observables);}
+    
+	if(grids) {
+		if (grids->histogram)     { SafeOps::free(grids->histogram);     }
+		if (grids->avg_histogram) { SafeOps::free(grids->avg_histogram); }
+		SafeOps::free(grids);
 	}
 	if( checkpoint ) {
-		if(checkpoint->observables)
-			free( checkpoint->observables );
-		free( checkpoint );
+		if (checkpoint->observables) { SafeOps::free(checkpoint->observables); }
+		SafeOps::free(checkpoint);
 	}
-	if(mpi_data.rcv_strct ) 
-		free(mpi_data.rcv_strct);
-	if( mpi_data.temperature )
-		free(mpi_data.temperature);
-	if( mpi_data.snd_strct)
-		free(mpi_data.snd_strct);
-	if( mpi_data.observables )
-		free(mpi_data.observables);
-	if( mpi_data.avg_nodestats)
-		free(mpi_data.avg_nodestats);
-	if (mpi_data.sinfo && (sorbateCount > 1))
-		free(mpi_data.sinfo);
+	if (mpi_data.rcv_strct)     { SafeOps::free(mpi_data.rcv_strct);     }
+	if (mpi_data.temperature)   { SafeOps::free(mpi_data.temperature);   }
+	if (mpi_data.snd_strct)     { SafeOps::free(mpi_data.snd_strct);     }
+	if (mpi_data.observables)   { SafeOps::free(mpi_data.observables);   }
+	if (mpi_data.avg_nodestats) { SafeOps::free(mpi_data.avg_nodestats); }
+	if (mpi_data.sinfo && (sorbateCount > 1)) {
+		SafeOps::free(mpi_data.sinfo);
+	}
 };
 
 
@@ -186,8 +173,8 @@ System::System() {
 
 
 	// RNG
-	//preset_seed_on               = 0;  //for manual specification of random seed
-	//preset_seed                  = 0;
+	preset_seed_on               = 0;  //for manual specification of random seed
+	preset_seed                  = 0;
 	
 	
 	read_pqr_box_on              = 0; //read box basis from pqr
@@ -1013,7 +1000,7 @@ void System::read_molecules( FILE *fp ) {
 				molecule_ptr = molecule_ptr->next;
 				SafeOps::calloc(molecule_ptr->atoms, 1, sizeof(Atom), __LINE__, __FILE__ );
 				prev_atom_ptr->next = nullptr;
-				free(atom_ptr);
+				SafeOps::free(atom_ptr);
 				atom_ptr = molecule_ptr->atoms;
 			}
 
@@ -1077,7 +1064,7 @@ void System::read_molecules( FILE *fp ) {
 
 	// terminate the atom list 
 	prev_atom_ptr->next = nullptr;
-	free( atom_ptr );
+	SafeOps::free( atom_ptr );
 
 	// scan the list, make sure that there is at least one moveable molecule 
 	moveable = 0;
@@ -1101,8 +1088,8 @@ void System::read_molecules( FILE *fp ) {
 		}
 	}
 	if (!atom_counter) {
-		free(molecules);
-		free(molecule_ptr);
+		SafeOps::free(molecules);
+		SafeOps::free(molecule_ptr);
 		throw molecule_wo_atoms;
 	}
 
@@ -1224,8 +1211,8 @@ void System::rebuild_arrays () {
 	Molecule * molecule_ptr;
 	Atom * atom_ptr;
 
-	free( atom_array );
-	free( molecule_array );
+	SafeOps::free( atom_array );
+	SafeOps::free( molecule_array );
 
 	//allocate the arrays
 	SafeOps::calloc( molecule_array, natoms, sizeof( Molecule *), __LINE__, __FILE__ );
@@ -1785,14 +1772,14 @@ void System::thole_resize_matrices() {
 
 	// Grow A matricies by free/malloc (to prevent fragmentation) free the A matrix
 	for (i=0; i < oldN; i++) 
-		free( A_matrix[i] );
-	free( A_matrix );
+		SafeOps::free( A_matrix[i] );
+	SafeOps::free( A_matrix );
 
 	// If not iterative, free the B matrix
 	if( ! polar_iterative ) {
 		for (i=0; i < oldN; i++)
-			free( B_matrix[i] );
-		free( B_matrix );
+			SafeOps::free( B_matrix[i] );
+		SafeOps::free( B_matrix );
 	}
 
 	// (RE)allocate the A matrix
@@ -1879,7 +1866,7 @@ void System::calc_system_mass() {
 
 	Molecule * molecule_ptr;
 	
-	observables->total_mass = 0;
+	observables-> total_mass = 0;
 	observables->frozen_mass = 0;
 
 	for(molecule_ptr = molecules; molecule_ptr; molecule_ptr = molecule_ptr->next) {
@@ -1887,8 +1874,6 @@ void System::calc_system_mass() {
 		if( molecule_ptr->frozen || molecule_ptr->adiabatic )
 			observables->frozen_mass += molecule_ptr->mass;
 	}
-
-	return;
 }
 
 

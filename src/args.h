@@ -6,12 +6,22 @@
 #include <iostream>
 #include <sstream>
 #include "Output.h"
+#include "SafeOps.h"
 #include "SimulationControl.h"
 
 #ifdef __unix__
 #include <unistd.h>
 #include <signal.h>
 #endif
+
+
+#ifndef EXIT_SUCCESS
+#define EXIT_SUCCESS 1
+#endif
+#ifndef EXIT_FAILURE 
+#define EXIT_FAILURE 0
+#endif
+
 
 extern int rank;
 extern int size;
@@ -80,7 +90,7 @@ void displayUsageAndDie(char* progname, params *p) {
 		#endif
 	}
 	if (p->in_filename)
-		free(p->in_filename);
+		SafeOps::free(p->in_filename);
 
 	die(EXIT_FAILURE);
 }
@@ -144,10 +154,15 @@ void signal_handler(int sigtype) {
 
 // Kill MPI before quitting, when neccessary
 void die(int code) {
+
 	#ifdef _MPI
 	if (mpi) { MPI_Finalize(); }
 	#endif
-	exit(code);
+
+	if (code)
+		exit(EXIT_SUCCESS);
+	else
+		exit(EXIT_FAILURE);
 }
 
 

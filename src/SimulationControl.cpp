@@ -27,11 +27,10 @@ SimulationControl::~SimulationControl() {
 		delete systems[s];
 		systems[s] = nullptr;
 	}
-	if (net_potentials       ) free(net_potentials);
-	if (rd_energies          ) free(rd_energies);
-	if (coulombic_energies   ) free(coulombic_energies);
-	if (polarization_energies) free(polarization_energies);
-	if (vdw_energies         ) free(vdw_energies);
+	if (rd_energies          ) SafeOps::free(rd_energies          );
+	if (coulombic_energies   ) SafeOps::free(coulombic_energies   );
+	if (polarization_energies) SafeOps::free(polarization_energies);
+	if (vdw_energies         ) SafeOps::free(vdw_energies         );
 }
 SimulationControl::SimulationControl(char *inFilename, bool rAR, bool writeFrames) : report_AR(rAR), write_PI_frames(writeFrames)
 {
@@ -39,7 +38,6 @@ SimulationControl::SimulationControl(char *inFilename, bool rAR, bool writeFrame
 	nSys = 0;
 	PI_trial_chain_length = 0;
 	sys.observables       = nullptr;
-	net_potentials        = nullptr;
 	rd_energies           = nullptr;
 	coulombic_energies    = nullptr;
 	polarization_energies = nullptr;
@@ -2218,7 +2216,7 @@ bool SimulationControl::check_io_files_options() {
 						char *filename_cstr  = Output::make_filename(sys.pqr_restart, rank);
 						std::string filename = filename_cstr;
 						pqr_restart_filenames.push_back(filename);
-						free(filename_cstr);
+						SafeOps::free(filename_cstr);
 						if (j == rank) {
 							sprintf(linebuf, "SIM_CONTROL: Thread/SYSTEM %d will be writing restart configuration to ./%s\n", rank, pqr_restart_filenames[rank].c_str());
 							Output::out(linebuf);
@@ -2229,7 +2227,7 @@ bool SimulationControl::check_io_files_options() {
 					char* filename_cstr = Output::make_filename(sys.pqr_restart, rank);
 					std::string filename = filename_cstr;
 					pqr_restart_filenames.push_back(filename);
-					free(filename_cstr);
+					SafeOps::free(filename_cstr);
 					sprintf(linebuf, "SIM_CONTROL: SYSTEM %d will be writing restart configuration to ./%s\n", j, pqr_restart_filenames[j].c_str());
 					Output::out1(linebuf);
 				}
@@ -2266,7 +2264,7 @@ bool SimulationControl::check_io_files_options() {
 					char *filename_cstr = Output::make_filename(sys.pqr_output, rank);
 					std::string filename = filename_cstr;
 					pqr_final_filenames.push_back(filename);
-					free(filename_cstr);
+					SafeOps::free(filename_cstr);
 					if (j == rank) {
 						sprintf(linebuf, "SIM_CONTROL: Thread/SYSTEM %d will be writing final configuration to ./%s\n", rank, pqr_final_filenames[rank].c_str());
 						Output::out(linebuf);
@@ -2277,7 +2275,7 @@ bool SimulationControl::check_io_files_options() {
 					char * filename_cstr = Output::make_filename(sys.pqr_output, j);
 					std::string filename = filename_cstr;
 					pqr_final_filenames.push_back(filename);
-					free(filename_cstr);
+					SafeOps::free(filename_cstr);
 					sprintf(linebuf, "SIM_CONTROL: SYSTEM %d will be writing final configuration to ./%s\n", j, pqr_final_filenames[j].c_str());
 					Output::out(linebuf);
 				}
@@ -2315,10 +2313,7 @@ bool SimulationControl::check_io_files_options() {
 					char* filename_cstr = Output::make_filename(sys.pqr_restart, rank);
 					std::string basename = filename_cstr;
 					filename = basename + ".last";
-					free(filename_cstr);
-					//SafeOps::calloc(filename, (int)strlen(basename) + 16, sizeof(char), __LINE__, __FILE__);
-					//sprintf(filename, "%s.last", basename);
-					//free(basename);
+					SafeOps::free(filename_cstr);
 					test = fopen(filename.c_str(), "r");
 					if (test) {
 						fclose(test);

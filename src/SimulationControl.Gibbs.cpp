@@ -338,16 +338,16 @@ bool SimulationControl::Gibbs_mc() {
 		}
 
 		if (!rank) {
-			free(mpi[i].rcv_strct);
-			free(mpi[i].temperature);
+			SafeOps::free(mpi[i].rcv_strct);
+			SafeOps::free(mpi[i].temperature);
 		}
 
 		if (systems[i]->sorbateCount > 1)
-			free(mpi[i].sinfo);
+			SafeOps::free(mpi[i].sinfo);
 
-		free(mpi[i].snd_strct);
-		free(mpi[i].observables);
-		free(mpi[i].avg_nodestats);
+		SafeOps::free(mpi[i].snd_strct);
+		SafeOps::free(mpi[i].observables);
+		SafeOps::free(mpi[i].avg_nodestats);
 	}
 
 	return ok;

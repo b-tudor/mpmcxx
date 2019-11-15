@@ -33,68 +33,67 @@ bool SimulationControl::PI_nvt_mc() {
 	else std::for_each(systems.begin(), systems.end(), [this](System *SYS) {
 		// in non-MPI runs, the mpi data structs will still be used to shuttle
 		// data between systems, in order to simplify coding  on the MPI end.
-		SYS->setup_mpi_dataStructs(nSys);
+		SYS->setup_mpi_dataStructs(nSys);			
 	});
 
-	
-	std::for_each( systems.begin(), systems.end(), [](System *SYS) {
-		if(SYS->cavity_bias)
-			SYS->cavity_update_grid(); // update the grid for the first time 
-		SYS->observables->volume = SYS->pbc.volume; // set volume observable
+
+	std::for_each(systems.begin(), systems.end(), [this](System* SYS) {
+
+		// distribute initial temperature to all systems
+		SYS->observables->temperature = sys.temperature;
+
+		// update the grid for the first time
+		if (SYS->cavity_bias) SYS->cavity_update_grid();
+
+		// set volume observable
+		SYS->observables->volume = SYS->pbc.volume;
 	});
 
-	
+
 	if( ! sys.parallel_restarts )
 		// If not using a config file from a previous PI run, we perform an initial bead perturbation
 		// so as not to drop the molecules into the system out of equilibrium wrt thermal wavelength
 		PI_perturb_bead_COMs_ENTIRE_SYSTEM();
 
-	BFC.potential.init = PI_calculate_potential();
-	// solve for the rotational energy levels 
-	//if (systems[rank]->quantum_rotation) quantum_system_rotational_energies(systems[rank]);
+	// Perform initial energy calculations
+	PI_calculate_energy();
+	BFC.potential.init = sys.observables->potential();
 	if( ! std::isfinite(BFC.potential.init) )
 		BFC.potential.init = MAXVALUE; // be a bit forgiving of the initial state 
 	
-	PI_calculate_energy();
 	
-
-	////////////////////////////////////////////////////////////
-	// Need to compute the energy that we want to report here 
-	////////////////////////////////////////////////////////////
-	
-
 
 	// write initial observables to stdout and logs
 	if(  ! rank  ) {
-		system->open_files(); // open output files 
-		system->calc_system_mass();
+		sys.open_files(); // open output files 
+		PI_calc_system_mass();
+		
 		// average in the initial values once  (we don't want to double-count the initial state when using MPI)
-		system->update_root_averages(system->observables);
+		update_root_averages();
+
 		// write initial observables exactly once
-		if (system->fp_energy)
-			system->write_observables(system->fp_energy, system->observables, system->temperature);
-		if (system->fp_energy_csv)
-			system->write_observables_csv(system->fp_energy_csv, system->observables, system->temperature);
+		if (sys.fp_energy)
+			sys.write_observables(sys.fp_energy, sys.observables, sys.temperature);
+		if (sys.fp_energy_csv)
+			sys.write_observables_csv(sys.fp_energy_csv, sys.observables, sys.temperature);
+
+		// output observables to stdout
 		Output::out("MC: initial values:\n");
-		system->write_averages();
+		sys.write_averages();
 	}
 
 
 	//  save the initial state 
 	System::backup_observables( systems );
-	move = PI_pick_NVT_move();
-
+	
 
 	// main MC loop 
 	for( sys.step=1; sys.step <= nSteps; sys.step++ ) {
 
-		// update step for each system. 
-
-		for (int i = 0; i < nSys; i++) 
-			systems[i]->step = sys.step;
+		move = PI_pick_NVT_move();
 
 		// restore the last accepted energy & chain-length-metric
-		BFC.potential.init = sys.observables->energy; // = PI_observable_energy();
+		BFC.potential.init = sys.observables->potential();
 		if (move == MOVETYPE_PERTURB_BEADS) {
 			BFC.chain_mass_len2.init = PI_chain_mass_length2();
 			BFC.orient_mu_len2.init = PI_orientational_mu_length2();
@@ -130,23 +129,22 @@ bool SimulationControl::PI_nvt_mc() {
 
 		if(   (Rando::rand() < system->nodestats->boltzmann_factor)   &&   (system->iterator_failed == 0)   ) {
 			  
-			 //  ACCEPT  //////////////////////////////////////////////////////////////////////////////////////////////
+			//  ACCEPT  //////////////////////////////////////////////////////////////////////////////////////////////
 			if (reportAR()) {
 				Output::out1("ACCEPT               ");
 				switch (move) {
 				case MOVETYPE_DISPLACE:      Output::out1("Displace\n"  ); break;
 				case MOVETYPE_PERTURB_BEADS: Output::out1("Bead reorg\n"); break;
 			}}
+			
+			sys.register_accept(move);
 
 			BFC.potential.current       = BFC.potential.trial;
 			BFC.chain_mass_len2.current = BFC.chain_mass_len2.trial;
 			BFC.orient_mu_len2.current  = BFC.orient_mu_len2.trial;
 
 			System::backup_observables(systems);
-
-			move = PI_pick_NVT_move();
-			system->register_accept();
-
+			
 			// Simulated Annealing
 			if (sys.simulated_annealing) {
 				if (sys.simulated_annealing_linear)	{
@@ -171,51 +169,63 @@ bool SimulationControl::PI_nvt_mc() {
 			for_each( systems.begin(), systems.end(), [](System *SYS) {
 				SYS->iterator_failed = 0; // reset the polar iterative failure flag
 				SYS->restore();            
-				SYS->register_reject();
 			});
-			move = PI_pick_NVT_move();
+			sys.register_reject(move);
+			
 		}
-
 
 
 		// perform parallel_tempering
 		if ((systems[rank]->parallel_tempering) && ((system->step % systems[rank]->ptemp_freq) == 0))
 			systems[rank]->temper_system(BFC.potential.current);
 
-		// track the acceptance_rate 
-		systems[rank]->track_ar(systems[rank]->nodestats);
-
-		// each node calculates its stats 
-		systems[rank]->update_nodestats(systems[rank]->nodestats, systems[rank]->avg_nodestats);
+		// track the acceptance_rates and compute associated stats
+		sys.track_ar(sys.nodestats);
+		sys.update_nodestats(sys.nodestats, sys.avg_nodestats);
 
 
 		// do this every correlation time, and at the very end ////////////////////////////////////////////////////////
-		if (!(system->step % system->corrtime) || (system->step == nSteps)) 
+		if(  !(sys.step % sys.corrtime)   ||   (sys.step == nSteps)) {
 			do_PI_corrtime_bookkeeping();
 
-		if (system->step == nSteps) {
-			for( int i=0; i<size; i++ ) {
-				if (mpi) {
-					#ifdef _MPI
-					MPI_Barrier(MPI_COMM_WORLD);
-					#endif
+			if (sys.step == nSteps) {
+				for (int i = 0; i < size; i++) {
+					if (mpi) {
+						#ifdef _MPI
+						MPI_Barrier(MPI_COMM_WORLD);
+						#endif
+					}
+					if (i == rank)
+						write_PI_frame();
 				}
-				if( i==rank )
-					write_PI_frame();
-		}}
+			}
+		}
+
 
 	} // main loop 
 
 
+	// Simulation has finished...
 	for_each(systems.begin(), systems.end(), [](System *SYS) {
 		if (SYS->write_molecules_wrapper( SYS->pqr_output ) < 0) {
 			Output::err("MC: could not write final state to disk\n");
 			throw unknown_file_error;
 		}
 	});
-
-
+	
 	return ok;
+}
+
+
+
+
+void SimulationControl::update_root_averages() {
+	sys.observables->N           = systems[rank]->observables->N;
+	sys.observables->volume      = systems[rank]->observables->volume;
+	sys.observables->temperature = systems[rank]->observables->temperature;
+	sys.observables->spin_ratio  = systems[rank]->observables->spin_ratio;
+	sys.observables->NU          = systems[rank]->observables->NU;
+	sys.update_root_averages(sys.observables);
 }
 
 
@@ -540,7 +550,6 @@ void SimulationControl::initialize_PI_NVT_Systems() {
 
 	// Create a system object for each bead on the Path Integral loop, and populate those systems with the system geometry. 
 
-	
 	for( int i=0; i<nSys; i++ ) {
 		
 		systems.push_back( new System(sys) );
@@ -587,8 +596,24 @@ void SimulationControl::initialize_PI_NVT_Systems() {
 			systems[i]->thole_resize_matrices();		
 	}
 
+	
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Allocate memory for MPI-energy-transfers / multi-system-energy-bookkeeping / MC algo stats
+	// The following allocations are freed in ~SimulationControl():
+	SafeOps::calloc(          rd_energies, nSys, sizeof(double), __LINE__, __FILE__);
+	SafeOps::calloc(   coulombic_energies, nSys, sizeof(double), __LINE__, __FILE__);
+	SafeOps::calloc(polarization_energies, nSys, sizeof(double), __LINE__, __FILE__);
+	SafeOps::calloc(         vdw_energies, nSys, sizeof(double), __LINE__, __FILE__);
+	// The remaining allocations are freed in ~System():
+	SafeOps::calloc(    sys.observables, 1, sizeof(System::observables_t),     __LINE__, __FILE__);
+	SafeOps::calloc(sys.avg_observables, 1, sizeof(System::avg_observables_t), __LINE__, __FILE__);
+	SafeOps::calloc(      sys.nodestats, 1, sizeof(System::nodestats_t),       __LINE__, __FILE__);
+	SafeOps::calloc(  sys.avg_nodestats, 1, sizeof(System::avg_nodestats_t),   __LINE__, __FILE__);
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 	#ifdef _MPI
-	if (mpi) MPI_Barrier(MPI_COMM_WORLD);
+		if (mpi) MPI_Barrier(MPI_COMM_WORLD);
 	#endif	
 
 	Output::out1("SIM_CONTROL: finished allocating pair lists\n");
@@ -651,21 +676,20 @@ void SimulationControl::write_PI_frame() {
 
 
 double SimulationControl::PI_calculate_energy() {
-	sys.observables->pi_energy = 0.0;
-	double chain_mass_len2 = PI_chain_mass_length2_ENTIRE_SYSTEM();
-	double orient_mu_len2 = PI_orientational_mu_length2_ENTIRE_SYSTEM();
 	
-	const double d = 3.0; // dimensionality of the system
-	const double N = systems[0]->countN(); // Number of sorbate (or moveable) molecules in the system
-	const double beta  = 1.0 / (kB * systems[0]->temperature); //  1/kT
-	const double inv_kB = 1.0 /  kB; // for converting Joules -> Kelvin
-	double energy_estimator_term1 = 0.5 * (d * N * nSys * systems[0]->temperature);  // (Kelvin) replace temp with 1/Beta for Joules
-	double energy_estimator_term2 = inv_kB * (nSys*PI_chain_mass_length2_ENTIRE_SYSTEM() / (2.0 * beta * beta * hBar2)); // (Kelvin)
-	double KE = energy_estimator_term1 - energy_estimator_term2;
-	sys.observables->kinetic_energy = KE;
-	sys.observables->pi_energy = KE + sys.observables->energy;
+	// Tuckerman (2010) Statistical Mechanics: Theory and Molecular Simulation.
+	double kinetic   = PI_calculate_kinetic();      // terms 1 & 2, energy estimator.  (12.5.12)
+	double potential = PI_calculate_potential();    // term 3, energy estimator.       (12.5.12)
 
-	return sys.observables->pi_energy;
+	#ifdef QM_ROTATION
+		// solve for the rotational energy levels 
+		// if (systems[rank]->quantum_rotation) 
+		//     quantum_system_rotational_energies(systems[rank]);
+	#endif
+
+	sys.observables->energy = kinetic + potential;
+
+	return sys.observables->energy;
 }
 
 
@@ -673,37 +697,27 @@ double SimulationControl::PI_calculate_energy() {
 
 double SimulationControl::PI_calculate_potential() {
 
-	static bool first_run = true;
-	if (first_run) {
-		first_run = false;
-		// The following allocations are freed in ~SimulationControl();
-		SafeOps::calloc(      sys.observables, nSys, sizeof(System::observables_t), __LINE__, __FILE__);
-		SafeOps::calloc(       net_potentials, nSys, sizeof(double), __LINE__, __FILE__); 
-		SafeOps::calloc(          rd_energies, nSys, sizeof(double), __LINE__, __FILE__);
-		SafeOps::calloc(   coulombic_energies, nSys, sizeof(double), __LINE__, __FILE__);
-		SafeOps::calloc(polarization_energies, nSys, sizeof(double), __LINE__, __FILE__);
-		SafeOps::calloc(         vdw_energies, nSys, sizeof(double), __LINE__, __FILE__);
-	}
-	
+	// generic shorthand for whatever set of observables is relevant at the moment:
+	System::observables_t* obs; 
 
 	if (mpi) {
 
-		double potential_energy = systems[rank]->energy();
-		System::observables_t* obs = systems[rank]->observables;
+		systems[rank]->energy();
+		obs = systems[rank]->observables;
 		
 		#ifdef _MPI
-			MPI_Allgather(        &potential_energy, 1, MPI_DOUBLE,        net_potentials, 1, MPI_DOUBLE, MPI_COMM_WORLD);
-			MPI_Allgather(          &obs->rd_energy, 1, MPI_DOUBLE,           rd_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
-			MPI_Allgather(   &obs->coulombic_energy, 1, MPI_DOUBLE,    coulombic_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
-			MPI_Allgather(&obs->polarization_energy, 1, MPI_DOUBLE, polarization_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
-			MPI_Allgather(         &obs->vdw_energy, 1, MPI_DOUBLE,          vdw_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+			MPI_Allgather(           &obs->rd_energy, 1, MPI_DOUBLE,           rd_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+			MPI_Allgather(    &obs->coulombic_energy, 1, MPI_DOUBLE,    coulombic_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+			MPI_Allgather( &obs->polarization_energy, 1, MPI_DOUBLE, polarization_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+			MPI_Allgather(          &obs->vdw_energy, 1, MPI_DOUBLE,          vdw_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
 		#endif
+		//for (int s=0; s<nSys; s++)
+		//	net_potentials[s] = rd_energies[s] + coulombic_energies[s] + polarization_energies[s] + vdw_energies[s];
 
 	} else {
 		// For single-threaded systems, energy computations happen on every system
-		// This is done in two passes so that energy values will be populated in all systems...
 		for (int s = 0; s < nSys; s++) {
-			net_potentials[s]        = systems[s]->energy();
+			systems[s]->energy();
 			rd_energies[s]           = systems[s]->observables->rd_energy;
 			coulombic_energies[s]    = systems[s]->observables->coulombic_energy;
 			polarization_energies[s] = systems[s]->observables->polarization_energy;
@@ -711,35 +725,59 @@ double SimulationControl::PI_calculate_potential() {
 		}
 	}
 
-	// ...and on the second pass energies are summed and checked for infinite values.
-	sys.observables->energy = 0;
-	sys.observables->rd_energy = 0;
-	sys.observables->coulombic_energy = 0;
-	sys.observables->polarization_energy = 0;
-	sys.observables->vdw_energy = 0;
+	// Observables for the aggregate Path Integral (PI) system will be accumulated in sys.observables
+	
+	obs = sys.observables;
+
+	obs->rd_energy           = 0;
+	obs->coulombic_energy    = 0;
+	obs->polarization_energy = 0;
+	obs->vdw_energy          = 0;
 
 	for( int s=0; s < nSys; s++) {
-		double E = net_potentials[s];
-		if ( ! std::isfinite(E)) 
-			return E; // infinite energy short-circuits the sum
-		else {
-			sys.observables->energy              += E;
-			sys.observables->rd_energy           += rd_energies[s];
-			sys.observables->coulombic_energy    += coulombic_energies[s];
-			sys.observables->polarization_energy += polarization_energies[s];
-			sys.observables->vdw_energy          += vdw_energies[s];
-		}
+		obs->rd_energy           += rd_energies[s];
+		obs->coulombic_energy    += coulombic_energies[s];
+		obs->polarization_energy += polarization_energies[s];
+		obs->vdw_energy          += vdw_energies[s];
 	}
-
-	// The potential energy of the aggregate/quantum/PI system is the average of all the classical systems. This value is what we
-	// report as the "energy" in the accounting of each of the individual "classical" systems. 
-	sys.observables->energy              /= nSys;
-	sys.observables->rd_energy           /= nSys;
-	sys.observables->coulombic_energy    /= nSys;
-	sys.observables->polarization_energy /= nSys;
-	sys.observables->vdw_energy          /= nSys;
 	
-	return sys.observables->energy;
+	obs->rd_energy           /= nSys;
+	obs->coulombic_energy    /= nSys;
+	obs->polarization_energy /= nSys;
+	obs->vdw_energy          /= nSys;
+	
+	return   sys.observables->rd_energy  + sys.observables->coulombic_energy
+	       + sys.observables->vdw_energy + sys.observables->polarization_energy;
+}
+
+
+
+
+double SimulationControl::PI_calculate_kinetic() {
+	
+	const double d = 3.0; // dimensionality of the system
+	const double N = systems[0]->countN(); // Number of sorbate (or moveable) molecules in the system
+	const double beta = 1.0 / (kB * sys.temperature); //  1/kT
+
+	double chain_mass_len2 = PI_chain_mass_length2_ENTIRE_SYSTEM();
+	double  orient_mu_len2 = PI_orientational_mu_length2_ENTIRE_SYSTEM();
+	
+	// Tuckerman (2010) Statistical Mechanics: Theory and Molecular Simulation.   Eq (12.5.12)
+	double energy_estimator_term1 = 0.5 * d * N * nSys * systems[0]->temperature;  // equipartition energy in Kelvin  (12.5.12)
+	double energy_estimator_term2 = sys.temperature * nSys * PI_chain_mass_length2_ENTIRE_SYSTEM() / (2.0 * beta * hBar2); // (Kelvin)  (12.5.12)
+
+	sys.observables->kinetic_energy = energy_estimator_term1 - energy_estimator_term2;
+
+	return sys.observables->kinetic_energy;
+}
+
+
+
+
+void SimulationControl::PI_calc_system_mass() {
+	systems[rank]->calc_system_mass();
+	sys.observables->frozen_mass = systems[0]->observables->frozen_mass;
+	sys.observables-> total_mass = systems[0]->observables-> total_mass;
 }
 
 
@@ -748,7 +786,7 @@ double SimulationControl::PI_calculate_potential() {
 double SimulationControl::PI_observable_energy() {
 
 	double energy = 0;
-	for (int s = 0; s < nSys; s++)
+	for (int s=0; s<nSys; s++)
 		energy += systems[s]->observables->energy;
 
 	return energy / (double) nSys;
@@ -956,6 +994,7 @@ double SimulationControl::PI_orientational_mu_length2(std::vector<Vector3D*> &o)
 
 
 
+
 int SimulationControl::PI_pick_NVT_move() {
 // PI_pick_NVT_move() determines what move will be made next time make_move() is called and selects
 // the molecule to which said move will be applied (and creates pointers to its list location).
@@ -1110,7 +1149,7 @@ void SimulationControl::PI_insert() {
 				for (int p = 0; p < 3; p++)
 					com[p] = cavities_array[random_index].pos[p];
 				// free the insertion array
-				free(cavities_array);
+				SafeOps::free(cavities_array);
 			} // end umbrella
 
 			else {
@@ -1166,7 +1205,7 @@ void SimulationControl::PI_insert() {
 						while (pair_ptr) {
 							Pair *temp = pair_ptr;
 							pair_ptr = pair_ptr->next;
-							free(temp);
+							SafeOps::free(temp);
 						}
 					}
 				}

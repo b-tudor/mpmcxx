@@ -1,5 +1,6 @@
 #include "Atom.h"
 #include "Pair.h"
+#include "SafeOps.h"
 
 #include <cstring>
 
@@ -153,6 +154,6 @@ void Atom::recursive_free_pairs(Pair *pPair) {
 	if( pPair->next )
 		recursive_free_pairs( pPair->next );
 
-	free(pPair);
+	SafeOps::free(pPair);
 	return;
 }

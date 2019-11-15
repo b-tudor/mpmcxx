@@ -120,11 +120,11 @@ Molecule::~Molecule() {
 		int i;
 		if(system->quantum_rotation && !molecule->frozen) {
 
-			free(molecule->quantum_rotational_energies);
-			free(molecule->quantum_rotational_eigensymmetry);
+			SafeOps::free(molecule->quantum_rotational_energies);
+			SafeOps::free(molecule->quantum_rotational_eigensymmetry);
 			for(i = 0; i < system->quantum_rotation_level_max; i++)
-				free(molecule->quantum_rotational_eigenvectors[i]);
-			free(molecule->quantum_rotational_eigenvectors);
+				SafeOps::free(molecule->quantum_rotational_eigenvectors[i]);
+			SafeOps::free(molecule->quantum_rotational_eigenvectors);
 
 		}
 	#endif // QM_ROTATION
@@ -213,7 +213,7 @@ void Molecule::rotate( double x, double y, double z, double angle ) {
 	}
 
 	// free our temporary array
-	free(new_coord_array);
+	SafeOps::free(new_coord_array);
 
 }
 

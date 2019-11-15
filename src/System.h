@@ -83,14 +83,13 @@ public:
 
 	typedef struct _observables {
 		double energy,
-		       pi_energy,          // energy as computed for the entire path integral rep for the quantum system  
 		       coulombic_energy,
 		       rd_energy,
 		       polarization_energy,
 		       vdw_energy,
 		       three_body_energy,
 		       dipole_rrms,
-		       kinetic_energy,     // for NVE 
+		       kinetic_energy,     // for NVE & PI NVT
 		       temperature,        // for NVE 
 		       volume,             // for NPT
 		       N,
@@ -98,6 +97,9 @@ public:
 		       spin_ratio,         // ortho:para spin ratio 
 		       frozen_mass,
 		       total_mass;         //updated in average.c
+		       inline double potential() { 
+			       return coulombic_energy + rd_energy + polarization_energy + vdw_energy + three_body_energy;
+		       }
 	} observables_t;
 
 	typedef struct _checkpoint {
@@ -424,12 +426,14 @@ public:
 	void        volume_change();
 	static void volume_change_Gibbs( std::vector<System*> &sys );
 	void        boltzmann_factor( double initial_energy, double final_energy);
-	void        register_accept();
 	void        restore();
 	void        unupdate_pairs_insert();
 	void        unupdate_pairs_remove();
 	void        revert_volume_change();
+	void        register_accept();
+	void        register_accept(int movetype);
 	void        register_reject();
+	void        register_reject(int movetype);
 	void        temper_system( double current_energy );
 	double      mc_initial_energy();
 	mpiData     setup_mpi();

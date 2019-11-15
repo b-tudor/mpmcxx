@@ -119,16 +119,16 @@ bool System::mc() {
 	}
 
 	if(!rank) {
-		free( mpi.rcv_strct   );
-		free( mpi.temperature );
+		SafeOps::free( mpi.rcv_strct   );
+		SafeOps::free( mpi.temperature );
 	}
 
 	if( sorbateCount > 1 ) 
-		free( mpi.sinfo );
+		SafeOps::free( mpi.sinfo );
 	
-	free( mpi.snd_strct     );
-	free( mpi.observables   );
-	free( mpi.avg_nodestats );
+	SafeOps::free( mpi.snd_strct     );
+	SafeOps::free( mpi.observables   );
+	SafeOps::free( mpi.avg_nodestats );
 
 	return ok;
 }
@@ -488,9 +488,9 @@ void System::setup_mpi_dataStructs( mpiData& md, int qty ) {
 	{
 		// free our temporary eligibility lists
 		if( ptr_array_exchange )
-			free(ptr_array_exchange);
+			SafeOps::free(ptr_array_exchange);
 		if(ptr_array_adiabatic)
-			free(ptr_array_adiabatic);
+			SafeOps::free(ptr_array_adiabatic);
 
 		// if we have a molecule already backed up (from a previous accept), go ahead and free it
 		if( checkpoint->molecule_backup )
@@ -705,9 +705,9 @@ int System::pick_Gibbs_move( std::vector<System*> &sys ) {
 		for (int i = 0; i < 2; i++) {
 			// free our temporary eligibility lists
 			if (ptr_array_exchange[i])
-				free(ptr_array_exchange[i]);
+				SafeOps::free(ptr_array_exchange[i]);
 			if (ptr_array_adiabatic[i])
-				free(ptr_array_adiabatic[i]);
+				SafeOps::free(ptr_array_adiabatic[i]);
 
 			// if we have a molecule already backed up (from a previous accept), go ahead and free it
 			if( sys[i]->checkpoint->molecule_backup)
@@ -767,7 +767,7 @@ void System::make_move() {
 				for( int p = 0; p < 3; p++ )
 					com[p] = cavities_array[random_index].pos[p];
 				// free the insertion array 
-				free(cavities_array);
+				SafeOps::free(cavities_array);
 			} // end umbrella
 
 			else {
@@ -824,7 +824,7 @@ void System::make_move() {
 						while( pair_ptr ) {
 							Pair *temp = pair_ptr;
 							pair_ptr = pair_ptr->next;
-							free( temp );
+							SafeOps::free( temp );
 						}
 					}
 				}
@@ -1006,7 +1006,7 @@ void System::make_move_Gibbs(std::vector<System*> &sys) {
 						for (int p = 0; p < 3; p++)
 							com[p] = cavities_array[random_index].pos[p];
 						// free the insertion array 
-						free(cavities_array);
+						SafeOps::free(cavities_array);
 					} // end umbrella
 
 					else {
@@ -1065,7 +1065,7 @@ void System::make_move_Gibbs(std::vector<System*> &sys) {
 								while (pair_ptr) {
 									Pair *temp = pair_ptr;
 									pair_ptr = pair_ptr->next;
-									free(temp);
+									SafeOps::free(temp);
 								}
 							}
 						}
@@ -1478,11 +1478,15 @@ void System::boltzmann_factor( double initial_energy, double final_energy) {
 
 
 
-
-void System::register_accept() {
 // keep track of which specific moves were accepted
+void System::register_accept() {
+	register_accept(checkpoint->movetype);
+}
+void System::register_accept(int movetype) {
+
 	++nodestats->accept;
-	switch( checkpoint->movetype ) {
+
+	switch (movetype) {
 
 		case MOVETYPE_INSERT:
 			++nodestats->accept_insert;
@@ -1502,11 +1506,10 @@ void System::register_accept() {
 		case MOVETYPE_VOLUME:
 			++nodestats->accept_volume;
 			break;
-		case MOVETYPE_PERTURB_BEADS: 
+		case MOVETYPE_PERTURB_BEADS:
 			++nodestats->accept_beadPerturb;
 	}
 }
-
 
 
 
@@ -1620,7 +1623,7 @@ void System::unupdate_pairs_insert() {
 			}
 
 			for( int i = (m - n); i < m; i++)
-				free(pair_array[i]);
+				SafeOps::free(pair_array[i]);
 
 			// handle the end of the list
 			if((m - n) > 0)
@@ -1632,7 +1635,7 @@ void System::unupdate_pairs_insert() {
 	}
 
 	// free our temporary array
-	free(pair_array);
+	SafeOps::free(pair_array);
 }
 
 
@@ -1728,12 +1731,15 @@ void System::revert_volume_change() {
 
 
 
-
-void System::register_reject() {
 // keep track of which specific moves were rejected 
+void System::register_reject() {
+	register_reject(checkpoint->movetype);
+}
+void System::register_reject(int movetype) {
 
 	++nodestats->reject;
-	switch( checkpoint->movetype ) {
+
+	switch (movetype) {
 
 		case MOVETYPE_INSERT:
 			++nodestats->reject_insert;
@@ -1755,9 +1761,7 @@ void System::register_reject() {
 			break;
 		case MOVETYPE_PERTURB_BEADS:
 			++nodestats->reject_beadPerturb;
-
 	}
-
 }
 
 
@@ -1885,11 +1889,11 @@ void System::temper_system( double current_energy ) {
 			nodestats->reject_ptemp++;
 
 	
-		free(update_templist);
-		free(update_index);
-		free(bath2core);
-		free(is_master);
-		free(partner_list);
+		SafeOps::free(update_templist);
+		SafeOps::free(update_index);
+		SafeOps::free(bath2core);
+		SafeOps::free(is_master);
+		SafeOps::free(partner_list);
 	
 	*/
 	return;

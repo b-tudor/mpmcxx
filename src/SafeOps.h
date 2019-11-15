@@ -158,6 +158,13 @@ public:
 		ptr = tempPtr;
 	}
 
+	// Frees memory if pointer is not null, and then assigns nullptr to said pointer. 
+	template<typename T>
+	static void free( T &pointer ) {
+		if (pointer)
+			std::free(pointer);
+		pointer = nullptr;
+	}
 };
 
 

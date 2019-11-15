@@ -42,7 +42,7 @@ void System::allocate_pair_lists() {
 		}
 
 		prev_pair_ptr->next = nullptr;
-		free(pair_ptr);
+		SafeOps::free(pair_ptr);
 	}
 }
 
@@ -135,7 +135,7 @@ void System::update_pairs_remove() {
 
 			// delete n nodes from the end of the Pair list
 			for(int i = (nPairs - n); i < nPairs; i++)
-				free(pair_array[i]);
+				SafeOps::free(pair_array[i]);
 
 			// Terminate the newly truncated Pair list
 			if((nPairs - n) > 0)
@@ -147,6 +147,6 @@ void System::update_pairs_remove() {
 	}
 
 	// free our temporary array
-	free(pair_array);
+	SafeOps::free(pair_array);
 
 }

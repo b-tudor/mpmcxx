@@ -54,8 +54,8 @@ public:
 				ai[j][i] = col[j];
 		}
 
-		free(col);
-		free(indx);
+		SafeOps::free(col);
+		SafeOps::free(indx);
 
 	}
 
@@ -121,7 +121,7 @@ public:
 				a[i][j] *= dum;
 			}
 		}
-		free(vv);
+		SafeOps::free(vv);
 	}
 
 

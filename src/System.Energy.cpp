@@ -218,8 +218,8 @@ double System::vdw()
 	else lr_corr=0;
 
 	//cleanup and return
-	free(sqrtKinv);
-	free(eigvals);
+	SafeOps::free(sqrtKinv);
+	SafeOps::free(eigvals);
 	free_mtx(Cm);
 
 	return e_total - e_iso + fh_corr + lr_corr;
@@ -334,7 +334,7 @@ double System::calc_e_iso ( double * sqrtKinv, Molecule * mptr ) {
 		e_iso = eigen2energy(eigvals, Cm_iso->dim); // , temperature );
 
 		//free memory
-		free(eigvals);
+		SafeOps::free(eigvals);
 		free_mtx(Cm_iso);
 
 		//convert a.u. -> s^-1 -> K
@@ -361,10 +361,10 @@ void System::free_vdw_eiso(vdw_t * vdw_eiso_info) {
 
 	while ( i>0 ) {
 		i--;
-		free(varray[i]);
+		SafeOps::free(varray[i]);
 	}
 
-	free(varray);
+	SafeOps::free(varray);
 
 	return;
 }
@@ -418,8 +418,8 @@ System::mtx_t * System::alloc_mtx( int dim ) {
 
 
 void System::free_mtx( mtx_t * M ) {
-	free(M->val);
-	free(M);
+	SafeOps::free(M->val);
+	SafeOps::free(M);
 	return;
 }
 
@@ -529,7 +529,7 @@ double System::e2body( Atom * atom, Pair * pair, double r ) {
 	//energy -= 3*wtanh(pair->atom->omega, system->temperature);
 	energy -= 3*pair->atom->omega;
 
-	free(eigvals);
+	SafeOps::free(eigvals);
 	free_mtx(M);
 
   return energy * au2invseconds * half_hBar;
@@ -576,7 +576,7 @@ double * System::lapack_diag ( mtx_t * M, int jobtype )
 		throw lapack_error;
 	}
 
-	free(work);
+	SafeOps::free(work);
 
 	return eigvals;
 }
@@ -3036,7 +3036,7 @@ void System::induced_recip_term() {
 				} //ef_incuded over atom array
 			} //kspace	
 
-	free(aarray);
+	SafeOps::free(aarray);
 
 	return;
 }
@@ -3468,7 +3468,7 @@ int System::thole_iterative() {
 
 	// if ZODID is enabled, then stop here and just return the alpha*E dipoles
 	if (polar_zodid) {
-		free(ranked_array);
+		SafeOps::free(ranked_array);
 		return(0);
 	}
 
@@ -3489,7 +3489,7 @@ int System::thole_iterative() {
 			//set convergence failure flag
 			iterator_failed = 1;
 
-			free(ranked_array);
+			SafeOps::free(ranked_array);
 			return(iteration_counter);
 		}
 
@@ -3536,7 +3536,7 @@ int System::thole_iterative() {
 		}
 
 	} //end iterate
-	free(ranked_array);
+	SafeOps::free(ranked_array);
 
 	// return the iteration count
 	return(iteration_counter);
@@ -3704,8 +3704,8 @@ void System::thole_bmatrix_dipoles() {
 	}
 
 	// free the working arrays
-	free(mu_array);
-	free(field_array);
+	SafeOps::free(mu_array);
+	SafeOps::free(field_array);
 
 }
 

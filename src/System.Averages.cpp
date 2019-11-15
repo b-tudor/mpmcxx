@@ -11,14 +11,14 @@ void System::update_root_averages( observables_t *obs )
 
 	double particle_mass    = 0.0;
 	double curr_density     = 0.0;
-	double       gammaratio = 0;
+	double gammaratio       = 0;
 	double frozen_mass      = obs->frozen_mass;
 	
 	
 	++counter;
 
 
-	double       m = 0;
+	double m = 0;
 	if( ensemble == ENSEMBLE_NVT_GIBBS )
 		m = (double)((counter-1) / 2);
 	else

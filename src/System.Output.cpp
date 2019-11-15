@@ -599,16 +599,16 @@ void System::update_nodestats( nodestats_t *nstats, avg_nodestats_t *avg_ns ) {
 	double new_fctr =            1.0  / counter;   // Weight new data will carries in the average
 
 	quantity = nstats->boltzmann_factor;
-	avg_ns->boltzmann_factor           = factor*avg_ns->boltzmann_factor           +          quantity*new_fctr;
-	avg_ns->boltzmann_factor_sq        = factor*avg_ns->boltzmann_factor_sq        + quantity*quantity*new_fctr;
+	avg_ns->boltzmann_factor    = factor*avg_ns->boltzmann_factor    + new_fctr * quantity;
+	avg_ns->boltzmann_factor_sq = factor*avg_ns->boltzmann_factor_sq + new_fctr * quantity*quantity;
 
 	quantity = nstats->cavity_bias_probability;
-	avg_ns->cavity_bias_probability    = factor*avg_ns->cavity_bias_probability    +          quantity*new_fctr;
-	avg_ns->cavity_bias_probability_sq = factor*avg_ns->cavity_bias_probability_sq + quantity*quantity*new_fctr;
+	avg_ns->cavity_bias_probability    = factor*avg_ns->cavity_bias_probability    + new_fctr * quantity;
+	avg_ns->cavity_bias_probability_sq = factor*avg_ns->cavity_bias_probability_sq + new_fctr * quantity*quantity;
 
 	quantity = nstats->polarization_iterations;
-	avg_ns->polarization_iterations    = factor*avg_ns->polarization_iterations    +          quantity*new_fctr;
-	avg_ns->polarization_iterations_sq = factor*avg_ns->polarization_iterations_sq + quantity*quantity*new_fctr;
+	avg_ns->polarization_iterations    = factor*avg_ns->polarization_iterations    + new_fctr * quantity;
+	avg_ns->polarization_iterations_sq = factor*avg_ns->polarization_iterations_sq + new_fctr * quantity*quantity;
 
 	// the remaining items aren't really averages, but accumulative values
 	avg_ns->acceptance_rate             = nstats->acceptance_rate;
@@ -790,7 +790,7 @@ FILE * System::open_traj_file() {
 
 		
 		#ifdef _MPI
-		if (mpi) { free(filename); }
+		if (mpi) { SafeOps::free(filename); }
 		#endif
 
 		return fp;
@@ -827,7 +827,7 @@ int System::write_molecules_wrapper( char * filename ) {
 			if (successful_rename) {
 				//open the file and free the filename string
 				fp = SafeOps::openFile(filenameno, "w", __LINE__, __FILE__);
-				free(filenameno);
+				SafeOps::free(filenameno);
 
 				// we write files one at a time to avoid disk congestion
 				for (j = 0; j < size; j++) {
@@ -1089,7 +1089,7 @@ FILE * System::open_dipole_file() {
 		}
 
 		#ifdef _MPI
-			free(filename);
+			SafeOps::free(filename);
 		#endif
 		return fp;
 	}
@@ -1156,7 +1156,7 @@ FILE * System::open_field_file() {
 		}
 
 		#ifdef _MPI
-			free( filename );
+			SafeOps::free( filename );
 		#endif
 		return fp;
 	}

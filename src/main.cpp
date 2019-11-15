@@ -17,6 +17,7 @@ bool mpi = false;
 #include "args.h"
 #include "constants.h"
 #include "Output.h"
+#include "SafeOps.h"
 #include "SimulationControl.h"
 
 
@@ -65,12 +66,12 @@ int main(int argc, char * argv[])
 	catch (int e) {
 
 		if (args.in_filename)
-			free(args.in_filename);
+			SafeOps::free(args.in_filename);
 
 		sprintf(linebuf, "MPMC exiting with error code: %d.\n", e);
 		Output::err(linebuf);
-		die(EXIT_FAILURE);
+		die(fail);
 	}
 
-	die(EXIT_SUCCESS);
+	die(ok);
 }
