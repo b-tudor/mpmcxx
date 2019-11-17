@@ -5,6 +5,8 @@
 #include <cstring>
 #include <iostream>
 #include <sstream>
+#include <stdlib.h>
+
 #include "Output.h"
 #include "SafeOps.h"
 #include "SimulationControl.h"
@@ -14,13 +16,6 @@
 #include <signal.h>
 #endif
 
-
-#ifndef EXIT_SUCCESS
-#define EXIT_SUCCESS 1
-#endif
-#ifndef EXIT_FAILURE 
-#define EXIT_FAILURE 0
-#endif
 
 
 extern int rank;

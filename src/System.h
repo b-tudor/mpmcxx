@@ -283,6 +283,7 @@ public:
 	void update_sorbate_info();
 	void update_root_sorb_averages( sorbateInfo_t * sinfo );
 	void clear_avg_nodestats();
+	void update_root_nodestats();
 	void update_root_nodestats( avg_nodestats_t *avg_nodestats, avg_observables_t *avg_observables );
 
 	
@@ -458,7 +459,9 @@ public:
 	void print_frozen_bonds ( FILE *fp_frozen );
 	void print_frozen_masses( FILE *fp_frozen );
 	void print_frozen_colors( FILE *fp_frozen );
+	void write_observables();
 	void write_observables( FILE *fp_energy, observables_t * observables, double core_temp);
+	void write_observables_csv();
 	void write_observables_csv( FILE *fp_energy_csv, observables_t * observables, double core_temp);
 	int  write_averages();
 	int  write_averages(int sysNum);
@@ -499,21 +502,21 @@ public:
 	char        job_name[maxLine];     // (CRC)
 	
 	// Monte Carlo Controls
-	int         numsteps;              // Total number of MC simulation steps to perform
-	int         step;                  // Current MC step
-	int         corrtime;              // Number of steps between MC correlation times
-	int         ptemp_freq;
+	int          numsteps;              // Total number of MC simulation steps to perform
+	unsigned int step;                  // Current MC step
+	int          corrtime;              // Number of steps between MC correlation times
+	int          ptemp_freq;
 
-	double      move_factor;
-	double      rot_factor;
-	double      last_volume;            // NPT option
-	double      volume_change_factor;   // NPT option
-	double      adiabatic_probability,
-	            gwp_probability,
-	            insert_probability,
-	            spinflip_probability,
-	            volume_probability,
-		        transfer_probability;
+	double       move_factor;
+	double       rot_factor;
+	double       last_volume;            // NPT option
+	double       volume_change_factor;   // NPT option
+	double       adiabatic_probability,
+	             gwp_probability,
+	             insert_probability,
+	             spinflip_probability,
+	             volume_probability,
+		         transfer_probability;
 
 	// Path-Integral settings
 	double      bead_perturb_probability;   //  PI option--probability for move that changes bead configuration

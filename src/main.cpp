@@ -12,7 +12,6 @@ int size = 0;
 bool mpi = false;
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <time.h>
 #include "args.h"
 #include "constants.h"

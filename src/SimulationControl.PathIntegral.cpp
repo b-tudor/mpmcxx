@@ -23,9 +23,15 @@ extern bool mpi;
 
 bool SimulationControl::PI_nvt_mc() {
 
-	System *system = systems[rank]; // System that will track observables (on *this* thread)
-	int nSteps = system->numsteps;  // number of MC steps to perform
-	int move = 0;                   // current MC move 
+	// For ease of reference:
+	System       *system = systems[rank];  // System for which this MPI thread will compute energies
+	double       &boltzmann_factor = sys.nodestats->boltzmann_factor; // Boltzmann factor for current system config
+	unsigned int &step = sys.step;
+	const unsigned int nSteps = system->numsteps;  // number of MC steps to perform
+	
+
+	int move = 0;                                  // current MC move 
+	
 
 	if (mpi) {
 		system->setup_mpi_dataStructs(size);
@@ -65,10 +71,11 @@ bool SimulationControl::PI_nvt_mc() {
 
 	// write initial observables to stdout and logs
 	if(  ! rank  ) {
+
 		sys.open_files(); // open output files 
 		PI_calc_system_mass();
 		
-		// average in the initial values once  (we don't want to double-count the initial state when using MPI)
+		// average in the initial observables values once  (we don't want to double-count the initial state when using MPI)
 		update_root_averages();
 
 		// write initial observables exactly once
@@ -81,16 +88,14 @@ bool SimulationControl::PI_nvt_mc() {
 		Output::out("MC: initial values:\n");
 		sys.write_averages();
 	}
-
-
-	//  save the initial state 
-	System::backup_observables( systems );
 	
+	//  save the initial state and set up the first move
+	System::backup_observables( systems );
+	move = PI_pick_NVT_move();
+
 
 	// main MC loop 
-	for( sys.step=1; sys.step <= nSteps; sys.step++ ) {
-
-		move = PI_pick_NVT_move();
+	for( step=1; step <= nSteps; step++ ) {
 
 		// restore the last accepted energy & chain-length-metric
 		BFC.potential.init = sys.observables->potential();
@@ -106,7 +111,7 @@ bool SimulationControl::PI_nvt_mc() {
 		BFC.potential.trial = PI_calculate_potential();
 		if (move == MOVETYPE_PERTURB_BEADS) {
 			BFC.chain_mass_len2.trial = PI_chain_mass_length2();
-			BFC.orient_mu_len2.trial = 0;
+			BFC.orient_mu_len2.trial  = PI_orientational_mu_length2();
 		}
 			
 		#ifdef QM_ROTATION
@@ -117,17 +122,17 @@ bool SimulationControl::PI_nvt_mc() {
 
 		// treat a bad contact as a reject 
 		if( ! std::isfinite(BFC.potential.trial) ) {
-			system->observables->energy = MAXVALUE;
-			system->nodestats->boltzmann_factor = 0;
-		} else 
-			PI_NVT_boltzmann_factor( BFC );
-
+			sys.observables->energy = MAXVALUE;   //  system->observables->energy = MAXVALUE;
+			boltzmann_factor = 0;  //  system->nodestats->boltzmann_factor = 0;
+		} else {
+			boltzmann_factor = PI_NVT_boltzmann_factor(BFC);
+		}
 			
 		
 		// Metropolis function 
 		///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-		if(   (Rando::rand() < system->nodestats->boltzmann_factor)   &&   (system->iterator_failed == 0)   ) {
+		if(   (Rando::rand() < boltzmann_factor)   &&   (system->iterator_failed == 0)   ) {
 			  
 			//  ACCEPT  //////////////////////////////////////////////////////////////////////////////////////////////
 			if (reportAR()) {
@@ -166,29 +171,30 @@ bool SimulationControl::PI_nvt_mc() {
 				}
 			}
 			BFC.potential.current = BFC.potential.trial; //used in parallel tempering
-			for_each( systems.begin(), systems.end(), [](System *SYS) {
+			std::for_each( systems.begin(), systems.end(), [](System *SYS) {
 				SYS->iterator_failed = 0; // reset the polar iterative failure flag
 				SYS->restore();            
 			});
 			sys.register_reject(move);
 			
 		}
-
+		
+		move = PI_pick_NVT_move();
 
 		// perform parallel_tempering
-		if ((systems[rank]->parallel_tempering) && ((system->step % systems[rank]->ptemp_freq) == 0))
+		if ((systems[rank]->parallel_tempering) && ((sys.step % systems[rank]->ptemp_freq) == 0))
 			systems[rank]->temper_system(BFC.potential.current);
 
-		// track the acceptance_rates and compute associated stats
+		// track the acceptance_rates/BF and compute associated stats
 		sys.track_ar(sys.nodestats);
 		sys.update_nodestats(sys.nodestats, sys.avg_nodestats);
 
 
 		// do this every correlation time, and at the very end ////////////////////////////////////////////////////////
-		if(  !(sys.step % sys.corrtime)   ||   (sys.step == nSteps)) {
+		if(  !(step % sys.corrtime)   ||   (step == nSteps)) {
 			do_PI_corrtime_bookkeeping();
 
-			if (sys.step == nSteps) {
+			if (step == nSteps) {
 				for (int i = 0; i < size; i++) {
 					if (mpi) {
 						#ifdef _MPI
@@ -197,16 +203,15 @@ bool SimulationControl::PI_nvt_mc() {
 					}
 					if (i == rank)
 						write_PI_frame();
-				}
-			}
-		}
+		}	}	}
+	
 
 
 	} // main loop 
 
 
 	// Simulation has finished...
-	for_each(systems.begin(), systems.end(), [](System *SYS) {
+	std::for_each(systems.begin(), systems.end(), [](System *SYS) {
 		if (SYS->write_molecules_wrapper( SYS->pqr_output ) < 0) {
 			Output::err("MC: could not write final state to disk\n");
 			throw unknown_file_error;
@@ -235,12 +240,30 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 
 	System *system = systems[rank];
 	
-	if( !rank && PI_xyz_corrtime_frames_requested()) 
+	if(  ! rank   &&   PI_xyz_corrtime_frames_requested()) 
 		write_PI_frame();
 
+	// write observables
+	if (sys.fp_energy)
+		sys.write_observables();
+	if (sys.fp_energy_csv)
+		sys.write_observables_csv();
 
-	// copy observables and avgs to the mpi send buffer
-	// histogram array is at the end of the message
+	sys.update_root_nodestats();
+	
+	if (sys.calc_hist)
+		sys.update_root_histogram();
+
+	if (sys.sorbateCount > 1)
+		sys.update_root_sorb_averages(system->mpi_data.sinfo);
+
+	sys.output_file_data();
+
+	return;
+
+	/*
+
+	// copy observables and avgs to the mpi send buffer; histogram array is at the end of the message
 	std::for_each(systems.begin(), systems.end(), [](System *SYS) {
 		if (SYS->calc_hist) {
 			SYS->zero_grid(SYS->grids->histogram->grid);
@@ -249,18 +272,17 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 
 		// update frozen and total system mass
 		SYS->calc_system_mass();
-		//system->calc_system_mass();
 
 		// update sorbate info on each node
 		if (SYS->sorbateCount > 1)
 			SYS->update_sorbate_info();
 		//system->update_sorbate_info();
-
-
 	});
+	sys.observables-> total_mass = system->observables-> total_mass;
+	sys.observables->frozen_mass = system->observables->frozen_mass;
 
 
-	
+	// Write the state file, restart files, and dipole/field files
 	if (mpi) {
 
 		#ifdef _MPI
@@ -290,13 +312,9 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 	}
 	else {
 
-		bool energy_written = false;
-		std::for_each(systems.begin(), systems.end(), [&energy_written](System *SYS) {
+		system->write_states();
 
-			if( ! energy_written ) {
-				SYS->write_states();
-				energy_written = true;
-			}
+		std::for_each(systems.begin(), systems.end(), [](System *SYS) {
 
 			// write restart files for each system
 			if (SYS->write_molecules_wrapper(SYS->pqr_restart) < 0) {
@@ -313,12 +331,14 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 	}
 
 
+	// Copy the data we wish to share into the send buffers for the respective systems
 	if (mpi) {
-		// zero the send buffer
+		// Copy the observables and the average nodestats for this system to its send buffer
 		std::memset(system->mpi_data.snd_strct, 0, system->mpi_data.msgsize);
 		std::memcpy(system->mpi_data.snd_strct, system->observables, sizeof(System::observables_t));
 		std::memcpy(system->mpi_data.snd_strct + sizeof(System::observables_t), system->avg_nodestats, sizeof(System::avg_nodestats_t));
 
+		// Ditto for the histogram and sorbate data (if we are using these systems) 
 		if (sys.calc_hist)
 			system->mpi_copy_histogram_to_sendbuffer(
 				system->mpi_data.snd_strct + sizeof(System::observables_t) + sizeof(System::avg_nodestats_t),
@@ -333,11 +353,12 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 	} 
 	else std::for_each(systems.begin(), systems.end(), [](System *SYS) {
 		
-		// zero the send buffer
+		// Copy the observables and average nodestats for this system into its send buffer
 		std::memset(SYS->mpi_data.snd_strct, 0, SYS->mpi_data.msgsize);
 		std::memcpy(SYS->mpi_data.snd_strct, SYS->observables, sizeof(System::observables_t));
 		std::memcpy(SYS->mpi_data.snd_strct + sizeof(System::observables_t), SYS->avg_nodestats, sizeof(System::avg_nodestats_t));
 
+		// Ditto for the histogram data and sorbate data (if we are using these systems)
 		if (SYS->calc_hist)
 			SYS->mpi_copy_histogram_to_sendbuffer(
 				SYS->mpi_data.snd_strct + sizeof(System::observables_t) + sizeof(System::avg_nodestats_t),
@@ -351,15 +372,16 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 			);
 	});
 	
-	
+	// Clear the receive buffer
 	if( ! rank )
 		std::memset(system->mpi_data.rcv_strct, 0, (size_t) (mpi?size:nSys) * system->mpi_data.msgsize);
 
+	// Copy observables, average nodestats, histogram data, etc into the receive buffer
 	if (mpi) {
 		#ifdef _MPI
 			// copy all data into the receive struct of the head node...
-			MPI_Gather( system->mpi_data.snd_strct, 1, system->msgtype, system->mpi_data.rcv_strct, 1, system->msgtype, 0, MPI_COMM_WORLD);
-			MPI_Gather( &(system->temperature), 1, MPI_DOUBLE, system->mpi_data.temperature, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+			MPI_Gather(   system->mpi_data.snd_strct, 1, system->msgtype, system->mpi_data.rcv_strct,   1, system->msgtype, 0, MPI_COMM_WORLD);
+			MPI_Gather( &(system->temperature),       1,      MPI_DOUBLE, system->mpi_data.temperature, 1,      MPI_DOUBLE, 0, MPI_COMM_WORLD);
 		#endif
 	} else {
 		for (size_t i = 0; i < nSys; i++) {
@@ -376,7 +398,7 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 		// clear avg_nodestats to avoid double-counting
 		system->clear_avg_nodestats();
 
-		//loop for each core -> shift data into variable_mpi, then average into avg_observables
+		// loop for each core -> shift data into variable_mpi, then average into avg_observables
 		for( size_t j = 0; j <  (mpi?size:nSys); j++ ) {
 			// copy from the mpi buffer
 			std::memcpy( systems[0]->mpi_data.observables,   systems[0]->mpi_data.rcv_strct  +  j * systems[0]->mpi_data.msgsize,  sizeof(System::observables_t )); // copy observable data into observables struct, for one system at a time
@@ -425,6 +447,7 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 		system->output_file_data();
 
 	} // !rank
+	*/
 }
 
 
@@ -486,8 +509,7 @@ double SimulationControl::PI_NVT_boltzmann_factor( PI_NVT_BFContributors BF ) {
 		boltzmann_factor = exp(-delta_energy/T);
 
 	}
-	systems[rank]->nodestats->boltzmann_factor = boltzmann_factor;
-
+	
 	return boltzmann_factor;
 }
 

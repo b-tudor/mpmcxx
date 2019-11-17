@@ -4,8 +4,9 @@ extern int size;
 
 
 
-void System::update_root_averages( observables_t *obs )
-{
+
+// Updates avg_observables by averaging in the data passed via obs
+void System::update_root_averages( observables_t *obs ) {
 	Molecule* molecule_ptr = nullptr;
 	static int counter = 0;
 
@@ -15,7 +16,7 @@ void System::update_root_averages( observables_t *obs )
 	double frozen_mass      = obs->frozen_mass;
 	
 	
-	++counter;
+	counter++;
 
 
 	double m = 0;
@@ -210,10 +211,8 @@ void System::update_root_averages( observables_t *obs )
 
 
 
-
-void System::update_sorbate_info()
 // update the stats for the individual sorbates
-{
+void System::update_sorbate_info() {
 	double sorbed_mass;
 	double P;            // Pressure 
 	int i;
@@ -245,6 +244,7 @@ void System::update_sorbate_info()
 
 
 
+// Updates sorbate stats in *this* system by averaging in the data provided by sinfo
 void System::update_root_sorb_averages( sorbateInfo_t * sinfo ) {
 	
 	//sorbateGlobal is an array. sorbateStats is a linked list.
@@ -264,7 +264,7 @@ void System::update_root_sorb_averages( sorbateInfo_t * sinfo ) {
 		sorbateGlobal[i].avgN = factor * sorbateGlobal[i].avgN
 			+ sinfo[i].currN / m;
 		sorbateGlobal[i].avgN_sq = factor * sorbateGlobal[i].avgN_sq
-			+ sinfo[i].currN*sinfo[i].currN / m;
+			+ (double)(sinfo[i].currN)*sinfo[i].currN / m;
 		sorbateGlobal[i].avgN_err = sdom * sqrt(sorbateGlobal[i].avgN_sq
 			- sorbateGlobal[i].avgN*sorbateGlobal[i].avgN);
 
@@ -325,6 +325,8 @@ void System::update_root_sorb_averages( sorbateInfo_t * sinfo ) {
 
 
 
+
+// Zeros out all the nodestat data
 void System::clear_avg_nodestats() {
 
 	avg_nodestats->counter = 0;
@@ -352,28 +354,31 @@ void System::clear_avg_nodestats() {
 
 
 
+// Average a set of observables into a set of nodestats
+void System::update_root_nodestats() {
+	update_root_nodestats( avg_nodestats, avg_observables);
+}
 void System::update_root_nodestats( avg_nodestats_t *avgNodestats, avg_observables_t *avgObs) {
 
 	const double m = (++avgNodestats->counter);
 	const double new_fctr =      1.0  / m; // Weight that new data carries wrt the average
 	const double factor   = (m - 1.0) / m; // Weight that existing average carries wrt the new/updated average
 	
-
-	avgObs->boltzmann_factor            = factor*avgObs->boltzmann_factor            +            avgNodestats->boltzmann_factor*new_fctr;
-	avgObs->boltzmann_factor_sq         = factor*avgObs->boltzmann_factor_sq         +         avgNodestats->boltzmann_factor_sq*new_fctr;
-	avgObs->acceptance_rate             = factor*avgObs->acceptance_rate             +             avgNodestats->acceptance_rate*new_fctr;
-	avgObs->acceptance_rate_insert      = factor*avgObs->acceptance_rate_insert      +      avgNodestats->acceptance_rate_insert*new_fctr;
-	avgObs->acceptance_rate_remove      = factor*avgObs->acceptance_rate_remove      +      avgNodestats->acceptance_rate_remove*new_fctr;
-	avgObs->acceptance_rate_displace    = factor*avgObs->acceptance_rate_displace    +    avgNodestats->acceptance_rate_displace*new_fctr;
-	avgObs->acceptance_rate_adiabatic   = factor*avgObs->acceptance_rate_adiabatic   +   avgNodestats->acceptance_rate_adiabatic*new_fctr;
-	avgObs->acceptance_rate_spinflip    = factor*avgObs->acceptance_rate_spinflip    +    avgNodestats->acceptance_rate_spinflip*new_fctr;
-	avgObs->acceptance_rate_volume      = factor*avgObs->acceptance_rate_volume      +      avgNodestats->acceptance_rate_volume*new_fctr;
-	avgObs->acceptance_rate_beadPerturb = factor*avgObs->acceptance_rate_beadPerturb + avgNodestats->acceptance_rate_beadPerturb*new_fctr;
-	avgObs->acceptance_rate_ptemp       = factor*avgObs->acceptance_rate_ptemp       +       avgNodestats->acceptance_rate_ptemp*new_fctr;
-	avgObs->cavity_bias_probability     = factor*avgObs->cavity_bias_probability     +     avgNodestats->cavity_bias_probability*new_fctr;
-	avgObs->cavity_bias_probability_sq  = factor*avgObs->cavity_bias_probability_sq  +  avgNodestats->cavity_bias_probability_sq*new_fctr;
-	avgObs->polarization_iterations     = factor*avgObs->polarization_iterations     +     avgNodestats->polarization_iterations*new_fctr;
-	avgObs->polarization_iterations_sq  = factor*avgObs->polarization_iterations_sq  +  avgNodestats->polarization_iterations_sq*new_fctr;
+	avgObs->boltzmann_factor            = factor * avgObs->boltzmann_factor            + avgNodestats->boltzmann_factor            * new_fctr;
+	avgObs->boltzmann_factor_sq         = factor * avgObs->boltzmann_factor_sq         + avgNodestats->boltzmann_factor_sq         * new_fctr;
+	avgObs->acceptance_rate             = factor * avgObs->acceptance_rate             + avgNodestats->acceptance_rate             * new_fctr;
+	avgObs->acceptance_rate_insert      = factor * avgObs->acceptance_rate_insert      + avgNodestats->acceptance_rate_insert      * new_fctr;
+	avgObs->acceptance_rate_remove      = factor * avgObs->acceptance_rate_remove      + avgNodestats->acceptance_rate_remove      * new_fctr;
+	avgObs->acceptance_rate_displace    = factor * avgObs->acceptance_rate_displace    + avgNodestats->acceptance_rate_displace    * new_fctr;
+	avgObs->acceptance_rate_adiabatic   = factor * avgObs->acceptance_rate_adiabatic   + avgNodestats->acceptance_rate_adiabatic   * new_fctr;
+	avgObs->acceptance_rate_spinflip    = factor * avgObs->acceptance_rate_spinflip    + avgNodestats->acceptance_rate_spinflip    * new_fctr;
+	avgObs->acceptance_rate_volume      = factor * avgObs->acceptance_rate_volume      + avgNodestats->acceptance_rate_volume      * new_fctr;
+	avgObs->acceptance_rate_beadPerturb = factor * avgObs->acceptance_rate_beadPerturb + avgNodestats->acceptance_rate_beadPerturb * new_fctr;
+	avgObs->acceptance_rate_ptemp       = factor * avgObs->acceptance_rate_ptemp       + avgNodestats->acceptance_rate_ptemp       * new_fctr;
+	avgObs->cavity_bias_probability     = factor * avgObs->cavity_bias_probability     + avgNodestats->cavity_bias_probability     * new_fctr;
+	avgObs->cavity_bias_probability_sq  = factor * avgObs->cavity_bias_probability_sq  + avgNodestats->cavity_bias_probability_sq  * new_fctr;
+	avgObs->polarization_iterations     = factor * avgObs->polarization_iterations     + avgNodestats->polarization_iterations     * new_fctr;
+	avgObs->polarization_iterations_sq  = factor * avgObs->polarization_iterations_sq  + avgNodestats->polarization_iterations_sq  * new_fctr;
 	
 
 	const double sdom = 1.0  /  sqrt(  floor(size*(1.0+step)/corrtime)  - 1.0 );

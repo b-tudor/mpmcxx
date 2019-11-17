@@ -232,7 +232,10 @@ void System::print_frozen_colors( FILE *fp )
 }
 
 
-void System::write_observables( FILE *fp, observables_t * obs, double core_temp) {
+void System::write_observables() {
+	write_observables(fp_energy, observables, temperature);
+}
+void System::write_observables(FILE* fp, observables_t* obs, double core_temp) {
 	
 	if( !fp )
 		throw null_file_ptr_error;
@@ -254,6 +257,10 @@ void System::write_observables( FILE *fp, observables_t * obs, double core_temp)
 	fflush( fp );
 }
 
+
+void System::write_observables_csv() {
+	write_observables_csv( fp_energy_csv, observables, temperature);
+}
 void System::write_observables_csv( FILE *fp, observables_t * obs, double core_temp) {
 	
 	if( !fp )
@@ -275,6 +282,7 @@ void System::write_observables_csv( FILE *fp, observables_t * obs, double core_t
 	fprintf( fp, "\n" );
 	fflush( fp );
 }
+
 
 int System::write_averages() {
 	return write_averages("");
@@ -593,7 +601,7 @@ void System::update_nodestats( nodestats_t *nstats, avg_nodestats_t *avg_ns ) {
 	static int counter = 0;
 	double    quantity = 0;
 	
-	++counter;
+	counter++;
 		
 	double factor   = (counter - 1.0) / counter;   // Weight current average carries in new/updated average
 	double new_fctr =            1.0  / counter;   // Weight new data will carries in the average
@@ -627,8 +635,8 @@ void System::update_nodestats( nodestats_t *nstats, avg_nodestats_t *avg_ns ) {
 
 void System::write_states() {
 
-	Molecule         * molecule_ptr    = nullptr;
-	Atom             * atom_ptr        = nullptr;
+	Molecule  * molecule_ptr           = nullptr;
+	Atom      * atom_ptr               = nullptr;
 	FILE      * fp                     = nullptr;
 	int         num_frozen_molecules   = 0,
 	            num_moveable_molecules = 0,
