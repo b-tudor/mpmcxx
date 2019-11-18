@@ -2672,6 +2672,11 @@ bool SimulationControl::check_polarization_options()
 			Output::err( "SIM_CONTROL: cannot specify both polar_precision and polar_max_iter, must pick one\n" );
 			return fail;
 		}
+
+		if ((sys.polar_precision == 0.0) && (sys.polar_max_iter == 0.0)) {
+			Output::err("SIM_CONTROL: must specify either polar_precision or polar_max_iter\n");
+			return fail;
+		}
 	
 		if( sys.polar_precision < 0.0 ) {
 			Output::err( "SIM_CONTROL: invalid polarization iterative precision specified\n" );

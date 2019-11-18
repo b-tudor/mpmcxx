@@ -49,7 +49,7 @@ const double OneOverSqrtPi     = 0.564189583547756286948079451560772585844050629
 const double SqrtPi            = 1.77245385091;
 const double twoPi             = 2.0L * pi;
 
-const double MAX_ITERATION_COUNT        = 128;
+const double MAX_ITERATION_COUNT        = 32;
 const double MAXVALUE                   = 1.0e40;
 const double SMALL_dR                   = 1.0e-12;
 

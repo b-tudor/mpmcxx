@@ -407,7 +407,6 @@ System::System() {
 
 	// default polarization parameters 
 	polar_gamma = 1.0;
-	polar_max_iter = 10;
 
 	// default rd LRC flag 
 	rd_lrc = 1;
