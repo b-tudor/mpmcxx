@@ -1102,7 +1102,7 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 		else return fail;
 		return ok;
 	}
-	if( SafeOps::iequals(token[0], "disp_expansion") ) {
+	if( SafeOps::iequals(token[0], "disp_expansion")|| SafeOps::iequals(token[0], "phahst")) {
 		if( SafeOps::iequals(token[1], "on") )
 			sys.using_disp_expansion = true;
 		else if( SafeOps::iequals(token[1], "off") )
@@ -1147,38 +1147,6 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 			sys.midzuno_kihara_approx = 1;
 		else if( SafeOps::iequals(token[1], "off") )
 			sys.midzuno_kihara_approx = 0;
-		else return fail;
-		return ok;
-	}
-	if( SafeOps::iequals(token[0], "schmidt_mixing") ) {
-		if( SafeOps::iequals(token[1], "on") )
-			sys.schmidt_mixing = 1;
-		else if( SafeOps::iequals(token[1], "off") )
-			sys.schmidt_mixing = 0;
-		else return fail;
-		return ok;
-	}
-	if (SafeOps::iequals(token[0], "force_mixing")) {
-		if (SafeOps::iequals(token[1], "on"))
-			sys.force_mixing = 1;
-		else if (SafeOps::iequals(token[1], "off"))
-			sys.force_mixing = 0;
-		else return fail;
-		return ok;
-	}
-	if (SafeOps::iequals(token[0], "bohm_ahlrichs_mixing")) {
-		if (SafeOps::iequals(token[1], "on"))
-			sys.bohm_ahlrichs_mixing = 1;
-		else if (SafeOps::iequals(token[1], "off"))
-			sys.bohm_ahlrichs_mixing = 0;
-		else return fail;
-		return ok;
-	}
-	if (SafeOps::iequals(token[0], "wilson_popelier_mixing")) {
-		if (SafeOps::iequals(token[1], "on"))
-			sys.wilson_popelier_mixing = 1;
-		else if (SafeOps::iequals(token[1], "off"))
-			sys.wilson_popelier_mixing = 0;
 		else return fail;
 		return ok;
 	}
@@ -1750,14 +1718,6 @@ bool SimulationControl::check_system() {
 		Output::out1("SIM_CONTROL: Extrapolating the C10 coefficient from the C6 and C8 coefficients with disp_expansion.\n");
 	if( sys.damp_dispersion )
 		Output::out1("SIM_CONTROL: Using Tang-Toennies damping for dispersion interactions with disp_expansion.\n");
-	if( sys.schmidt_mixing )
-		Output::out1("SIM_CONTROL: Using the Schmidt mixing rule for exponential repulsions with disp_expansion.\n");
-	if (sys.force_mixing)
-		Output::out1("SIM_CONTROL: Using the force matching mixing rule for exponential repulsions with disp_expansion.\n");
-	if (sys.bohm_ahlrichs_mixing)
-		Output::out1("SIM_CONTROL: Using the Bohm Ahlrichs mixing rule for exponential repulsions with disp_expansion.\n");
-	if (sys.wilson_popelier_mixing)
-		Output::out1("SIM_CONTROL: Using the Wilson Popelier mixing rule for exponential repulsions with disp_expansion.\n");
 	if( sys.feynman_hibbs   &&   ! check_feynman_hibbs_options() ) 
 		return fail;
 	if( sys.simulated_annealing   &&   ! check_simulated_annealing_options() ) 

@@ -240,10 +240,6 @@ System::System() {
 	halgren_mixing          = 0;
 	using_lj_buffered_14_7  = false;
 	midzuno_kihara_approx   = 0;
-	schmidt_mixing          = 0;
-	force_mixing			= 0;
-	bohm_ahlrichs_mixing	= 0;
-	wilson_popelier_mixing	= 0;
 	use_sg                  = false;
 	waldmanhagler           = 0;
 
@@ -422,6 +418,8 @@ System::System() {
 
 	//set default jobname
 	sprintf( job_name, "untitled");
+	// set damp dispersion on for phahst models by default
+	damp_dispersion = 1;
 
 	// Allocate space for statistics
 	nodestats       = nullptr;
@@ -1488,60 +1486,10 @@ void System::pair_exclusions( Molecule *molecule_i, Molecule *molecule_j, Atom *
 			pair_ptr->sigma = pow(pow(atom_i->sigma,atom_i->epsilon) * pow(atom_j->sigma,atom_j->epsilon),1.0/((atom_i->epsilon+atom_j->epsilon)));
 			pair_ptr->epsilon = 0.5*(atom_i->epsilon + atom_j->epsilon);
 		}
-		else if( using_disp_expansion ) {  // mix for buckingham repulsion
-			// sigma == r, epsilon == alpha, C ~= 316 K
-			// U = C exp(-alpha(R-r))
-			
-			// forumlas for these (except JR Schmidt's mixing rule) is here http://pubs.acs.org/doi/pdf/10.1021/acs.jpca.6b10295
-			if (schmidt_mixing)
-			{
-				pair_ptr->sigma = 0.5 * (atom_i->sigma + atom_j->sigma);
-				pair_ptr->epsilon = (atom_i->epsilon + atom_j->epsilon) * atom_i->epsilon * atom_j->epsilon / (atom_i->epsilon * atom_i->epsilon + atom_j->epsilon * atom_j->epsilon);
-			}
-
-			else if (force_mixing)
-			{
-				double c = 315.7750382111558307123944638;
-				double Aii = c * exp(atom_i->epsilon * atom_i->sigma);
-				double Ajj = c * exp(atom_j->epsilon * atom_j->sigma);
-				double Bii = atom_i->epsilon;
-				double Bjj = atom_j->epsilon;
-				pair_ptr->epsilon = 2.0 * atom_i->epsilon * atom_j->epsilon / (atom_i->epsilon + atom_j->epsilon);
-				double Bij = pair_ptr->epsilon;
-				double Aij = pow(pow(Aii * Bii, 1.0 / Bii) * pow(Ajj * Bjj, 1.0 / Bjj), 0.5 / Bij) / Bij;
-				pair_ptr->sigma = log(Aij / c) / Bij;
-			}
-
-			else if (bohm_ahlrichs_mixing)
-			{
-				double c = 315.7750382111558307123944638;
-				double Aii = c * exp(atom_i->epsilon * atom_i->sigma);
-				double Ajj = c * exp(atom_j->epsilon * atom_j->sigma);
-				double Bii = atom_i->epsilon;
-				double Bjj = atom_j->epsilon;
-				pair_ptr->epsilon = 2.0 * atom_i->epsilon * atom_j->epsilon / (atom_i->epsilon + atom_j->epsilon);
-				double Bij = pair_ptr->epsilon;
-				double Aij = pow(pow(Aii, 1.0 / Bii) * pow(Ajj, 1.0 / Bjj), 0.5 * Bij);
-				pair_ptr->sigma = log(Aij / c) / Bij;
-			}
-
-			else if (wilson_popelier_mixing)
-			{
-				double c = 315.7750382111558307123944638;
-				double Aii = c * exp(atom_i->epsilon * atom_i->sigma);
-				double Ajj = c * exp(atom_j->epsilon * atom_j->sigma);
-				double Bii = atom_i->epsilon;
-				double Bjj = atom_j->epsilon;
-				pair_ptr->epsilon = sqrt(0.5 * (Bii * Bii + Bjj * Bjj));
-				double Aij = pow(0.5 * (pow(Aii, 0.4) + pow(Ajj, 0.4)), 1.0 / 0.4);
-				pair_ptr->sigma = log(Aij / c) / pair_ptr->epsilon;
-			}
-
-			else
-			{
-				pair_ptr->sigma = 0.5 * (atom_i->sigma + atom_j->sigma);
-				pair_ptr->epsilon = 2.0 * atom_i->epsilon * atom_j->epsilon / (atom_i->epsilon + atom_j->epsilon);
-			}
+		else if( using_disp_expansion ) { 
+			// https://journals.aps.org/pra/pdf/10.1103/PhysRevA.5.1708
+			pair_ptr->sigma = 0.5 * (atom_i->sigma + atom_j->sigma);
+			pair_ptr->epsilon = 2.0 * atom_i->epsilon * atom_j->epsilon / (atom_i->epsilon + atom_j->epsilon);
 			// get mixed dispersion coefficients 
 			pair_ptr->c6 = sqrt(atom_i->c6*atom_j->c6)*0.021958709/(3.166811429*0.000001); // Convert H*Bohr^6 to K*Angstrom^6, etc
 			pair_ptr->c8 = sqrt(atom_i->c8*atom_j->c8)*0.0061490647/(3.166811429*0.000001); // Dispersion coeffs should be inputed in a.u.
