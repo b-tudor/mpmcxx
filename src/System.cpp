@@ -1759,8 +1759,20 @@ int System::wrap_all() {
 
 			// don't wrap frozen 
 			for( atom_ptr = molecule_ptr->atoms; atom_ptr; atom_ptr = atom_ptr->next) {
-				for( int i = 0; i < 3; i++)
-					atom_ptr->wrapped_pos[i] = atom_ptr->pos[i];
+				for (int i = 0; i < 3; i++) {
+					d[i] = 0;
+					for (int j = 0; j < 3; j++) {
+						d[i] += pbc.reciprocal_basis[j][i] * atom_ptr->pos[j];
+					}
+					d[i] = rint(d[i]);
+				}
+				for (int i = 0; i < 3; i++) {
+					dimg[i] = 0;
+					for (int j = 0; j < 3; j++)
+						dimg[i] += pbc.basis[j][i] * d[j];
+				}
+				for (int i = 0; i < 3; i++)
+					atom_ptr->wrapped_pos[i] = atom_ptr->pos[i] - dimg[i];
 			}
 		}
 	} // molecule 
