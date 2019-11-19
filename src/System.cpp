@@ -847,7 +847,8 @@ void System::read_molecules( FILE *fp ) {
 	Atom *prev_atom_ptr    = nullptr;
 	Molecule *molecule_ptr = nullptr;
 	
-	char   linebuf           [maxLine] = {0},   err_msg     [maxLine] = {0};
+	char linebuf[maxLine  ] = { 0 };
+	char err_msg[maxLine*4] = { 0 };
 	char   token_atom        [maxLine] = {0},   token_atomid[maxLine] = {0},   token_atomtype  [maxLine] = {0},
 	       token_moleculetype[maxLine] = {0},   token_frozen[maxLine] = {0},   token_moleculeid[maxLine] = {0},
 	       token_x           [maxLine] = {0},   token_y     [maxLine] = {0},   token_z         [maxLine] = {0},
@@ -1917,11 +1918,11 @@ void System::allocateStatisticsMem() {
 
 int System::printAtoms() {
 
-	char       linebuf[maxLine] = { 0 };
-	Molecule * m                = nullptr;
-	Atom     * a                = nullptr;
-	int        molCount         = 0;
-	int        atomNum          = 0;
+	char       linebuf[maxLine*2] = { 0 };
+	Molecule * m                  = nullptr;
+	Atom     * a                  = nullptr;
+	int        molCount           = 0;
+	int        atomNum            = 0;
 
 	for( m=molecules; m; m=m->next ) {
 		molCount++;
