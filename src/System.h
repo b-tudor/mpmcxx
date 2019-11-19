@@ -502,7 +502,7 @@ public:
 	char        job_name[maxLine];     // (CRC)
 	
 	// Monte Carlo Controls
-	int          numsteps;              // Total number of MC simulation steps to perform
+	unsigned int numsteps;              // Total number of MC simulation steps to perform
 	unsigned int step;                  // Current MC step
 	int          corrtime;              // Number of steps between MC correlation times
 	int          ptemp_freq;

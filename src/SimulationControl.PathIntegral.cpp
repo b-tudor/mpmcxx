@@ -211,12 +211,13 @@ bool SimulationControl::PI_nvt_mc() {
 
 
 	// Simulation has finished...
-	std::for_each(systems.begin(), systems.end(), [](System *SYS) {
-		if (SYS->write_molecules_wrapper( SYS->pqr_output ) < 0) {
-			Output::err("MC: could not write final state to disk\n");
-			throw unknown_file_error;
-		}
-	});
+	if(!rank)
+		std::for_each(systems.begin(), systems.end(), [](System *SYS) {
+			if (SYS->write_molecules_wrapper( SYS->pqr_output ) < 0) {
+				Output::err("MC: could not write final state to disk\n");
+				throw unknown_file_error;
+			}
+		});
 	
 	return ok;
 }
