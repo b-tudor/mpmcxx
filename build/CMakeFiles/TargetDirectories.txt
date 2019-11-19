@@ -1,0 +1,3 @@
+/mnt/u/btudor/Code/Git Repos/MPMC++ Application/build/CMakeFiles/edit_cache.dir
+/mnt/u/btudor/Code/Git Repos/MPMC++ Application/build/CMakeFiles/mpmc++.dir
+/mnt/u/btudor/Code/Git Repos/MPMC++ Application/build/CMakeFiles/rebuild_cache.dir

@@ -97,13 +97,13 @@ void PeriodicBoundary::printboxdim() {
 	char buffer[maxLine];
 
 	sprintf(buffer,"PBC: unit cell volume = %.3f A^3 (cutoff = %.3f A)\n", volume, cutoff);
-	Output::out(buffer);
+	Output::out1(buffer);
 
 	sprintf(buffer,"PBC: Basis vectors { a = %8.3lf \tb = %8.3lf \tc = %8.3lf }\n", 
 		sqrt(UsefulMath::dddotprod(basis[0], basis[0])),
 		sqrt(UsefulMath::dddotprod(basis[1], basis[1])),
 		sqrt(UsefulMath::dddotprod(basis[2], basis[2])));
-	Output::out(buffer);
+	Output::out1(buffer);
 
 	double alpha = 180.0/pi*acos( UsefulMath::dddotprod(basis[1],basis[2]) / sqrt( UsefulMath::dddotprod(basis[1], basis[1]) * UsefulMath::dddotprod(basis[2], basis[2]) ) );
 	double beta  = 180.0/pi*acos( UsefulMath::dddotprod(basis[2],basis[0]) / sqrt( UsefulMath::dddotprod(basis[2], basis[2]) * UsefulMath::dddotprod(basis[0], basis[0]) ) );
@@ -114,5 +114,5 @@ void PeriodicBoundary::printboxdim() {
 	#else
 		sprintf(buffer,"PBC: Basis angles  { \u03B1 = %8.3lf \t\u03B2  = %8.3lf \t\u03B3 = %8.3lf }\n", alpha, beta, gamma );
 	#endif
-	Output::out(buffer);
+	Output::out1(buffer);
 }

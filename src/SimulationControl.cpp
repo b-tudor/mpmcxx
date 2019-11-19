@@ -35,7 +35,7 @@ SimulationControl::~SimulationControl() {
 SimulationControl::SimulationControl(char *inFilename, bool rAR, bool writeFrames) : report_AR(rAR), write_PI_frames(writeFrames)
 {
 	char linebuf[maxLine];
-	nSys = 0;
+	nSys                  = 0;
 	PI_trial_chain_length = 0;
 	sys.observables       = nullptr;
 	rd_energies           = nullptr;
@@ -199,7 +199,7 @@ void SimulationControl::read_config(char *inFilename) {
 // the data found therein. Data read in is largely unvalidated.
 
 	char linebuffer[maxLine], *n;
-	char errormsg[maxLine];
+	char errormsg[maxLine+10];
 	char token[maxTokens][maxLine] = { '\0' };
 	FILE *fp;
 	int i, linenum;
@@ -1614,7 +1614,7 @@ bool SimulationControl::check_system() {
 // Validates data that was read in from the system file. Checks for invalid or 
 // contradictory options, etc. 
 
-	char linebuf[maxLine];
+	char linebuf[maxLine*2];
 
 	switch( sys.ensemble ) {
 		case ENSEMBLE_UVT:
@@ -2191,7 +2191,7 @@ bool SimulationControl::check_spectre_options() {
 
 bool SimulationControl::check_io_files_options() {
 
-	char linebuf[maxLine];
+	char linebuf[maxLine*2];
 	int file_count = (nSys) ? nSys : size;
 
 
@@ -2356,12 +2356,12 @@ bool SimulationControl::check_io_files_options() {
 			strcat(sys.pqr_input, ".initial.pqr");
 			pqr_input_filenames.push_back(sys.pqr_input);
 			sprintf(linebuf, "SIM_CONTROL: input PQR file not specified...will try to read coordinates from ./%s\n", pqr_input_filenames[0].c_str());
-			Output::out(linebuf);
+			Output::out1(linebuf);
 		}
 		else {
 			pqr_input_filenames.push_back(sys.pqr_input);
 			sprintf(linebuf, "SIM_CONTROL: reading initial molecular coordinates from: %s\n", pqr_input_filenames[0].c_str());
-			Output::out(linebuf);
+			Output::out1(linebuf);
 		}
 	}
 
@@ -2381,7 +2381,7 @@ bool SimulationControl::check_io_files_options() {
 		strcpy( sys.energy_output, "/dev/null" );
 	} else {
 		sprintf(linebuf, "SIM_CONTROL: will be writing energy output to ./%s\n", sys.energy_output);
-		Output::out(linebuf);
+		Output::out1(linebuf);
 	}
 
 
@@ -2546,7 +2546,7 @@ bool SimulationControl::check_simulated_annealing_options()
 
 bool SimulationControl::check_hist_options()
 {
-	char linebuf[maxLine];
+	char linebuf[maxLine*2];
 
 	static const double defaultMaxBondLength = 1.8;
 	static const double defaultHistResolution = 0.7;

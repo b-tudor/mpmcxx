@@ -302,50 +302,49 @@ int System::write_averages( const char *sysID ) {
 
 	if(averages->boltzmann_factor > 0.0) {
 		sprintf( linebuf, "OUTPUT%s: BF = %.5lg +- %.5lg\n", sysID, averages->boltzmann_factor, averages->boltzmann_factor_error );
-		Output::out(linebuf);
+		Output::out1(linebuf);
 	}
 
 	if(averages->acceptance_rate > 0.0) {
-		sprintf(linebuf,"OUTPUT%s: AR = %.5lf (%.5lf I/ %.5lf R/ %.5lf D", 
-			sysID,
-			averages->acceptance_rate, averages->acceptance_rate_insert, 
-			averages->acceptance_rate_remove, averages->acceptance_rate_displace);
-		Output::out(linebuf);
-		if(averages->acceptance_rate_adiabatic > 0.0) {
-			sprintf( linebuf, "/ %.5lf A", averages->acceptance_rate_adiabatic);
-			Output::out(linebuf);
-		}
-		if(averages->acceptance_rate_spinflip > 0.0) {
-			sprintf( linebuf, "/ %.5lf S", averages->acceptance_rate_spinflip);
-			Output::out(linebuf);
-		}
-		if(averages->acceptance_rate_volume > 0.0) {
-			sprintf( linebuf, "/ %.5lf V", averages->acceptance_rate_volume);
-			Output::out(linebuf);
-		}
-		if(averages->acceptance_rate_ptemp > 0.0) {
-			sprintf( linebuf, "/ %.5lf PT", averages->acceptance_rate_ptemp);
-			Output::out(linebuf);
-		}
-		if (averages->acceptance_rate_beadPerturb > 0.0) {
-			sprintf(linebuf, "/ %.5lf BEAD", averages->acceptance_rate_beadPerturb);
-			Output::out(linebuf);
-		}
+		sprintf( &linebuf[strlen(linebuf)], 
+		         "OUTPUT%s: AR = %.5lf (%.5lf I/ %.5lf R/ %.5lf D",
+		         sysID,
+		         averages->acceptance_rate,
+		         averages->acceptance_rate_insert, 
+		         averages->acceptance_rate_remove,
+		         averages->acceptance_rate_displace
+		);
 		
-		Output::out(")\n");
+		if(averages->acceptance_rate_adiabatic > 0.0) 
+			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf A", averages->acceptance_rate_adiabatic);
+
+		if(averages->acceptance_rate_spinflip > 0.0) 
+			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf S", averages->acceptance_rate_spinflip);
+
+		if(averages->acceptance_rate_volume > 0.0) 
+			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf V", averages->acceptance_rate_volume);
+
+		if(averages->acceptance_rate_ptemp > 0.0) 
+			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf PT", averages->acceptance_rate_ptemp);
+		
+		if (averages->acceptance_rate_beadPerturb > 0.0) 
+			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf BEAD", averages->acceptance_rate_beadPerturb);
+		
+		sprintf( &linebuf[strlen(linebuf)], "\n");
+		Output::out1(linebuf);
 	}
 
 	//print node's current temperature if doing SA or PT
 	if( simulated_annealing ) {
 		sprintf( linebuf, "OUTPUT%s: Simulated Annealing Temperature = %.5f K\n", sysID, temperature );
-		Output::out(linebuf);
+		Output::out1(linebuf);
 	}
 
 	if( averages->cavity_bias_probability > 0.0 ) {
 		sprintf( linebuf, "OUTPUT%s: Cavity bias probability = %.5f +- %.5f\n", 
 			sysID,
 			averages->cavity_bias_probability, averages->cavity_bias_probability_error);
-		Output::out(linebuf);
+		Output::out1(linebuf);
 	}
 
 
@@ -353,7 +352,7 @@ int System::write_averages( const char *sysID ) {
 		sprintf( linebuf, "OUTPUT%s: total energy = %.5lf +- %.5lf eV\n", sysID, averages->energy/EV2K, averages->energy_error/EV2K );
 	else
 		sprintf( linebuf, "OUTPUT%s: potential energy = %.5lf +- %.5lf K\n", sysID, averages->energy, averages->energy_error );
-	Output::out(linebuf);
+	Output::out1(linebuf);
 
 
 	if( averages->coulombic_energy != 0.0 ) {
@@ -365,7 +364,7 @@ int System::write_averages( const char *sysID ) {
 			sprintf( linebuf, "OUTPUT%s: electrostatic energy = %.5lf +- %.5lf K\n",
 				sysID, 
 				averages->coulombic_energy, averages->coulombic_energy_error);
-		Output::out(linebuf);
+		Output::out1(linebuf);
 	}
 
 
@@ -373,25 +372,25 @@ int System::write_averages( const char *sysID ) {
 		sprintf( linebuf, "OUTPUT%s: repulsion/dispersion energy = %.5lf +- %.5lf K\n", 
 			sysID,
 			averages->rd_energy, averages->rd_energy_error);
-		Output::out(linebuf);
+		Output::out1(linebuf);
 	}
 
 	if( averages->polarization_energy != 0.0 ) {
 		sprintf( linebuf, "OUTPUT%s: polarization energy = %.5f +- %.5f K", 
 			sysID,
 			averages->polarization_energy, averages->polarization_energy_error );
-		Output::out(linebuf);
+		Output::out1(linebuf);
 
 		if( averages->dipole_rrms_error != 0.0    &&    polar_rrms ) {
 			sprintf( linebuf, " (iterations = %.1f +- %.1f rrms = %e +- %e)", 
 				averages->polarization_iterations, averages->polarization_iterations_error, 
 				averages->dipole_rrms, averages->dipole_rrms_error);
-			Output::out(linebuf);
+			Output::out1(linebuf);
 		}
 		else if( averages->polarization_iterations != 0.0 ) {
 			sprintf( linebuf, " (iterations = %.1f +- %.1f)", 
 				averages->polarization_iterations, averages->polarization_iterations_error);
-			Output::out(linebuf);
+			Output::out1(linebuf);
 		}
 
 		Output::out("\n");
@@ -401,7 +400,7 @@ int System::write_averages( const char *sysID ) {
 		sprintf( linebuf, "OUTPUT%s: (coupled-dipole) vdw energy = %.5f +- %.5f K\n", 
 			sysID,
 			averages->vdw_energy, averages->vdw_energy_error);
-		Output::out(linebuf);
+		Output::out1(linebuf);
 	#endif
 
 	if(averages->kinetic_energy > 0.0) {
@@ -410,69 +409,69 @@ int System::write_averages( const char *sysID ) {
 			sprintf( linebuf, "OUTPUT%s: kinetic energy = %.5lf +- %.5lf eV\n", 
 				sysID,
 				averages->kinetic_energy/EV2K, averages->kinetic_energy_error/EV2K);
-			Output::out(linebuf);
+			Output::out1(linebuf);
 
 		} else {
 			sprintf( linebuf, "OUTPUT%s: kinetic energy = %.5lf +- %.5lf K\n", 
 				sysID,
 				averages->kinetic_energy, averages->kinetic_energy_error);
-			Output::out(linebuf);
+			Output::out1(linebuf);
 		}
 
 		sprintf( linebuf, "OUTPUT%s: kinetic temperature = %.5lf +- %.5lf K\n", 
 			sysID,
 			averages->temperature, averages->temperature_error);
-		Output::out(linebuf);
+		Output::out1(linebuf);
 	}
 
 	sprintf( linebuf, "OUTPUT%s: N = %.5lf +- %.5lf molecules\n", sysID, averages->N, averages->N_error);
-	Output::out(linebuf);
+	Output::out1(linebuf);
 
 	if( sorbateCount == 1 ) { //all based on calculations with assume only one type of sorbate
 
 		sprintf( linebuf, "OUTPUT%s: density = %.5f +- %.5f g/cm^3\n", sysID, averages->density, averages->density_error );
-		Output::out(linebuf);
+		Output::out1(linebuf);
 
 		if( averages->pore_density != 0.0   &&   ensemble != ENSEMBLE_NPT ){
 			sprintf( linebuf, "OUTPUT%s: pore density = %.5f +- %.5f g/cm^3\n", sysID, averages->pore_density, averages->pore_density_error);
-			Output::out(linebuf);
+			Output::out1(linebuf);
 		}
 		if(averages->percent_wt > 0.0 ) {
 			sprintf( linebuf, "OUTPUT%s: wt %% = %.5f +- %.5f %%\n", sysID, averages->percent_wt, averages->percent_wt_error);
-			Output::out(linebuf);
+			Output::out1(linebuf);
 			sprintf( linebuf, "OUTPUT%s: wt %% (ME) = %.5f +- %.5f %%\n", sysID, averages->percent_wt_me, averages->percent_wt_me_error);
-			Output::out(linebuf);
+			Output::out1(linebuf);
 		}
 		if(averages->excess_ratio > 0.0) {
 			sprintf( linebuf, "OUTPUT%s: excess adsorption ratio = %.5f +- %.5f mg/g\n", sysID, averages->excess_ratio, averages->excess_ratio_error);
-			Output::out(linebuf);
+			Output::out1(linebuf);
 		}
 		if(  (averages->qst > 0.0)   &&   std::isfinite(averages->qst)  ) {
 			sprintf( linebuf, "OUTPUT%s: qst = %.5lf kJ/mol\n", sysID, averages->qst);
-			Output::out(linebuf);
+			Output::out1(linebuf);
 		}
 		if( (averages->compressibility > 0.0) && std::isfinite(averages->compressibility) ) {
 			sprintf( linebuf, "OUTPUT%s: compressibility = %.6g +- %.6g atm^-1\n", sysID, averages->compressibility, averages->compressibility_error);
-			Output::out(linebuf);
+			Output::out1(linebuf);
 			sprintf( linebuf, "OUTPUT%s: bulk modulus = %.6g +- %.6g GPa\n", sysID, ATM2PASCALS*1.0e-9/averages->compressibility,
 				ATM2PASCALS*1.0e-9*averages->compressibility_error/averages->compressibility/averages->compressibility);
-			Output::out(linebuf);
+			Output::out1(linebuf);
 		}
 	}
 
 	if( (averages->heat_capacity > 0.0)   &&   (std::isfinite(averages->heat_capacity)) ) {
 		sprintf( linebuf, "OUTPUT%s: heat capacity = %.5g +- %.5g kJ/mol K\n", sysID, averages->heat_capacity, averages->heat_capacity_error );
-		Output::out(linebuf);
+		Output::out1(linebuf);
 	}
 
 	if( ensemble == ENSEMBLE_NPT  ||  ensemble == ENSEMBLE_REPLAY ) {
 		sprintf( linebuf, "OUTPUT%s: volume = %.5f +- %.5f A^3\n", sysID, averages->volume, averages->volume_error );
-		Output::out(linebuf);
+		Output::out1(linebuf);
 	}
 
 	if(averages->spin_ratio > 0.0) {
 		sprintf( linebuf, "OUTPUT%s: ortho spin ratio = %.5lf +- %.5lf %%\n", sysID, averages->spin_ratio*100.0, averages->spin_ratio_error*100.0 );
-		Output::out(linebuf);
+		Output::out1(linebuf);
 	}
 	
 	if( sorbateCount > 1 ){
@@ -480,65 +479,62 @@ int System::write_averages( const char *sysID ) {
 		for( i=0; i < sorbateCount; i++ ) {
 
 			sprintf( linebuf, "OUTPUT%s: Stats for %s\n", sysID, sorbateInfo[i].id );
-			Output::out(linebuf);
-			sprintf( linebuf, "             Average_N(%s)= %.5lf +- %.5lf\n", 
-				sorbateInfo[i].id, sorbateGlobal[i].avgN, 
-				sorbateGlobal[i].avgN_err);
-			Output::out(linebuf);
-			sprintf( 
-				linebuf, "             Sorbed_Mass(%s)= %.5lf +- %.5lf g/mol\n",
-				sorbateInfo[i].id, sorbateGlobal[i].avgN*sorbateInfo[i].mass, 
-				sorbateGlobal[i].avgN_err*sorbateInfo[i].mass
+			Output::out1(linebuf);
+			sprintf( linebuf,
+			         "             Average_N(%s)= %.5lf +- %.5lf\n", 
+			         sorbateInfo[i].id, sorbateGlobal[i].avgN, 
+			         sorbateGlobal[i].avgN_err);
+			Output::out1(linebuf);
+			sprintf( linebuf,
+			         "             Sorbed_Mass(%s)= %.5lf +- %.5lf g/mol\n",
+			         sorbateInfo[i].id, sorbateGlobal[i].avgN*sorbateInfo[i].mass, 
+			         sorbateGlobal[i].avgN_err*sorbateInfo[i].mass
 			);
-			Output::out(linebuf);
-			sprintf( 
-				linebuf,
-				"             density(%s)= %.5le +- %.5le g/cm^3\n",
-				sorbateInfo[i].id, sorbateGlobal[i].density, 
-				sorbateGlobal[i].density_err
+			Output::out1(linebuf);
+			sprintf( linebuf,
+			         "             density(%s)= %.5le +- %.5le g/cm^3\n",
+			         sorbateInfo[i].id, sorbateGlobal[i].density, 
+			         sorbateGlobal[i].density_err
 			);
-			Output::out(linebuf);
+			Output::out1(linebuf);
 
 			if( observables->frozen_mass > 0 ) {
-				sprintf( 
-					linebuf,
-					"             pore_density(%s)= %.5le +- %.5le g/cm^3\n",
-					sorbateInfo[i].id, sorbateGlobal[i].pore_density, 
-					sorbateGlobal[i].pore_density_err
+				sprintf( linebuf,
+				         "             pore_density(%s)= %.5le +- %.5le g/cm^3\n",
+				         sorbateInfo[i].id, sorbateGlobal[i].pore_density, 
+				         sorbateGlobal[i].pore_density_err
 				);
-				sprintf(
-					linebuf,
-					"             excess_ratio(%s)= %.5le +- %.5le g/cm^3\n",
-					sorbateInfo[i].id,
-					sorbateGlobal[i].excess_ratio, 
-					sorbateGlobal[i].excess_ratio_err
+				sprintf( &linebuf[strlen(linebuf)],
+				         "             excess_ratio(%s)= %.5le +- %.5le g/cm^3\n",
+				         sorbateInfo[i].id,
+				         sorbateGlobal[i].excess_ratio, 
+				         sorbateGlobal[i].excess_ratio_err
 				);
-				sprintf( 
-					linebuf,
-					"             wt_%%(%s)= %.5lf +- %.5le %%\n",
-					sorbateInfo[i].id,
-					sorbateGlobal[i].percent_wt, 
-					sorbateGlobal[i].percent_wt_err
+				sprintf( &linebuf[strlen(linebuf)],
+				         "             wt_%%(%s)= %.5lf +- %.5le %%\n",
+				         sorbateInfo[i].id,
+				         sorbateGlobal[i].percent_wt, 
+				         sorbateGlobal[i].percent_wt_err
 				);
-				sprintf(
-					linebuf,
-					"             wt_%%(%s)(ME)= %.5lf +- %.5le %%\n",
-					sorbateInfo[i].id, 
-					sorbateGlobal[i].percent_wt_me, 
-					sorbateGlobal[i].percent_wt_me_err
+				sprintf( &linebuf[strlen(linebuf)],
+				         "             wt_%%(%s)(ME)= %.5lf +- %.5le %%\n",
+				         sorbateInfo[i].id, 
+				         sorbateGlobal[i].percent_wt_me, 
+				         sorbateGlobal[i].percent_wt_me_err
 				);
 			}
-			sprintf(
-				linebuf,
-				"             Selectivity(%s)= %.4lf +- %.4lf\n", 
-				sorbateInfo[i].id,
-				sorbateGlobal[i].selectivity, 
-				sorbateGlobal[i].selectivity_err
+			sprintf( &linebuf[strlen(linebuf)],
+			         "             Selectivity(%s)= %.4lf +- %.4lf\n", 
+			         sorbateInfo[i].id,
+			         sorbateGlobal[i].selectivity, 
+			         sorbateGlobal[i].selectivity_err
 			);
+
+			Output::out1(linebuf);
 		}
 	}
 	
-	Output::out("\n");
+	Output::out1("\n");
 	return 0;
 }
 
@@ -1226,10 +1222,10 @@ int System::write_performance( int i ) {
 
 		if( ensemble == ENSEMBLE_UVT ) {
 			sprintf(linebuf, "OUTPUT: Grand Canonical Monte Carlo simulation running on %d cores\n", size);
-			Output::out( linebuf );
+			Output::out1( linebuf );
 		} else {
 			sprintf( linebuf, "OUTPUT: Canonical Monte Carlo simulation running on %d cores\n", size );
-			Output::out( linebuf );
+			Output::out1( linebuf );
 		}
 
 
@@ -1238,16 +1234,16 @@ int System::write_performance( int i ) {
 		#else
 			sprintf(linebuf, "OUTPUT: Root collecting statistics at %s", ctime( &(current_time.tv_sec)) );
 		#endif
-		Output::out( linebuf );
+		Output::out1( linebuf );
 		sprintf(linebuf, "OUTPUT: Completed step %d/%d  (%.3f %%)\n", i, numsteps, (i/(double)(numsteps))*100);
-		Output::out( linebuf );
+		Output::out1( linebuf );
 		sprintf(linebuf, "OUTPUT: %.3lf sec/step, ETA = %.3lf hrs\n", sec_step, sec_step*(numsteps - i)/3600.0);
-		Output::out( linebuf );
+		Output::out1( linebuf );
 
 	}	
 
 	last_step = i;
-	last_time.tv_sec = current_time.tv_sec;
+	last_time.tv_sec  = current_time.tv_sec;
 	last_time.tv_usec = current_time.tv_usec;
 
 	return 0;

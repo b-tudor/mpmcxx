@@ -1,7 +1,7 @@
 # CMakeLists.txt : CMake project for MPMC++
 
 project(mpmc++)
-cmake_minimum_required (VERSION 3.7)
+cmake_minimum_required (VERSION 3.5.1)
 
 execute_process(COMMAND bash "-c" "git rev-list HEAD| wc -l |sed 's: ::g'" VERBATIM OUTPUT_VARIABLE REV)
 add_definitions(-DVERSION=${REV})

@@ -770,7 +770,7 @@ bool System::setup_simulation_box() {
 	// Were molecules read into the simulation?
 	if(   ! molecules  ) {
 		if( ensemble == ENSEMBLE_REPLAY ) {
-			Output::out( "SYSTEM: end of trajectory file\n" );
+			Output::out1( "SYSTEM: end of trajectory file\n" );
 			return ok;
 		} else {
 			Output::err( "SYSTEM: error reading in input molecules. No molecules found in system.\n" );
@@ -778,7 +778,7 @@ bool System::setup_simulation_box() {
 		}
 	}
 	else 
-		Output::out( "SYSTEM: finished reading in molecules\n" );
+		Output::out1( "SYSTEM: finished reading in molecules\n" );
 
 
 	// read in pqr box and calculate periodic boundary conditions if neccessary
