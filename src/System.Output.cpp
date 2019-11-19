@@ -1070,7 +1070,7 @@ int System::write_molecules(FILE * fp) {
 
 FILE * System::open_dipole_file() {
 	FILE     * fp       = nullptr;
-	char     * filename = {'\0'};
+	char     * filename = nullptr;
 	static int clobber  = 1; //if clobber is set, we will overwrite old files
 
 	//open files for append
