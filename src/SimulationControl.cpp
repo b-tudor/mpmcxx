@@ -784,10 +784,12 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 		return ok;
 	}
 	if( SafeOps::iequals(token[0], "numsteps") ) {
-		if( !SafeOps::atoi(token[1], sys.numsteps) ) 
+		int nSteps = 0;
+		if( !SafeOps::atoi(token[1], nSteps)) 
 			return fail;
-		if( sys.numsteps < 1 )
+		if( nSteps < 1 )
 			return fail;
+		sys.numsteps = nSteps; 
 		return ok;
 	}
 	if( SafeOps::iequals(token[0], "corrtime") ) {
