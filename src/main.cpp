@@ -2,7 +2,7 @@
 // Department of Chemistry
 // University of South Florida
 #ifndef VERSION
-#define VERSION "0.8"
+#define VERSION "0.81"
 #endif
 
 int rank = 0;
