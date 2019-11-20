@@ -32,10 +32,9 @@ SimulationControl::~SimulationControl() {
 	if (polarization_energies) SafeOps::free(polarization_energies);
 	if (vdw_energies         ) SafeOps::free(vdw_energies         );
 }
-SimulationControl::SimulationControl(char *inFilename, bool rAR, bool writeFrames) : report_AR(rAR), write_PI_frames(writeFrames)
+SimulationControl::SimulationControl(char *inFilename, int P, bool write_PI_frames) : nSys(P), write_PI_frames(write_PI_frames)
 {
 	char linebuf[maxLine];
-	nSys                  = 0;
 	PI_trial_chain_length = 0;
 	sys.observables       = nullptr;
 	rd_energies           = nullptr;
@@ -357,14 +356,7 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 		return ok;
 	}
 
-	// Is this a path integral run on a single thread? 
-	//////////////////////////////////////////////////
 
-	if (SafeOps::iequals(token[0], "trotter_number")) {
-		if (!SafeOps::atoi(token[1], nSys ))
-			return fail;
-		return ok;
-	}
 
 
 	// surf options

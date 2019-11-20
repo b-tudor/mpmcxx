@@ -24,7 +24,7 @@ public:
 	int nSys;   // Trotter number for Path Integral runs, i.e. number of beads/images being used to represent each quantum object
 	int PI_trial_chain_length; //  PI option--when perturbing COM configuration, the number of beads to move at a time
 
-	SimulationControl( char * inFilename, bool reportAcceptReject, bool writeXYZFrames );
+	SimulationControl( char * inFilename, int P, bool write_PI_frames );
 	~SimulationControl();
 	bool runSimulation();
 	void initializeSimulationObjects();

@@ -28,7 +28,7 @@ int main(int argc, char * argv[])
 	struct tm tm = *localtime(&t);
 
 	mpi_introspection_and_initialization(argc, argv); // detect/start MPI services
-	processArgs(argc, argv, &args); // Parse command line
+	processArgs(argc, argv, args); // Parse command line
 
 	sprintf(  linebuf, "MPMC++\nMassively Parallel Monte Carlo: Multi-System Edition%s, v%s -- 2012-2019 GNU Public License\n", (size>0) ? " (MPI enabled)" : "", VERSION);
 	sprintf( &linebuf[strlen(linebuf)], "MAIN: processes started on %d threads(s) @ %d-%d-%d %d:%d:%d\n", mpi ? size : 1, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
@@ -36,8 +36,9 @@ int main(int argc, char * argv[])
 
 	
 	try {
+
 		// Read the input file
-		SimulationControl simController(args.in_filename, args.reportAR, args.write_PI_Frames_at_corrtime); 
+		SimulationControl simController(args.in_filename, args.Ptrotter_number, args.write_PI_Frames_at_corrtime ); 
 		Output::out1("MAIN: Simulation parameters established.\n");
 
 		install_signal_handler(&simController);

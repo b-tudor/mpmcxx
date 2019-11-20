@@ -29,7 +29,7 @@ SimulationControl* sc;
 
 typedef struct _parameters {
 	char* in_filename;
-	bool  reportAR;
+	int   Ptrotter_number; // P AKA trotter number (this variable is prounounced "Trotter" -- think pterodactyl).
 	bool  write_PI_Frames_at_corrtime;
 } params;
 
@@ -68,25 +68,28 @@ void die(int success_code) {
 
 
 // Print brief application  user instructions and exit
-void displayUsageAndDie(char* progname_w_path, params* p) {
+void displayUsageAndDie(char* progname_w_path, params &p) {
 
 	if (!rank) {
 		char* progName = stripPath(progname_w_path);
 		std::cout << "\nUsage:" << std::endl;
 		std::cout << "\t" << progName << " INPUT_FILE [options]" << std::endl;
 		std::cout << "Options:" << std::endl;
-		std::cout << "\t-xyz                 Write .xyz PI visualization frames at corrtime steps." << std::endl;
+		std::cout << "\t-P X                 Where X is the trotter number for a single threaded path integral job." << std::endl;
 		std::cout << "\nWhen using MPI with path integral ensembles, the number of MPI processes will determine the" << std::endl;
-		std::cout << "number of path integral \"beads\" (i.e. the Trotter number). For multi-site/multi-atom sorbate" << std::endl;
+		std::cout << "number of path integral \"beads\" (i.e. the Trotter number). It is therefore the uneccessary to " << std::endl;
+		std::cout << "use the -n option for multi-threaded/MPI runs. For multi - site / multi - atom sorbate" << std::endl;
 		std::cout << "molecules, the Trotter number must be a power of 2 greater than or equal to 4." << std::endl;
-		std::cout << "\nExample:\n\tmpirun -n 8 " << progName << " my_path_integral_sim_file" << std::endl;
+		std::cout << "\t-xyz                 Write .xyz PI visualization frames at corrtime steps." << std::endl;
+		std::cout << "\nExample:\n\t" << progName << " -n 8 <my_path_integral_sim_file>" << std::endl;
+		std::cout << "\n        \tmpirun -n 8 " << progName << " <my_path_integral_sim_file>" << std::endl;
 		std::cout << "\nSee https://github.com/mpmccode/mpmc for input file specification." << std::endl;
 		#ifndef _MPI
 			std::cout << "\nNOTE: MPI Functionality is not compiled into this executable." << std::endl;
 		#endif
 	}
 	
-	if (p->in_filename) { SafeOps::free(p->in_filename); }
+	if (p.in_filename) { SafeOps::free(p.in_filename); }
 
 	die(EXIT_FAILURE);
 }
@@ -123,14 +126,16 @@ void mpi_introspection_and_initialization(int& argc, char* argv[]) {
 
 
 // Parse command line arguments
-void processArgs(int argc, char* argv[], params* p) {
+void processArgs(int argc, char* argv[], params &p) {
+
 	std::string fname;
-	int n = 1;
+	char linebuf[maxLine];
+	int n = 1;         // index into argv for argument we are currently parsing
 
 	// DEFAULT VALUES
-	p->in_filename = nullptr;
-	p->reportAR = false;
-	p->write_PI_Frames_at_corrtime = false;
+	p.in_filename                 = nullptr;
+	p.Ptrotter_number             = 1;
+	p.write_PI_Frames_at_corrtime = false;
 
 
 
@@ -141,32 +146,36 @@ void processArgs(int argc, char* argv[], params* p) {
 			std::istringstream issOptionToken(argv[n]);
 
 			// report acceptance/rejection 
-			if (!strncmp(issOptionToken.str().c_str(), "-r", 3)) {
+			if (!strncmp(issOptionToken.str().c_str(), "-P", 3)) {
 				n++;
-				p->reportAR = true;
+				if (SafeOps::atoi(argv[n], p.Ptrotter_number)) {
+					n++;
+					continue;
+				} 
 			}
 
 			// write xyz frames for visualization (at corr time)
 			else if (!strncmp(issOptionToken.str().c_str(), "-xyz", 5)) {
 				n++;
-				p->write_PI_Frames_at_corrtime = true;
+				p.write_PI_Frames_at_corrtime = true;
 			}
 
 			else // if token is not a flag (-x) then it must be the filename
 			{
 				// INPUT FILENAME
-				if (p->in_filename) {
+				if (p.in_filename) {
 					// if filename is already set, then the command is malformed. There should
 					// only be one argument that is not preceeded by an option flag (e.g. "-P")
-					if (!rank) std::cout << "ERROR: Multiple input files specified (or unrecognized option \"" << argv[n] << "\")" << std::endl;
+					sprintf(linebuf, "ERROR: Multiple input files specified(or unrecognized option \"%s\")\n", argv[n]);
+					Output::err(linebuf);
 					displayUsageAndDie(argv[0], p);
 				}
 
 				issOptionToken >> fname;
 				if (!issOptionToken)
 					displayUsageAndDie(argv[0], p);
-				p->in_filename = (char*)calloc(fname.size() + 1, sizeof(char));
-				std::memcpy(p->in_filename, fname.c_str(), fname.size());
+				p.in_filename = (char*)calloc(fname.size() + 1, sizeof(char));
+				std::memcpy(p.in_filename, fname.c_str(), fname.size());
 
 				n++;
 			}
