@@ -27,7 +27,7 @@ int main(int argc, char * argv[])
 	time_t t = time(nullptr);
 	struct tm tm = *localtime(&t);
 
-	mpi_introspection_and_initialization(argc, argv);
+	mpi_introspection_and_initialization(argc, argv); // detect/start MPI services
 	processArgs(argc, argv, &args); // Parse command line
 
 	sprintf(  linebuf, "MPMC++\nMassively Parallel Monte Carlo: Multi-System Edition%s, v%s -- 2012-2019 GNU Public License\n", (size>0) ? " (MPI enabled)" : "", VERSION);
