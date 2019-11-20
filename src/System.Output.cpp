@@ -232,7 +232,7 @@ void System::print_frozen_colors( FILE *fp )
 }
 
 
-void System::write_observables() {
+void System::append_observables_to_output_file() {
 	write_observables(fp_energy, observables, temperature);
 }
 void System::write_observables(FILE* fp, observables_t* obs, double core_temp) {
@@ -258,8 +258,8 @@ void System::write_observables(FILE* fp, observables_t* obs, double core_temp) {
 }
 
 
-void System::write_observables_csv() {
-	write_observables_csv( fp_energy_csv, observables, temperature);
+void System::append_observables_to_csv_file() {
+	write_observables_csv(fp_energy_csv, observables, temperature);
 }
 void System::write_observables_csv( FILE *fp, observables_t * obs, double core_temp) {
 	
@@ -296,39 +296,37 @@ int System::write_averages( const char *sysID ) {
 
 	int i;
 	char linebuf[maxLine];
-	avg_observables_t *averages;
+	avg_observables_t &avg =*avg_observables;
 
-	averages = avg_observables;
-
-	if(averages->boltzmann_factor > 0.0) {
-		sprintf( linebuf, "OUTPUT%s: BF = %.5lg +- %.5lg\n", sysID, averages->boltzmann_factor, averages->boltzmann_factor_error );
+	if(avg.boltzmann_factor > 0.0) {
+		sprintf( linebuf, "OUTPUT%s: BF = %.5lg +- %.5lg\n", sysID, avg.boltzmann_factor, avg.boltzmann_factor_error );
 		Output::out1(linebuf);
 	}
 
-	if(averages->acceptance_rate > 0.0) {
+	if(avg.acceptance_rate > 0.0) {
 		sprintf( &linebuf[strlen(linebuf)], 
 		         "OUTPUT%s: AR = %.5lf (%.5lf I/ %.5lf R/ %.5lf D",
 		         sysID,
-		         averages->acceptance_rate,
-		         averages->acceptance_rate_insert, 
-		         averages->acceptance_rate_remove,
-		         averages->acceptance_rate_displace
+		         avg.acceptance_rate,
+		         avg.acceptance_rate_insert, 
+		         avg.acceptance_rate_remove,
+		         avg.acceptance_rate_displace
 		);
 		
-		if(averages->acceptance_rate_adiabatic > 0.0) 
-			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf A", averages->acceptance_rate_adiabatic);
+		if(avg.acceptance_rate_adiabatic > 0.0) 
+			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf A", avg.acceptance_rate_adiabatic);
 
-		if(averages->acceptance_rate_spinflip > 0.0) 
-			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf S", averages->acceptance_rate_spinflip);
+		if(avg.acceptance_rate_spinflip > 0.0) 
+			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf S", avg.acceptance_rate_spinflip);
 
-		if(averages->acceptance_rate_volume > 0.0) 
-			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf V", averages->acceptance_rate_volume);
+		if(avg.acceptance_rate_volume > 0.0) 
+			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf V", avg.acceptance_rate_volume);
 
-		if(averages->acceptance_rate_ptemp > 0.0) 
-			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf PT", averages->acceptance_rate_ptemp);
+		if(avg.acceptance_rate_ptemp > 0.0) 
+			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf PT", avg.acceptance_rate_ptemp);
 		
-		if (averages->acceptance_rate_beadPerturb > 0.0) 
-			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf BEAD", averages->acceptance_rate_beadPerturb);
+		if (avg.acceptance_rate_beadPerturb > 0.0) 
+			sprintf(&linebuf[strlen(linebuf)], "/ %.5lf BEAD", avg.acceptance_rate_beadPerturb);
 		
 		sprintf( &linebuf[strlen(linebuf)], "\n");
 		Output::out1(linebuf);
@@ -340,56 +338,56 @@ int System::write_averages( const char *sysID ) {
 		Output::out1(linebuf);
 	}
 
-	if( averages->cavity_bias_probability > 0.0 ) {
+	if( avg.cavity_bias_probability > 0.0 ) {
 		sprintf( linebuf, "OUTPUT%s: Cavity bias probability = %.5f +- %.5f\n", 
 			sysID,
-			averages->cavity_bias_probability, averages->cavity_bias_probability_error);
+			avg.cavity_bias_probability, avg.cavity_bias_probability_error);
 		Output::out1(linebuf);
 	}
 
 
 	if( gwp )
-		sprintf( linebuf, "OUTPUT%s: total energy = %.5lf +- %.5lf eV\n", sysID, averages->energy/EV2K, averages->energy_error/EV2K );
+		sprintf( linebuf, "OUTPUT%s: total energy = %.5lf +- %.5lf eV\n", sysID, avg.energy/EV2K, avg.energy_error/EV2K );
 	else
-		sprintf( linebuf, "OUTPUT%s: potential energy = %.5lf +- %.5lf K\n", sysID, averages->energy, averages->energy_error );
+		sprintf( linebuf, "OUTPUT%s: potential energy = %.5lf +- %.5lf K\n", sysID, avg.energy, avg.energy_error );
 	Output::out1(linebuf);
 
 
-	if( averages->coulombic_energy != 0.0 ) {
+	if( avg.coulombic_energy != 0.0 ) {
 		if( gwp )
 			sprintf( linebuf, "OUTPUT%s: electrostatic energy = %.5lf +- %.5lf eV\n",
 				sysID, 
-				averages->coulombic_energy/EV2K, averages->coulombic_energy_error/EV2K);
+				avg.coulombic_energy/EV2K, avg.coulombic_energy_error/EV2K);
 		else
 			sprintf( linebuf, "OUTPUT%s: electrostatic energy = %.5lf +- %.5lf K\n",
 				sysID, 
-				averages->coulombic_energy, averages->coulombic_energy_error);
+				avg.coulombic_energy, avg.coulombic_energy_error);
 		Output::out1(linebuf);
 	}
 
 
-	if(averages->rd_energy != 0.0) {
+	if(avg.rd_energy != 0.0) {
 		sprintf( linebuf, "OUTPUT%s: repulsion/dispersion energy = %.5lf +- %.5lf K\n", 
 			sysID,
-			averages->rd_energy, averages->rd_energy_error);
+			avg.rd_energy, avg.rd_energy_error);
 		Output::out1(linebuf);
 	}
 
-	if( averages->polarization_energy != 0.0 ) {
+	if( avg.polarization_energy != 0.0 ) {
 		sprintf( linebuf, "OUTPUT%s: polarization energy = %.5f +- %.5f K", 
 			sysID,
-			averages->polarization_energy, averages->polarization_energy_error );
+			avg.polarization_energy, avg.polarization_energy_error );
 		Output::out1(linebuf);
 
-		if( averages->dipole_rrms_error != 0.0    &&    polar_rrms ) {
+		if( avg.dipole_rrms_error != 0.0    &&    polar_rrms ) {
 			sprintf( linebuf, " (iterations = %.1f +- %.1f rrms = %e +- %e)", 
-				averages->polarization_iterations, averages->polarization_iterations_error, 
-				averages->dipole_rrms, averages->dipole_rrms_error);
+				avg.polarization_iterations, avg.polarization_iterations_error, 
+				avg.dipole_rrms, avg.dipole_rrms_error);
 			Output::out1(linebuf);
 		}
-		else if( averages->polarization_iterations != 0.0 ) {
+		else if( avg.polarization_iterations != 0.0 ) {
 			sprintf( linebuf, " (iterations = %.1f +- %.1f)", 
-				averages->polarization_iterations, averages->polarization_iterations_error);
+				avg.polarization_iterations, avg.polarization_iterations_error);
 			Output::out1(linebuf);
 		}
 
@@ -399,78 +397,78 @@ int System::write_averages( const char *sysID ) {
 	#ifdef VDW
 		sprintf( linebuf, "OUTPUT%s: (coupled-dipole) vdw energy = %.5f +- %.5f K\n", 
 			sysID,
-			averages->vdw_energy, averages->vdw_energy_error);
+			avg.vdw_energy, avg.vdw_energy_error);
 		Output::out1(linebuf);
 	#endif
 
-	if(averages->kinetic_energy > 0.0) {
+	if(avg.kinetic_energy > 0.0) {
 		if( gwp ) {
 
 			sprintf( linebuf, "OUTPUT%s: kinetic energy = %.5lf +- %.5lf eV\n", 
 				sysID,
-				averages->kinetic_energy/EV2K, averages->kinetic_energy_error/EV2K);
+				avg.kinetic_energy/EV2K, avg.kinetic_energy_error/EV2K);
 			Output::out1(linebuf);
 
 		} else {
 			sprintf( linebuf, "OUTPUT%s: kinetic energy = %.5lf +- %.5lf K\n", 
 				sysID,
-				averages->kinetic_energy, averages->kinetic_energy_error);
+				avg.kinetic_energy, avg.kinetic_energy_error);
 			Output::out1(linebuf);
 		}
 
 		sprintf( linebuf, "OUTPUT%s: kinetic temperature = %.5lf +- %.5lf K\n", 
 			sysID,
-			averages->temperature, averages->temperature_error);
+			avg.temperature, avg.temperature_error);
 		Output::out1(linebuf);
 	}
 
-	sprintf( linebuf, "OUTPUT%s: N = %.5lf +- %.5lf molecules\n", sysID, averages->N, averages->N_error);
+	sprintf( linebuf, "OUTPUT%s: N = %.5lf +- %.5lf molecules\n", sysID, avg.N, avg.N_error);
 	Output::out1(linebuf);
 
 	if( sorbateCount == 1 ) { //all based on calculations with assume only one type of sorbate
 
-		sprintf( linebuf, "OUTPUT%s: density = %.5f +- %.5f g/cm^3\n", sysID, averages->density, averages->density_error );
+		sprintf( linebuf, "OUTPUT%s: density = %.5f +- %.5f g/cm^3\n", sysID, avg.density, avg.density_error );
 		Output::out1(linebuf);
 
-		if( averages->pore_density != 0.0   &&   ensemble != ENSEMBLE_NPT ){
-			sprintf( linebuf, "OUTPUT%s: pore density = %.5f +- %.5f g/cm^3\n", sysID, averages->pore_density, averages->pore_density_error);
+		if( avg.pore_density != 0.0   &&   ensemble != ENSEMBLE_NPT ){
+			sprintf( linebuf, "OUTPUT%s: pore density = %.5f +- %.5f g/cm^3\n", sysID, avg.pore_density, avg.pore_density_error);
 			Output::out1(linebuf);
 		}
-		if(averages->percent_wt > 0.0 ) {
-			sprintf( linebuf, "OUTPUT%s: wt %% = %.5f +- %.5f %%\n", sysID, averages->percent_wt, averages->percent_wt_error);
+		if(avg.percent_wt > 0.0 ) {
+			sprintf( linebuf, "OUTPUT%s: wt %% = %.5f +- %.5f %%\n", sysID, avg.percent_wt, avg.percent_wt_error);
 			Output::out1(linebuf);
-			sprintf( linebuf, "OUTPUT%s: wt %% (ME) = %.5f +- %.5f %%\n", sysID, averages->percent_wt_me, averages->percent_wt_me_error);
-			Output::out1(linebuf);
-		}
-		if(averages->excess_ratio > 0.0) {
-			sprintf( linebuf, "OUTPUT%s: excess adsorption ratio = %.5f +- %.5f mg/g\n", sysID, averages->excess_ratio, averages->excess_ratio_error);
+			sprintf( linebuf, "OUTPUT%s: wt %% (ME) = %.5f +- %.5f %%\n", sysID, avg.percent_wt_me, avg.percent_wt_me_error);
 			Output::out1(linebuf);
 		}
-		if(  (averages->qst > 0.0)   &&   std::isfinite(averages->qst)  ) {
-			sprintf( linebuf, "OUTPUT%s: qst = %.5lf kJ/mol\n", sysID, averages->qst);
+		if(avg.excess_ratio > 0.0) {
+			sprintf( linebuf, "OUTPUT%s: excess adsorption ratio = %.5f +- %.5f mg/g\n", sysID, avg.excess_ratio, avg.excess_ratio_error);
 			Output::out1(linebuf);
 		}
-		if( (averages->compressibility > 0.0) && std::isfinite(averages->compressibility) ) {
-			sprintf( linebuf, "OUTPUT%s: compressibility = %.6g +- %.6g atm^-1\n", sysID, averages->compressibility, averages->compressibility_error);
+		if(  (avg.qst > 0.0)   &&   std::isfinite(avg.qst)  ) {
+			sprintf( linebuf, "OUTPUT%s: qst = %.5lf kJ/mol\n", sysID, avg.qst);
 			Output::out1(linebuf);
-			sprintf( linebuf, "OUTPUT%s: bulk modulus = %.6g +- %.6g GPa\n", sysID, ATM2PASCALS*1.0e-9/averages->compressibility,
-				ATM2PASCALS*1.0e-9*averages->compressibility_error/averages->compressibility/averages->compressibility);
+		}
+		if( (avg.compressibility > 0.0) && std::isfinite(avg.compressibility) ) {
+			sprintf( linebuf, "OUTPUT%s: compressibility = %.6g +- %.6g atm^-1\n", sysID, avg.compressibility, avg.compressibility_error);
+			Output::out1(linebuf);
+			sprintf( linebuf, "OUTPUT%s: bulk modulus = %.6g +- %.6g GPa\n", sysID, ATM2PASCALS*1.0e-9/avg.compressibility,
+				ATM2PASCALS*1.0e-9*avg.compressibility_error/avg.compressibility/avg.compressibility);
 			Output::out1(linebuf);
 		}
 	}
 
-	if( (averages->heat_capacity > 0.0)   &&   (std::isfinite(averages->heat_capacity)) ) {
-		sprintf( linebuf, "OUTPUT%s: heat capacity = %.5g +- %.5g kJ/mol K\n", sysID, averages->heat_capacity, averages->heat_capacity_error );
+	if( (avg.heat_capacity > 0.0)   &&   (std::isfinite(avg.heat_capacity)) ) {
+		sprintf( linebuf, "OUTPUT%s: heat capacity = %.5g +- %.5g kJ/mol K\n", sysID, avg.heat_capacity, avg.heat_capacity_error );
 		Output::out1(linebuf);
 	}
 
 	if( ensemble == ENSEMBLE_NPT  ||  ensemble == ENSEMBLE_REPLAY ) {
-		sprintf( linebuf, "OUTPUT%s: volume = %.5f +- %.5f A^3\n", sysID, averages->volume, averages->volume_error );
+		sprintf( linebuf, "OUTPUT%s: volume = %.5f +- %.5f A^3\n", sysID, avg.volume, avg.volume_error );
 		Output::out1(linebuf);
 	}
 
-	if(averages->spin_ratio > 0.0) {
-		sprintf( linebuf, "OUTPUT%s: ortho spin ratio = %.5lf +- %.5lf %%\n", sysID, averages->spin_ratio*100.0, averages->spin_ratio_error*100.0 );
+	if(avg.spin_ratio > 0.0) {
+		sprintf( linebuf, "OUTPUT%s: ortho spin ratio = %.5lf +- %.5lf %%\n", sysID, avg.spin_ratio*100.0, avg.spin_ratio_error*100.0 );
 		Output::out1(linebuf);
 	}
 	
@@ -599,7 +597,7 @@ void System::update_nodestats( nodestats_t *nstats, avg_nodestats_t *avg_ns ) {
 	
 	counter++;
 		
-	double factor   = (counter - 1.0) / counter;   // Weight current average carries in new/updated average
+	double factor   = (counter - 1.0) / counter;   // Weight current average carries in the new/updated average
 	double new_fctr =            1.0  / counter;   // Weight new data will carries in the average
 
 	quantity = nstats->boltzmann_factor;
@@ -614,7 +612,7 @@ void System::update_nodestats( nodestats_t *nstats, avg_nodestats_t *avg_ns ) {
 	avg_ns->polarization_iterations    = factor*avg_ns->polarization_iterations    + new_fctr * quantity;
 	avg_ns->polarization_iterations_sq = factor*avg_ns->polarization_iterations_sq + new_fctr * quantity*quantity;
 
-	// the remaining items aren't really averages, but accumulative values
+	// the remaining items aren't really averages, but cumulative values
 	avg_ns->acceptance_rate             = nstats->acceptance_rate;
 	avg_ns->acceptance_rate_insert      = nstats->acceptance_rate_insert;
 	avg_ns->acceptance_rate_remove      = nstats->acceptance_rate_remove;
@@ -1218,19 +1216,20 @@ int System::write_performance( int i ) {
 
 	if( i > corrtime ) {
 
-		sec_step = Output::calctimediff(current_time, last_time) / ((double)(i - last_step));
+		sec_step = Output::calctimediff(current_time, last_time) / ((double)(i) - last_step);
 
 		if( ensemble == ENSEMBLE_UVT ) {
-			sprintf(linebuf, "OUTPUT: Grand Canonical Monte Carlo simulation running on %d cores\n", size);
+			sprintf(linebuf, "OUTPUT: Grand Canonical Monte Carlo simulation running on %d core(s)\n", (mpi?size:1));
 			Output::out1( linebuf );
 		} else {
-			sprintf( linebuf, "OUTPUT: Canonical Monte Carlo simulation running on %d cores\n", size );
+			sprintf( linebuf, "OUTPUT: Canonical Monte Carlo simulation running on %d core(s)\n", (mpi?size:1) );
 			Output::out1( linebuf );
 		}
 
 
 		#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
-			sprintf(linebuf, "OUTPUT: Root collecting statistics at %s", "(insert time here)\n"); // ctime(&(current_time.tv_sec)));
+			time_t time = current_time.tv_sec;
+			sprintf(linebuf, "OUTPUT: Root collecting statistics at %s", ctime(&time));
 		#else
 			sprintf(linebuf, "OUTPUT: Root collecting statistics at %s", ctime( &(current_time.tv_sec)) );
 		#endif

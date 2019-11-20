@@ -146,7 +146,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\args.h" />
+    <ClInclude Include="..\src\args_etc.h" />
     <ClInclude Include="..\src\Atom.h" />
     <ClInclude Include="..\src\constants.h" />
     <ClInclude Include="..\src\Fugacity.h" />

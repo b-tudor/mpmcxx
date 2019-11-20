@@ -459,9 +459,9 @@ public:
 	void print_frozen_bonds ( FILE *fp_frozen );
 	void print_frozen_masses( FILE *fp_frozen );
 	void print_frozen_colors( FILE *fp_frozen );
-	void write_observables();
+	void append_observables_to_output_file(); // "self-documenting" wrapper to write_observables()
 	void write_observables( FILE *fp_energy, observables_t * observables, double core_temp);
-	void write_observables_csv();
+	void append_observables_to_csv_file(); // "self-documenting" wrapper to write_observables_csv()
 	void write_observables_csv( FILE *fp_energy_csv, observables_t * observables, double core_temp);
 	int  write_averages();
 	int  write_averages(int sysNum);

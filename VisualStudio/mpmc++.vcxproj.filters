@@ -21,9 +21,6 @@
     <ClInclude Include="..\src\SimulationControl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\args.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\System.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -58,6 +55,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\PeriodicBoundary.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\args_etc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

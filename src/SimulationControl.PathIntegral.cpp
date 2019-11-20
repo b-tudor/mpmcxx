@@ -76,7 +76,7 @@ bool SimulationControl::PI_nvt_mc() {
 		PI_calc_system_mass();
 		
 		// average in the initial observables values once  (we don't want to double-count the initial state when using MPI)
-		update_root_averages();
+		average_current_observables_into_PI_avgObservables();
 
 		// write initial observables exactly once
 		if (sys.fp_energy)
@@ -211,12 +211,17 @@ bool SimulationControl::PI_nvt_mc() {
 
 
 	// Simulation has finished...
-	if(!rank)
-		std::for_each(systems.begin(), systems.end(), [](System *SYS) {
+	int sid = 0;
+	if (!rank)
+		std::for_each(systems.begin(), systems.end(), [&](System *SYS) {
 			if (SYS->write_molecules_wrapper( SYS->pqr_output ) < 0) {
+				char linebuff[900];
+				sprintf(linebuff, "System: %d\nFilename: %s\n", sid, SYS->pqr_output);
+				Output::err(linebuff);
 				Output::err("MC: could not write final state to disk\n");
-				throw unknown_file_error;
+				throw unknown_file_error+2000000;
 			}
+			sid++;
 		});
 	
 	return ok;
@@ -225,12 +230,14 @@ bool SimulationControl::PI_nvt_mc() {
 
 
 
-void SimulationControl::update_root_averages() {
+void SimulationControl::average_current_observables_into_PI_avgObservables() {
+	// Update values in the PI observable tracker that are not updated during the course of the simulation...
 	sys.observables->N           = systems[rank]->observables->N;
 	sys.observables->volume      = systems[rank]->observables->volume;
 	sys.observables->temperature = systems[rank]->observables->temperature;
 	sys.observables->spin_ratio  = systems[rank]->observables->spin_ratio;
 	sys.observables->NU          = systems[rank]->observables->NU;
+	// ...and average them (and the other observables) into the mix:
 	sys.update_root_averages(sys.observables);
 }
 
@@ -246,11 +253,13 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 
 	// write observables
 	if (sys.fp_energy)
-		sys.write_observables();
+		sys.append_observables_to_output_file();
 	if (sys.fp_energy_csv)
-		sys.write_observables_csv();
+		sys.append_observables_to_csv_file();
 
+	sys.clear_avg_nodestats();
 	sys.update_root_nodestats();
+	sys.update_root_averages(sys.observables);
 	
 	if (sys.calc_hist)
 		sys.update_root_histogram();

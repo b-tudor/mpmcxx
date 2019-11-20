@@ -151,7 +151,7 @@ private:
 	void   generate_orientation_configs();
 	void   generate_orientation_configs(unsigned int start, unsigned int end, unsigned int P, unsigned int numBeads, double b2, double uMkT );
 	void   apply_orientation_configs();
-	void   update_root_averages();
+	void   average_current_observables_into_PI_avgObservables();
 	void   write_PI_frame();
 
 	static void   add_orientation_site_entry(const char *id, const int site);
