@@ -36,8 +36,8 @@ int main(int argc, char * argv[])
 
 	
 	try {
-
-		SimulationControl simController(args.in_filename, args.reportAR, args.write_PI_Frames_at_corrtime); // Read the input file
+		// Read the input file
+		SimulationControl simController(args.in_filename, args.reportAR, args.write_PI_Frames_at_corrtime); 
 		Output::out1("MAIN: Simulation parameters established.\n");
 
 		install_signal_handler(&simController);
