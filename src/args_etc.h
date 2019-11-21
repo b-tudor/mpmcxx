@@ -38,14 +38,11 @@ typedef struct _parameters {
 void  die(int code);                                                 // Kill any MPI Processes and stop execution
 void  displayUsageAndDie(char* progname, params* p);                 // Print brief application  user instructions and exit
 void  install_signal_handler(SimulationControl *sc);                 // Initialize signal handlers for clean exits (on Posix systems)
+void  introduce_myself();                                            // Display program name and welcome message. 
 void  mpi_introspection_and_initialization(int& argc, char* argv[]); // Check if MPI service is available at runtime and configure job accordingly
 void  processArgs(int argc, char* argv[], params* p);                // Parse command line arguments
 void  signal_handler(int sigtype);                                   // Function to handle interrupt signals (on Posix systems)
 char* stripPath(char* full_path);                                    // Removes the path from a filename, leaving on the filename
-
-
-
-
 
 
 
@@ -104,6 +101,20 @@ void install_signal_handler(SimulationControl* simControl) {
 		signal(SIGUSR1, signal_handler);
 		signal(SIGUSR2, signal_handler);
 	#endif
+}
+
+
+
+// Display program name and welcome message. 
+void introduce_myself() {
+
+	char linebuf[maxLine];
+	time_t t = time(nullptr);
+	struct tm tm = *localtime(&t);
+
+	sprintf(linebuf, "MPMC++\nMassively Parallel Monte Carlo: Multi-System Edition%s, v%s -- 2012-2019 GNU Public License\n", (size > 0) ? " (MPI enabled)" : "", VERSION);
+	sprintf(&linebuf[strlen(linebuf)], "MAIN: processes started on %d threads(s) @ %d-%d-%d %d:%d:%d\n", mpi ? size : 1, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+	Output::out1(linebuf);
 }
 
 

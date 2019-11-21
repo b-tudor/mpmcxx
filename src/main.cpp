@@ -22,18 +22,18 @@ bool mpi = false;
 int main(int argc, char * argv[])
 {
 	params args;
-	char linebuf[maxLine] = { 0 };
+	
+	//  Say hello
+	introduce_myself();
 
-	time_t t = time(nullptr);
-	struct tm tm = *localtime(&t);
+	//  Parse command line
+	processArgs(argc, argv, args);
 
-	mpi_introspection_and_initialization(argc, argv); // detect/start MPI services
-	processArgs(argc, argv, args); // Parse command line
-
-	sprintf(  linebuf, "MPMC++\nMassively Parallel Monte Carlo: Multi-System Edition%s, v%s -- 2012-2019 GNU Public License\n", (size>0) ? " (MPI enabled)" : "", VERSION);
-	sprintf( &linebuf[strlen(linebuf)], "MAIN: processes started on %d threads(s) @ %d-%d-%d %d:%d:%d\n", mpi ? size : 1, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-	Output::out1(linebuf);
-
+	//  Detect/start MPI services 
+	mpi_introspection_and_initialization(argc, argv);
+	
+	
+	
 	
 	try {
 
@@ -53,9 +53,12 @@ int main(int argc, char * argv[])
 	}
 	catch (int e) {
 
+		char linebuf[maxLine] = { 0 };
 		sprintf(linebuf, "MPMC exiting with error code: %d.\n", e);
 		Output::err(linebuf);
+
 		if (args.in_filename) { SafeOps::free(args.in_filename); }
+
 		die(fail);
 	}
 

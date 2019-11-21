@@ -127,7 +127,7 @@ private:
 	bool   check_PI_options();
 	
 	void   assert_all_perturb_targets_exist(); // Check all systems for an existing target molecule for the current MC move
-	double PI_calculate_energy(); // Calcualte the total energy for the aggregate PI system for the current point in phase space
+	double PI_calculate_energy(); // Calculate the total energy for the aggregate PI system for the current point in phase space
 	double PI_calculate_potential(); // Calculate the potential energy for the aggregate PI system
 	double PI_calculate_kinetic(); // Calculate the kinetic energy for the aggregate PI system
 	double PI_chain_mass_length2_ENTIRE_SYSTEM(); // Return sum total of all mass-weighted chain length measures for all the molecules in aggregate system
