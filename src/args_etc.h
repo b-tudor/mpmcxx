@@ -121,7 +121,7 @@ void introduce_self() {
 	);
 	sprintf(
 		&linebuf[strlen(linebuf)],
-		"MAIN: process%S started on %d thread%s @ %d-%d-%d %d:%d:%d\n",
+		"MAIN: process%s started on %d thread%s @ %d-%d-%d %d:%d:%d\n",
 		(mpi ? "es" : ""),
 		(mpi ? size : 1 ),
 		(mpi ?  "s" : ""),
