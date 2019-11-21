@@ -77,12 +77,11 @@ private:
 	
 	
 
-	// array to accumulate energies across different systems, when using MPI (or for easy access on single threads)
-	//double * net_potentials        = nullptr;
-	double * rd_energies           = nullptr; 
-	double * coulombic_energies    = nullptr;
-	double * polarization_energies = nullptr;
-	double * vdw_energies          = nullptr;
+	// arrays to accumulate energies across different systems, when using MPI (or for easy access on single threads)
+	double * rd_energies;           // Repulsion/dispersion energies of all individual systems, indexed by system #
+	double * coulombic_energies;    //            Coulombic energies of all individual systems, indexed by system #
+	double * polarization_energies; //         Polarization energies of all individual systems, indexed by system #
+	double * vdw_energies;          //        Van der Waals energies of all individual systems, indexed by system #
 	
 		
 	// read_config() parses a simulation input file and populates the Simulation Controller

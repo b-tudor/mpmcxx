@@ -50,9 +50,11 @@ SimulationControl::SimulationControl(char *inFilename, int P, bool write_PI_fram
 	if (mpi) {
 		if (nSys) {
 			if (nSys != size) {
-				Output::out1("SIM_CONTROL: When computing path integrals with MPI, the Trotter number is set\n");
-				Output::out1("             by the MPI process count, not the input file. If the 'trotter_number'\n");
-				Output::out1("             option is set, it must match the MPI world size.\n"); 
+				// Execution path should never arrive here, as this case should have caused a program exit in the mpi
+				// init function in args_etc.h: mpi_introspection_and_initialization()
+				Output::err("When computing path integrals with MPI, the Trotter number is set by the MPI\n");
+				Output::err("process count, not the command line option. If a Trotter number option is set\n");
+				Output::err("(-P X), then X must match the MPI world size.\n"); 
 				throw invalid_setting;
 			}
 		}
@@ -240,8 +242,6 @@ void SimulationControl::read_config(char *inFilename) {
 
 	// close the config file 
 	fclose(fp);
-
-	return;
 }
 
 
@@ -1664,7 +1664,7 @@ bool SimulationControl::check_system() {
 			return fail;		
 	}
 
-	if( sys.spectre        ) 
+	if( sys.spectre ) 
 		if( ! check_spectre_options() )
 			return fail;
 	if( sys.rd_only )
@@ -1838,7 +1838,7 @@ bool SimulationControl::check_mc_options( ) {
 	
 
 	 //\   PARALLEL TEMPERING OPTIONS HAVE NOT BEEN TESTED for PI CODE
-	//  \_______________________________________________________________________________________________________________________________________
+	//  \________________________________________________________________________________________________________________________
 
 	/*
 	if( sys.parallel_tempering ) {
@@ -1898,8 +1898,8 @@ bool SimulationControl::check_mc_options( ) {
 
 
 	
-	//    ENSEMBLE SPECIFIC CHECKS
-	//\________________________________________________________________________________________________________________________
+	 //\    ENSEMBLE SPECIFIC CHECKS
+	//  \________________________________________________________________________________________________________________________
 
 	if( sys.ensemble == ENSEMBLE_NVE) {
 
@@ -1926,7 +1926,13 @@ bool SimulationControl::check_mc_options( ) {
 
 
 	if( sys.ensemble == ENSEMBLE_PATH_INTEGRAL_NVT ) {
-		
+
+		// PI and Feynmann-Hibbs approx cannot be used in conjunction as they will "double count" nuclear quantum effects
+		if (sys.feynman_hibbs) {
+			Output::err("The Feynmann hibbs approximation cannot be used with a Path Integral technique.\n");
+			return fail;
+		}
+
 		// Check and report relevant probability settings 
 		if((sys.spinflip_probability + sys.bead_perturb_probability) > 1.0) {
 			Output::err("The requested probabilities for all MC moves sum to a value greater than 1.0.\n");
@@ -2114,11 +2120,6 @@ bool SimulationControl::check_mc_options( ) {
 	sprintf(linebuf, "SIM_CONTROL: rotation change factor is %.5f\n", sys.rot_factor);
 	Output::out1(linebuf);
 
-//	if (ENSEMBLE_PATH_INTEGRAL_NVT == sys.ensemble) {
-//		sprintf( linebuf,"SIM_CONTROL: bead perturbation scaling factor is %.5f\n", sys.PI_bead_perturb_factor);
-//		Output::out1(linebuf);
-//	}
-
 	if( sys.gwp ) {
 		sprintf(linebuf, "SIM_CONTROL: gwp change factor is %.3f\n", sys.gwp_probability);
 		Output::out1(linebuf);
@@ -2186,7 +2187,7 @@ bool SimulationControl::check_spectre_options() {
 bool SimulationControl::check_io_files_options() {
 
 	char linebuf[maxLine*2];
-	int file_count = (nSys) ? nSys : size;
+	int file_count = (mpi) ? size : nSys;
 
 
 	if (SafeOps::iequals(sys.pqr_restart, "off")) { // Optionally turn off restart configuration output
@@ -2218,7 +2219,7 @@ bool SimulationControl::check_io_files_options() {
 					#endif
 				}
 				else {
-					char* filename_cstr = Output::make_filename(sys.pqr_restart, rank);
+					char* filename_cstr = Output::make_filename(sys.pqr_restart, j);
 					std::string filename = filename_cstr;
 					pqr_restart_filenames.push_back(filename);
 					SafeOps::free(filename_cstr);
@@ -2463,6 +2464,7 @@ bool SimulationControl::check_io_files_options() {
 bool SimulationControl::check_feynman_hibbs_options( ) {
 
 	char linebuf[maxLine];
+
 	Output::out("SIM_CONTROL: Feynman-Hibbs effective potential activated\n");
 
 	if( sys.feynman_kleinert ) {

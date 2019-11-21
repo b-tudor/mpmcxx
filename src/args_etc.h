@@ -38,7 +38,7 @@ typedef struct _parameters {
 void  die(int code);                                                 // Kill any MPI Processes and stop execution
 void  displayUsageAndDie(char* progname, params* p);                 // Print brief application  user instructions and exit
 void  install_signal_handler(SimulationControl *sc);                 // Initialize signal handlers for clean exits (on Posix systems)
-void  introduce_myself();                                            // Display program name and welcome message. 
+void  introduce_self();                                              // Display program name and welcome message. 
 void  mpi_introspection_and_initialization(int& argc, char* argv[]); // Check if MPI service is available at runtime and configure job accordingly
 void  processArgs(int argc, char* argv[], params* p);                // Parse command line arguments
 void  signal_handler(int sigtype);                                   // Function to handle interrupt signals (on Posix systems)
@@ -72,12 +72,13 @@ void displayUsageAndDie(char* progname_w_path, params &p) {
 		std::cout << "\nUsage:" << std::endl;
 		std::cout << "\t" << progName << " INPUT_FILE [options]" << std::endl;
 		std::cout << "Options:" << std::endl;
-		std::cout << "\t-P X                 Where X is the trotter number for a single threaded path integral job." << std::endl;
+		std::cout << "\t-P X        Where X is the trotter number for a single threaded path integral job." << std::endl;
+		std::cout << "\t-xyz        Write .xyz PI visualization frames at corrtime steps." << std::endl << std::endl;
 		std::cout << "\nWhen using MPI with path integral ensembles, the number of MPI processes will determine the" << std::endl;
 		std::cout << "number of path integral \"beads\" (i.e. the Trotter number). It is therefore the uneccessary to " << std::endl;
-		std::cout << "use the -n option for multi-threaded/MPI runs. For multi - site / multi - atom sorbate" << std::endl;
-		std::cout << "molecules, the Trotter number must be a power of 2 greater than or equal to 4." << std::endl;
-		std::cout << "\t-xyz                 Write .xyz PI visualization frames at corrtime steps." << std::endl;
+		std::cout << "use the -P option for multi-threaded/MPI runs. For multi-site/multi-atom sorbate molecule, the" << std::endl;
+		std::cout << "Trotter number must be a power of 2 greater than or equal to 4." << std::endl;
+		
 		std::cout << "\nExample:\n\t" << progName << " -n 8 <my_path_integral_sim_file>" << std::endl;
 		std::cout << "\n        \tmpirun -n 8 " << progName << " <my_path_integral_sim_file>" << std::endl;
 		std::cout << "\nSee https://github.com/mpmccode/mpmc for input file specification." << std::endl;
@@ -106,21 +107,33 @@ void install_signal_handler(SimulationControl* simControl) {
 
 
 // Display program name and welcome message. 
-void introduce_myself() {
+void introduce_self() {
 
 	char linebuf[maxLine];
 	time_t t = time(nullptr);
 	struct tm tm = *localtime(&t);
 
-	sprintf(linebuf, "MPMC++\nMassively Parallel Monte Carlo: Multi-System Edition%s, v%s -- 2012-2019 GNU Public License\n", (size > 0) ? " (MPI enabled)" : "", VERSION);
-	sprintf(&linebuf[strlen(linebuf)], "MAIN: processes started on %d threads(s) @ %d-%d-%d %d:%d:%d\n", mpi ? size : 1, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+	sprintf(
+		linebuf,
+		"MPMC++\nMassively Parallel Monte Carlo: Multi-System Edition%s, v%s -- 2012-2019 GNU Public License\n",
+		(size ? " (MPI enabled)" : ""), 
+		VERSION
+	);
+	sprintf(
+		&linebuf[strlen(linebuf)],
+		"MAIN: process%S started on %d thread%s @ %d-%d-%d %d:%d:%d\n",
+		(mpi ? "es" : ""),
+		(mpi ? size : 1 ),
+		(mpi ?  "s" : ""),
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec
+	);
 	Output::out1(linebuf);
 }
 
 
 
 // Check if MPI service is available at runtime and configure job accordingly
-void mpi_introspection_and_initialization(int& argc, char* argv[]) {
+void mpi_introspection_and_initialization(int& argc, char* argv[], int P) {
 
 	#ifdef _MPI	 // Start up the MPI chain
 		if (MPI_Init(&argc, &argv) == MPI_SUCCESS)
@@ -131,7 +144,17 @@ void mpi_introspection_and_initialization(int& argc, char* argv[]) {
 	#endif
 
 	mpi = size > 1; // signals a multi-threaded run
-	if (!mpi) { MPI_Finalize(); }
+	if( mpi ) {
+		if (P) {
+			// If we get here, we are using MPI, but a Trotter number has been manually specified 
+			Output::err("Do not explicitly set a Trotter number (-P) for MPI jobs. The number of MPI threads\n");
+			Output::err("(i.e. MPI 'size') implicitly sets the Trotter number. E.g. for P=8, try:\n");
+			Output::err("\tmpirun -P 8 mpmc++ my-input-file\n");
+			die(fail);
+		}
+	} else {
+		MPI_Finalize();
+	}
 }
 
 
@@ -145,7 +168,7 @@ void processArgs(int argc, char* argv[], params &p) {
 
 	// DEFAULT VALUES
 	p.in_filename                 = nullptr;
-	p.Ptrotter_number             = 1;
+	p.Ptrotter_number             = 0;
 	p.write_PI_Frames_at_corrtime = false;
 
 
@@ -186,8 +209,12 @@ void processArgs(int argc, char* argv[], params &p) {
 				if (!issOptionToken)
 					displayUsageAndDie(argv[0], p);
 				p.in_filename = (char*)calloc(fname.size() + 1, sizeof(char));
-				std::memcpy(p.in_filename, fname.c_str(), fname.size());
-
+				if (p.in_filename) 
+					std::memcpy(p.in_filename, fname.c_str(), fname.size());
+				else {
+					Output::err("Unable to allocate filename buffer.\n");
+					die(fail);
+				}
 				n++;
 			}
 

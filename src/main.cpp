@@ -1,6 +1,7 @@
 // Space Research Group
 // Department of Chemistry
 // University of South Florida
+
 #ifndef VERSION
 #define VERSION "0.81"
 #endif
@@ -21,17 +22,16 @@ bool mpi = false;
 
 int main(int argc, char * argv[])
 {
-	params args;
-	
-	//  Say hello
-	introduce_myself();
-
 	//  Parse command line
+	params args;
 	processArgs(argc, argv, args);
 
 	//  Detect/start MPI services 
-	mpi_introspection_and_initialization(argc, argv);
-	
+	mpi_introspection_and_initialization(argc, argv, args.Ptrotter_number);
+
+	//  Say hello
+	introduce_self();
+
 	
 	
 	

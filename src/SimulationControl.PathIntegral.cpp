@@ -543,9 +543,16 @@ bool SimulationControl::check_PI_options() {
 	}
 
 	if(  (nSys<4) || (bitcount != 1)  ) {
-		sprintf(linebuf, "SIMULATION CONTROL: MPI-Reported world-size: %d.\n", size );
-		Output::out("SIMULATION CONTROL: Path Integrals require at least 4 MPI processes to run. One process per PI bead and a total of 2^N 'beads' (N >= 2).\n");
-		Output::err(linebuf);
+		if (mpi) {
+			Output::out("SIMULATION CONTROL: Path Integrals require at least 4 MPI processes to run. One process per PI bead and a total of 2^N 'beads' (N >= 2).\n");
+			sprintf(linebuf, "SIMULATION CONTROL: MPI-Reported world-size: %d.\n", size);
+			Output::err(linebuf);
+		} else {
+			Output::err("Path intergrals require at least 4 systems to run--Trotter number (P) must be set to a power of 2 greater than 4. The\n");
+			Output::err("Set the trotter number(P) with the - P X command line option. E.g.: mpmc++ -P 8 my_input_file\n");
+		}
+		Output::err("The Trotter number (P) sets the number of individual simulations that will be conducted that, in aggregate, will represent\n");
+		Output::err("the single quantum system. Due to constraints in the orientation algorithm, the Trotter number must be a power of 2.\n");
 		throw invalid_MPI_size_for_PI;
 	}
 
