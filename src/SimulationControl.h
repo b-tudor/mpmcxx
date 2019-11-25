@@ -30,8 +30,6 @@ public:
 	void initializeSimulationObjects();
 
 
-
-	inline bool reportAR() { return report_AR; }
 	inline bool PI_xyz_corrtime_frames_requested() { return write_PI_frames; }
 	
 	
@@ -46,16 +44,16 @@ private:
 	typedef struct _PI_NVT_BFContributors {
 		BoltzFactor_contributor potential;       // Potential energy in Kelvin
 		BoltzFactor_contributor chain_mass_len2; // kg * m^2
+		BoltzFactor_contributor EVERY_CHAIN;
 		BoltzFactor_contributor orient_mu_len2;  // kg * m^2
 	} PI_NVT_BFContributors;
 	PI_NVT_BFContributors BFC;
 	
 
-	bool report_AR; // report Acceptance & Rejections?
 	bool write_PI_frames; // do we want to write the PI frames for visualization?
 
 	
-	std::vector<System *> systems;
+	std::vector<System *> systems;                  // collection of systems for use with multi-system coordinated ensembles (Gibbs, Path Integral)
 	std::vector<Vector3D> orientations;             // orientations to be applied to a bead-representation of a molecule during bead perturbation
 
 	std::vector<std::string> pqr_input_filenames;   // Input geometry filenames for each PI system
@@ -107,8 +105,10 @@ private:
 	bool check_qrot_options();
 
 
-	// Allocate data structures and initialize system data for multi-system ensembles
-	void initialize_PI_NVT_Systems();
+	
+	void initialize_PI_NVT_Systems();        // Allocate data structures and initialize system data for multi-system ensembles
+	void backup_observables_ALL_SYSTEMS();   // backup observables for all systems in the system vector as well as the sys variable
+	void backup_observables_SYS_VECTOR();    // backup  only observables for systems in the system vector
 
 	// Standard 
 	inline bool mc()                    { return sys.mc(); } // SimulationControl wrapper function for System.mc()
@@ -146,11 +146,12 @@ private:
 	void   PI_perturb_bead_COMs(); // perturb the user-specified number of beads
 	void   PI_perturb_bead_COMs(int n); // specify number of beads to perturb
 	void   PI_perturb_beads_orientations();
-	double PI_observable_energy();
 	void   generate_orientation_configs();
 	void   generate_orientation_configs(unsigned int start, unsigned int end, unsigned int P, unsigned int numBeads, double b2, double uMkT );
 	void   apply_orientation_configs();
+	void   restore_PI_systems();
 	void   average_current_observables_into_PI_avgObservables();
+	
 	void   write_PI_frame();
 
 	static void   add_orientation_site_entry(const char *id, const int site);

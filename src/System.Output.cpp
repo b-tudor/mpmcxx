@@ -304,13 +304,14 @@ int System::write_averages( const char *sysID ) {
 	}
 
 	if(avg.acceptance_rate > 0.0) {
-		sprintf( &linebuf[strlen(linebuf)], 
-		         "OUTPUT%s: AR = %.5lf (%.5lf I/ %.5lf R/ %.5lf D",
-		         sysID,
-		         avg.acceptance_rate,
-		         avg.acceptance_rate_insert, 
-		         avg.acceptance_rate_remove,
-		         avg.acceptance_rate_displace
+		sprintf(
+			linebuf, 
+			"OUTPUT%s: AR = %.5lf (%.5lf I/ %.5lf R/ %.5lf D",
+			sysID,
+			avg.acceptance_rate,
+			avg.acceptance_rate_insert, 
+			avg.acceptance_rate_remove,
+			avg.acceptance_rate_displace
 		);
 		
 		if(avg.acceptance_rate_adiabatic > 0.0) 

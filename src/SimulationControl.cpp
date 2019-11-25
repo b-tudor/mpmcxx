@@ -2826,6 +2826,19 @@ bool SimulationControl::check_qrot_options() {
 
 
 
+void SimulationControl::backup_observables_ALL_SYSTEMS() {
+	// Backup the observables for all systems 
+	std::memcpy(sys.checkpoint->observables, sys.observables, sizeof(System::observables_t));
+	backup_observables_SYS_VECTOR();
+}
+void SimulationControl::backup_observables_SYS_VECTOR() {
+	for (int i = 0; i < nSys; i++)
+		std::memcpy(systems[i]->checkpoint->observables, systems[i]->observables, sizeof(System::observables_t));
+}
+
+
+
+
 bool SimulationControl::runSimulation() {
 // Starts main run loop, according to simulation type
 

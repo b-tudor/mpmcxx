@@ -503,16 +503,6 @@ void System::setup_mpi_dataStructs( mpiData& md, int qty ) {
 
 
 
-void System::backup_observables( std::vector<System*> &sys ) {
-// Backup the observables for systems (intended for use in Gibbs ensemble)
-	int nSystems = (int) sys.size();
-	for (int i = 0; i < nSystems; i++)
-		std::memcpy( sys[i]->checkpoint->observables, sys[i]->observables, sizeof(System::observables_t));
-}
-
-
-
-
 int System::pick_Gibbs_move( std::vector<System*> &sys ) {
 // this function determines what move will be made next time make_move() is called and selects
 // the molecule to which said move will be applied (and creates pointers to its list location).
@@ -1519,7 +1509,7 @@ void System::restore() {
 //    (b) determines the next move sequence by calling do_checkpoint()
 	
 	// restore the remaining observables 
-	std::memcpy( observables, checkpoint->observables, sizeof(observables_t) );
+	restore_observables();
 
 	// restore state by undoing the steps of make_move()
 	switch ( checkpoint->movetype ) {

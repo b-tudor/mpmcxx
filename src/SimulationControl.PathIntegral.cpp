@@ -20,19 +20,21 @@ extern bool mpi;
 
  
 
-
+//  In PI ensembles, the sys variable (the main and typically only system variable in traditional runs)
+//  is used to track the aggregate observables that are derived from the simulation results generated
+//  in the array of systems (referenced in the vector variable systems[]). 
 bool SimulationControl::PI_nvt_mc() {
-
+	
 	// For ease of reference:
-	System       *system = systems[rank];  // System for which this MPI thread will compute energies
-	double       &boltzmann_factor = sys.nodestats->boltzmann_factor; // Boltzmann factor for current system config
-	unsigned int &step = sys.step;
-	const unsigned int nSteps = system->numsteps;  // number of MC steps to perform
+	System *system = systems[rank];  // System for which this MPI thread will compute energies
+	double &boltzmann_factor = sys.nodestats->boltzmann_factor; // Boltzmann factor for current system config
+	unsigned int &step = sys.step; // current MC step
+	const unsigned int nSteps = system->numsteps;  // total number of MC steps to perform
 	
 
-	int move = 0;                                  // current MC move 
+	int move = 0; // current MC move 
 	
-
+	/*
 	if (mpi) {
 		system->setup_mpi_dataStructs(size);
 	}
@@ -41,7 +43,7 @@ bool SimulationControl::PI_nvt_mc() {
 		// data between systems, in order to simplify coding  on the MPI end.
 		SYS->setup_mpi_dataStructs(nSys);			
 	});
-
+	*/
 
 	std::for_each(systems.begin(), systems.end(), [this](System* SYS) {
 
@@ -54,21 +56,14 @@ bool SimulationControl::PI_nvt_mc() {
 		// set volume observable
 		SYS->observables->volume = SYS->pbc.volume;
 	});
-
-
-	if( ! sys.parallel_restarts )
-		// If not using a config file from a previous PI run, we perform an initial bead perturbation
-		// so as not to drop the molecules into the system out of equilibrium wrt thermal wavelength
-		PI_perturb_bead_COMs_ENTIRE_SYSTEM();
-
+	
+	// If not using a config file from a previous PI run, we perform an initial bead perturbation
+	// so as not to drop the molecules into the system out of equilibrium wrt thermal wavelength
+	if( ! sys.parallel_restarts ) { PI_perturb_bead_COMs_ENTIRE_SYSTEM(); }
+	
 	// Perform initial energy calculations
 	PI_calculate_energy();
-	BFC.potential.init = sys.observables->potential();
-	if( ! std::isfinite(BFC.potential.init) )
-		BFC.potential.init = MAXVALUE; // be a bit forgiving of the initial state 
 	
-	
-
 	// write initial observables to stdout and logs
 	if(  ! rank  ) {
 
@@ -89,31 +84,50 @@ bool SimulationControl::PI_nvt_mc() {
 		sys.write_averages();
 	}
 	
-	//  save the initial state and set up the first move
-	System::backup_observables( systems );
+	// Pick the next MC move and target molecule
 	move = PI_pick_NVT_move();
 
+	// Backup the original observables set
+	backup_observables_ALL_SYSTEMS();
 
-	// main MC loop 
+	// Compute the initial values that will contribute to the Boltzmann factor
+	BFC.potential.current = sys.observables->potential();
+	BFC.chain_mass_len2.current = 0; // We will never use this  ( The molecule to which these refer changes from )
+	BFC.orient_mu_len2.current  = 0; // We will never use this  ( from step to step and observables only depend  )
+	BFC.EVERY_CHAIN.current     = 0; // We will never use this  ( on these values wrt the entire system.         )
+	if (!std::isfinite(BFC.potential.current))
+		sys.observables->energy = BFC.potential.current = MAXVALUE; // be a bit forgiving of the initial state 
+
+
+	 //\    Main MC Loop 
+	//  \_________________________________________________________________________________________________________________
+
 	for( step=1; step <= nSteps; step++ ) {
 
-		// restore the last accepted energy & chain-length-metric
-		BFC.potential.init = sys.observables->potential();
-		if (move == MOVETYPE_PERTURB_BEADS) {
-			BFC.chain_mass_len2.init = PI_chain_mass_length2();
-			BFC.orient_mu_len2.init = PI_orientational_mu_length2();
-		}
+		// restore the last accepted energy, chain-length and orientation-chain metrics
+		BFC.potential.init       = BFC.potential.current; 
+		BFC.chain_mass_len2.init = (move == MOVETYPE_PERTURB_BEADS) ? PI_chain_mass_length2() : 0;
+		BFC. orient_mu_len2.init = (move == MOVETYPE_PERTURB_BEADS) ? PI_orientational_mu_length2() : 0;
+		BFC.EVERY_CHAIN.init = (move == MOVETYPE_PERTURB_BEADS) ? PI_chain_mass_length2_ENTIRE_SYSTEM() : 0;
+		
+		double chain_mass_length_all_molecules = PI_chain_mass_length2_ENTIRE_SYSTEM();
+		chain_mass_length_all_molecules *= 1e47;
+		char linebuf[500];
+		sprintf(linebuf, "Total chain length %lf\n", chain_mass_length_all_molecules);
+		Output::out1(linebuf);
 
 		// perturb the system 
 		PI_make_move( move );
 
 		// calculate new energy change, new PI chain length & update obervables
 		BFC.potential.trial = PI_calculate_potential();
-		if (move == MOVETYPE_PERTURB_BEADS) {
-			BFC.chain_mass_len2.trial = PI_chain_mass_length2();
-			BFC.orient_mu_len2.trial  = PI_orientational_mu_length2();
-		}
-			
+		BFC.chain_mass_len2.trial = (move==MOVETYPE_PERTURB_BEADS)?       PI_chain_mass_length2() : 0;
+		BFC. orient_mu_len2.trial = (move==MOVETYPE_PERTURB_BEADS)? PI_orientational_mu_length2() : 0;
+		BFC.EVERY_CHAIN.trial = (move == MOVETYPE_PERTURB_BEADS) ? PI_chain_mass_length2_ENTIRE_SYSTEM() : 0;
+		double delta1 = BFC.EVERY_CHAIN.change();
+		double delta2 = BFC.chain_mass_len2.change();
+		double deltadelta = delta1 - delta2;
+
 		#ifdef QM_ROTATION
 			// solve for the rotational energy levels 
 			if (system->quantum_rotation && (system->checkpoint->movetype == MOVETYPE_SPINFLIP))
@@ -122,33 +136,26 @@ bool SimulationControl::PI_nvt_mc() {
 
 		// treat a bad contact as a reject 
 		if( ! std::isfinite(BFC.potential.trial) ) {
-			sys.observables->energy = MAXVALUE;   //  system->observables->energy = MAXVALUE;
+			BFC.potential.trial = sys.observables->energy = MAXVALUE;
 			boltzmann_factor = 0;  //  system->nodestats->boltzmann_factor = 0;
-		} else {
+		} else 
 			boltzmann_factor = PI_NVT_boltzmann_factor(BFC);
-		}
+		
 			
 		
-		// Metropolis function 
-		///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		 //\   Metropolis function 
+		//  \_____________________________________________________________________________________________________________
 
 		if(   (Rando::rand() < boltzmann_factor)   &&   (system->iterator_failed == 0)   ) {
 			  
-			//  ACCEPT  //////////////////////////////////////////////////////////////////////////////////////////////
-			if (reportAR()) {
-				Output::out1("ACCEPT               ");
-				switch (move) {
-				case MOVETYPE_DISPLACE:      Output::out1("Displace\n"  ); break;
-				case MOVETYPE_PERTURB_BEADS: Output::out1("Bead reorg\n"); break;
-			}}
+			 //\\//  ACCEPT  /////////////////////////////////////////////////////////////////////////////////////////////
+
+			sys.register_accept(move); // register an accepted move (for computing move acceptance rates)
+
+			BFC.potential.current = BFC.potential.trial;
 			
-			sys.register_accept(move);
-
-			BFC.potential.current       = BFC.potential.trial;
-			BFC.chain_mass_len2.current = BFC.chain_mass_len2.trial;
-			BFC.orient_mu_len2.current  = BFC.orient_mu_len2.trial;
-
-			System::backup_observables(systems);
+			PI_calculate_energy();
+			backup_observables_ALL_SYSTEMS();
 			
 			// Simulated Annealing
 			if (sys.simulated_annealing) {
@@ -162,38 +169,21 @@ bool SimulationControl::PI_nvt_mc() {
 			}
 		} else {
 
-			//  REJECT: restore from last checkpoint  /////////////////////////////////////////////////////////////////
-			if (reportAR()) {
-				Output::out1("REJECT   ");
-				switch (move) {
-				case MOVETYPE_DISPLACE:      Output::out1("Displace\n"  ); break;
-				case MOVETYPE_PERTURB_BEADS: Output::out1("Bead reorg\n"); break;
-				}
-			}
-			BFC.potential.current = BFC.potential.trial; //used in parallel tempering
-			std::for_each( systems.begin(), systems.end(), [](System *SYS) {
-				SYS->iterator_failed = 0; // reset the polar iterative failure flag
-				SYS->restore();            
-			});
-			sys.register_reject(move);
-			
+			//\\//  REJECT: restore from last checkpoint  ///////////////////////////////////////////////////////////////
+			restore_PI_systems();      // restore pre-move system configs and the associated observables
+			sys.restore_observables(); // restore the aggregate PI observables 
+			sys.register_reject(move); // register a rejected move (for computing move acceptance rates)
 		}
+
 		
-		move = PI_pick_NVT_move();
-
-		// perform parallel_tempering
-		if ((systems[rank]->parallel_tempering) && ((sys.step % systems[rank]->ptemp_freq) == 0))
-			systems[rank]->temper_system(BFC.potential.current);
-
-		// track the acceptance_rates/BF and compute associated stats
-		sys.track_ar(sys.nodestats);
-		sys.update_nodestats(sys.nodestats, sys.avg_nodestats);
+		sys.compile_MC_algorithm_stats(); // track the acceptance_rates/BF and compute associated stats
+		move = PI_pick_NVT_move();        // Pick the move (and target) for the next MC step
+	
 
 
-		// do this every correlation time, and at the very end ////////////////////////////////////////////////////////
+		//\\//  Do this every correlation time, and at the very end   ////////////////////////////////////////////////////
 		if(  !(step % sys.corrtime)   ||   (step == nSteps)) {
 			do_PI_corrtime_bookkeeping();
-
 			if (step == nSteps) {
 				for (int i = 0; i < size; i++) {
 					if (mpi) {
@@ -201,44 +191,64 @@ bool SimulationControl::PI_nvt_mc() {
 						MPI_Barrier(MPI_COMM_WORLD);
 						#endif
 					}
-					if (i == rank)
-						write_PI_frame();
+					if (i == rank) { write_PI_frame(); }
 		}	}	}
-	
 
 
 	} // main loop 
 
 
 	// Simulation has finished...
-	int sid = 0;
-	if (!rank)
-		std::for_each(systems.begin(), systems.end(), [&](System *SYS) {
-			if (SYS->write_molecules_wrapper( SYS->pqr_output ) < 0) {
+	if (!rank) {
+		int sid = 0;
+		std::for_each(systems.begin(), systems.end(), [&sid](System* SYS) {
+			if (SYS->write_molecules_wrapper(SYS->pqr_output) < 0) {
 				char linebuff[900];
 				sprintf(linebuff, "System: %d\nFilename: %s\n", sid, SYS->pqr_output);
 				Output::err(linebuff);
 				Output::err("MC: could not write final state to disk\n");
-				throw unknown_file_error+2000000;
+				throw unknown_file_error;
 			}
 			sid++;
 		});
-	
+	}
 	return ok;
 }
 
 
 
 
+void SimulationControl::restore_PI_systems() {
+	std::for_each(systems.begin(), systems.end(), [](System* SYS) {
+		SYS->iterator_failed = 0; // reset the polar iterative failure flag
+		SYS->restore();           // restore old system configuration and associated observables
+	});
+}
+
+
+
+
 void SimulationControl::average_current_observables_into_PI_avgObservables() {
+	
+	// Create a reference to the "main system" geometry/simulation-box in the system variable that tracks the
+	// Path Integral observables (some of the observables use this information to compute said observables)
+	sys.molecules = systems[rank]->molecules;
+	
+	// Update periodic boundary conditions. Only needed once in in PI_NVT, but would require updating in, say PI_NPT
+	sys.pbc = systems[rank]->pbc;
+
 	// Update values in the PI observable tracker that are not updated during the course of the simulation...
 	sys.observables->N           = systems[rank]->observables->N;
 	sys.observables->volume      = systems[rank]->observables->volume;
 	sys.observables->temperature = systems[rank]->observables->temperature;
 	sys.observables->spin_ratio  = systems[rank]->observables->spin_ratio;
 	sys.observables->NU          = systems[rank]->observables->NU;
+	
 	// ...and average them (and the other observables) into the mix:
 	sys.update_root_averages(sys.observables);
+
+	// Dereference the system geometry from the PI tracker, so the memory doesn't get accidentally corrupted or freed.
+	sys.molecules = nullptr;
 }
 
 
@@ -259,7 +269,7 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 
 	sys.clear_avg_nodestats();
 	sys.update_root_nodestats();
-	sys.update_root_averages(sys.observables);
+	average_current_observables_into_PI_avgObservables();
 	
 	if (sys.calc_hist)
 		sys.update_root_histogram();
@@ -635,20 +645,20 @@ void SimulationControl::initialize_PI_NVT_Systems() {
 			systems[i]->thole_resize_matrices();		
 	}
 
-	
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Allocate memory for MPI-energy-transfers / multi-system-energy-bookkeeping / MC algo stats
-	// The following allocations are freed in ~SimulationControl():
+	//\\///////////////////////////////////////////////////////////////////////////////////////////////////////
 	SafeOps::calloc(          rd_energies, nSys, sizeof(double), __LINE__, __FILE__);
 	SafeOps::calloc(   coulombic_energies, nSys, sizeof(double), __LINE__, __FILE__);
 	SafeOps::calloc(polarization_energies, nSys, sizeof(double), __LINE__, __FILE__);
 	SafeOps::calloc(         vdw_energies, nSys, sizeof(double), __LINE__, __FILE__);
-	// The remaining allocations are freed in ~System():
-	SafeOps::calloc(    sys.observables, 1, sizeof(System::observables_t),     __LINE__, __FILE__);
-	SafeOps::calloc(sys.avg_observables, 1, sizeof(System::avg_observables_t), __LINE__, __FILE__);
-	SafeOps::calloc(      sys.nodestats, 1, sizeof(System::nodestats_t),       __LINE__, __FILE__);
-	SafeOps::calloc(  sys.avg_nodestats, 1, sizeof(System::avg_nodestats_t),   __LINE__, __FILE__);
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	SafeOps::calloc( sys.observables,             1, sizeof(System::observables_t),     __LINE__, __FILE__);
+	SafeOps::calloc( sys.avg_observables,         1, sizeof(System::avg_observables_t), __LINE__, __FILE__);
+	SafeOps::calloc( sys.nodestats,               1, sizeof(System::nodestats_t),       __LINE__, __FILE__);
+	SafeOps::calloc( sys.avg_nodestats,           1, sizeof(System::avg_nodestats_t),   __LINE__, __FILE__);
+	SafeOps::calloc( sys.checkpoint,              1, sizeof(System::checkpoint_t),      __LINE__, __FILE__);
+	SafeOps::calloc( sys.checkpoint->observables, 1, sizeof(System::observables_t),     __LINE__, __FILE__);
+	//\\///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 	#ifdef _MPI
@@ -725,7 +735,6 @@ double SimulationControl::PI_calculate_energy() {
 		// if (systems[rank]->quantum_rotation) 
 		//     quantum_system_rotational_energies(systems[rank]);
 	#endif
-
 	sys.observables->energy = kinetic + potential;
 
 	return sys.observables->energy;
@@ -794,11 +803,11 @@ double SimulationControl::PI_calculate_potential() {
 
 double SimulationControl::PI_calculate_kinetic() {
 	
-	const double d = 3.0; // dimensionality of the system
-	const double N = systems[0]->countN(); // Number of sorbate (or moveable) molecules in the system
+	const double d    = 3.0;                          // dimensionality of the system
+	const double N    = systems[0]->countN();         // Number of sorbate (or moveable) molecules in the system
 	const double beta = 1.0 / (kB * sys.temperature); //  1/kT
 
-	double chain_mass_len2 = PI_chain_mass_length2_ENTIRE_SYSTEM();
+	double chain_mass_len2 =       PI_chain_mass_length2_ENTIRE_SYSTEM();
 	double  orient_mu_len2 = PI_orientational_mu_length2_ENTIRE_SYSTEM();
 	
 	// Tuckerman (2010) Statistical Mechanics: Theory and Molecular Simulation.   Eq (12.5.12)
@@ -817,18 +826,6 @@ void SimulationControl::PI_calc_system_mass() {
 	systems[rank]->calc_system_mass();
 	sys.observables->frozen_mass = systems[0]->observables->frozen_mass;
 	sys.observables-> total_mass = systems[0]->observables-> total_mass;
-}
-
-
-
-
-double SimulationControl::PI_observable_energy() {
-
-	double energy = 0;
-	for (int s=0; s<nSys; s++)
-		energy += systems[s]->observables->energy;
-
-	return energy / (double) nSys;
 }
 
 
@@ -923,10 +920,11 @@ double SimulationControl::PI_chain_mass_length2( std::vector<Molecule*> &molecul
 	
 	// Finally, the PI measure of the distance is weighted by the mass of the molecule in question.
 
-	double PI_chain_mass_length2 = 0;   // "length", for lack of a better word. It is the mass*(distance^2 + distance^2 + ...) for the
-	                              // molecule whose bead representation was perturbed. The distances measure the separations 
-	                              // between adjacent bead COMs on the PI "polymer chain". It is actually some sort of weighted
-	                              // length quantity, but it plays the same role as energy if we were simulating a harmonic potential.
+	double PI_chain_mass_length2 = 0;   // "length", for lack of a better word. It is the mass*(distance^2 + distance^2 + ...)
+	                                    // for the molecule whose bead representation was perturbed. The distances measure the  
+	                                    // separations between adjacent bead COMs on the PI "polymer chain". It is actually some
+	                                    // sort of weighted length quantity, but it plays the same role as energy if we were
+	                                    // simulating a harmonic potential.
 
 
 	// record the COM coordinates of each system's version of the target molecule.
@@ -956,7 +954,7 @@ double SimulationControl::PI_chain_mass_length2( std::vector<Molecule*> &molecul
 		PI_chain_mass_length2 += delta.norm2();
 	}
 	PI_chain_mass_length2 *= (molecule[0]->mass * AMU2KG) * (ANGSTROM2METER * ANGSTROM2METER);   //  weight chain by the mass and
-	                                                                                  //  convert A^2 to m^2.
+	                                                                                             //  convert A^2 to m^2.
 	return PI_chain_mass_length2;
 }
 
@@ -1455,11 +1453,11 @@ void SimulationControl::PI_perturb_bead_COMs(int n) {
 	                            // around the PI loop. The indices of all other participating beads are computed relative to starterBead.
 
 	
-	int prevBead_idx  = starterBead;                   // index of the bead that comes directly before the bead that is currently being moved 
-	                                                   // in the PI chain (this bead will remain stationary).
-	int bead_idx      = (prevBead_idx+1)   % nSys; // index of the bead that is currently being moved
-	int finalBead_idx = (prevBead_idx+n+1) % nSys; // final bead of "trial chain"  (this bead is also stationary, and may be the same as prevBead)
-	starterBead       = (starterBead+1)    % nSys; // advance the index for the starter bead for the next time this function is called
+	int prevBead_idx  = starterBead;               //  index of the bead that comes directly before the bead that is currently being moved 
+	//               n is number of beads to move  //  in the PI chain (this bead will remain stationary).
+	int bead_idx      = (prevBead_idx+1)   % nSys; //  index of the bead that is currently being moved
+	int finalBead_idx = (prevBead_idx+n+1) % nSys; //  final bead of "trial chain"  (this bead is also stationary, and may be the same as prevBead)
+	starterBead       = (starterBead+1)    % nSys; //  advance the index for the starter bead for the next time this function is called
 	
 	double Mass = AMU2KG * systems[0]->checkpoint->molecule_altered->mass; // mass of the molecule whose bead configuration is being perturbed
 	
@@ -1483,7 +1481,8 @@ void SimulationControl::PI_perturb_bead_COMs(int n) {
 	chain_COM /= nSys;
 
 	// compute the perturbation for bead COM positions
-
+	
+						 // n is the qty of beads that will be perturbed
 	double tB = n;       // this corresponds to all non-cancelling factors of t[ i ] in reference
 	double tA = 1.0 + n; // this corresponds to t[i-1] in the same
 	                     // the reference has more factors, but they all cancel such that tB/tA is all that remains.
@@ -1513,7 +1512,7 @@ void SimulationControl::PI_perturb_bead_COMs(int n) {
 	delta_COM /= nSys;
 	delta_COM = delta_COM - chain_COM;
 
-	// Shift the COM coord of the individual beads, such that the COM of the entire chain leaves this method unchanged 
+	// Shift the COM coord of the individual beads, such that the COM of the entire chain will not be changed 
 	for_each(beads.begin(), beads.end(), [delta_COM](Vector3D &bead) {
 		bead -= delta_COM;
 	});

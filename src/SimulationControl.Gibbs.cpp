@@ -157,7 +157,7 @@ bool SimulationControl::Gibbs_mc() {
 	}
 
 	// save the initial state
-	System::backup_observables(systems);
+	backup_observables_ALL_SYSTEMS();
 	move = System::pick_Gibbs_move(systems);
 
 	int s = 1;
@@ -279,7 +279,7 @@ bool SimulationControl::Gibbs_mc() {
 			}
 		}
 
-		System::backup_observables(systems);
+		backup_observables_SYS_VECTOR();
 		move = System::pick_Gibbs_move(systems);
 
 

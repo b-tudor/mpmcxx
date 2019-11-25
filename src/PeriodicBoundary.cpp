@@ -8,8 +8,8 @@
 #include "Output.h"
 
 
-
-PeriodicBoundary::PeriodicBoundary() {
+PeriodicBoundary::~PeriodicBoundary() { }
+PeriodicBoundary:: PeriodicBoundary() {
 	cutoff =  0.0; // radial cutoff (A)
 	volume =  0.0; // unit cell volume (A^3) 
 
@@ -20,15 +20,31 @@ PeriodicBoundary::PeriodicBoundary() {
 		}
 }
 
-PeriodicBoundary::~PeriodicBoundary() { }
 
 
 
+PeriodicBoundary & PeriodicBoundary::operator=( const PeriodicBoundary& rvalue ) {
+
+	cutoff = rvalue.cutoff;
+	volume = rvalue.volume;
+
+	for(int i=0; i<3; i++)
+		for (int j = 0; j < 3; j++) {
+			           basis[i][j] = rvalue.basis[i][j];
+			reciprocal_basis[i][j] = rvalue.reciprocal_basis[i][j];
+		}
+
+	return *this;
+}
+
+
+// compute volume, cutoff and reciprocal
 void PeriodicBoundary::update() {
 	compute_volume();
 	compute_cutoff();
 	compute_reciprocal();
 }
+
 
 
 // calculates the min cutoff radius from the basis lattice (AKA shortest vector problem)
@@ -61,6 +77,7 @@ double PeriodicBoundary::compute_cutoff() {
 }
 
 
+
 // take the determinant of the basis matrix 
 double PeriodicBoundary::compute_volume() {
 
@@ -70,6 +87,8 @@ double PeriodicBoundary::compute_volume() {
 
 	return volume;
 }
+
+
 
 // get the reciprocal space basis 
 void PeriodicBoundary::compute_reciprocal() {
@@ -92,6 +111,9 @@ void PeriodicBoundary::compute_reciprocal() {
 
 }
 
+
+
+// output data about the simulation box to stdout
 void PeriodicBoundary::printboxdim() {
 
 	char buffer[maxLine];

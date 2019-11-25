@@ -252,7 +252,11 @@ public:
 	System( const System &sd );
 	#ifdef _MPI
 		MPI_Datatype msgtype;
-	#endif		
+	#endif	
+
+	// restore observables from checkpointed backup
+	inline void restore_observables() { std::memcpy(observables, checkpoint->observables, sizeof(observables_t)); } 
+
 	bool setup_simulation_box();
 	void read_molecules( FILE *fp         );
 	void read_molecules( char *input_file );
@@ -285,6 +289,7 @@ public:
 	void clear_avg_nodestats();
 	void update_root_nodestats();
 	void update_root_nodestats( avg_nodestats_t *avg_nodestats, avg_observables_t *avg_observables );
+	void compile_MC_algorithm_stats();
 
 	
 	// System.Cavity.cpp
@@ -416,7 +421,6 @@ public:
 	bool        mc();
 	void        do_checkpoint();
 	static int  pick_Gibbs_move( std::vector<System*> &sys );
-	static void backup_observables(std::vector<System*> &sys );
 	void        make_move();
 	static void make_move_Gibbs(std::vector<System*> &sys);
 	void        enumerate_particles();

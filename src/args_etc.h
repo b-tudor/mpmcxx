@@ -68,7 +68,10 @@ void die(int success_code) {
 void displayUsageAndDie(char* progname_w_path, params &p) {
 
 	if (!rank) {
+		char linebuf[maxLine];
 		char* progName = stripPath(progname_w_path);
+		sprintf( linebuf, "MPMC++\nMassively Parallel Monte Carlo: Multi-System Edition, v%s -- 2012-2019 GNU Public License\n", VERSION );
+		Output::out(linebuf);
 		std::cout << "\nUsage:" << std::endl;
 		std::cout << "\t" << progName << " INPUT_FILE [options]" << std::endl;
 		std::cout << "Options:" << std::endl;
@@ -113,14 +116,21 @@ void introduce_self() {
 	time_t t = time(nullptr);
 	struct tm tm = *localtime(&t);
 
+	char mpi_msg[20] = { 0 };
+	#ifdef _MPI
+		sprintf(mpi_msg, " (MPI eneabled)");
+	#endif
+
 	sprintf(
 		linebuf,
 		"MPMC++\nMassively Parallel Monte Carlo: Multi-System Edition%s, v%s -- 2012-2019 GNU Public License\n",
-		(size ? " (MPI enabled)" : ""), 
+		mpi_msg, 
 		VERSION
 	);
+	Output::out1(linebuf);
+
 	sprintf(
-		&linebuf[strlen(linebuf)],
+		linebuf,
 		"MAIN: process%s started on %d thread%s @ %d-%d-%d %d:%d:%d\n",
 		(mpi ? "es" : ""),
 		(mpi ? size : 1 ),
@@ -222,7 +232,7 @@ void processArgs(int argc, char* argv[], params &p) {
 	} // end arg count
 
 	else displayUsageAndDie(argv[0], p);
-}// Removes the path from a filename, leaving on the filename
+}
 
 
   /////////////////////////////////////////////////////////////

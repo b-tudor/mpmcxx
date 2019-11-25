@@ -127,18 +127,18 @@ void System::update_root_averages( observables_t *obs ) {
 
 	// particle mass will be used in calculations for single sorbate systems
 	for(molecule_ptr = molecules; molecule_ptr; molecule_ptr = molecule_ptr->next) 
-		if( !molecule_ptr->frozen && !molecule_ptr->adiabatic)
+		if (!molecule_ptr->frozen && !molecule_ptr->adiabatic) {
 			particle_mass = molecule_ptr->mass;
+			break;
+		}
 
 	// density in g/cm^3  (had to modify since density isn't neccessarily constant since adding NPT)
 	curr_density = obs->N * particle_mass / (pbc.volume*NA*A32CM3);
 
-	avg_observables->density = factor*avg_observables->density 
-		+ curr_density/m;
-	avg_observables->density_sq = factor * avg_observables->density_sq 
-		+ (curr_density*curr_density)/m;
-	avg_observables->density_error = sdom*sqrt(avg_observables->density_sq 
-		- (avg_observables->density)*(avg_observables->density) );
+	avg_observables->density =    factor * avg_observables->density    + curr_density/m;
+	avg_observables->density_sq = factor * avg_observables->density_sq + curr_density*curr_density/m;
+	avg_observables->density_error = 
+		sdom * sqrt(avg_observables->density_sq - (avg_observables->density)*(avg_observables->density) );
 
 	// needed for calculating sstdev (stdev of stdev) 
 	//gammaratio = tgamma(0.5*(double)counter) / tgamma(0.5*((double)counter-1));
@@ -356,10 +356,11 @@ void System::clear_avg_nodestats() {
 
 // Average a set of observables into a set of nodestats
 void System::update_root_nodestats() {
+// average a system's observables into its own nodestats
 	update_root_nodestats( avg_nodestats, avg_observables);
 }
 void System::update_root_nodestats( avg_nodestats_t *avgNodestats, avg_observables_t *avgObs) {
-
+// average avgObs into a avgNodestats
 	const double m = (++avgNodestats->counter);
 	const double new_fctr =      1.0  / m; // Weight that new data carries wrt the average
 	const double factor   = (m - 1.0) / m; // Weight that existing average carries wrt the new/updated average
@@ -392,4 +393,13 @@ void System::update_root_nodestats( avg_nodestats_t *avgNodestats, avg_observabl
 	avgObs->polarization_iterations_error = sdom*sqrt(avgObs->polarization_iterations_sq 
 		- avgObs->polarization_iterations*avgObs->polarization_iterations);
 
+}
+
+
+
+
+// track the acceptance_rates/BF and compute associated stats
+void System::compile_MC_algorithm_stats() {
+	track_ar(nodestats);
+	update_nodestats(nodestats, avg_nodestats);
 }
