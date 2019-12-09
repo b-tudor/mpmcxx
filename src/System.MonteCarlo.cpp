@@ -146,7 +146,7 @@ void System::output_file_data() {
 		Output::err( "MC: could not write performance data to stdout\n" );
 		throw unknown_file_error;
 	}
-	if( write_averages() < 0) {
+	if( display_averages() < 0) {
 		Output::err( "MC: could not write statistics to stdout\n" );
 		throw unknown_file_error;
 	}
@@ -199,7 +199,7 @@ System::mpiData System::setup_mpi() {
 		if( fp_energy_csv ) 
 			write_observables_csv( fp_energy_csv, observables, temperature );
 		Output::out( "MC: initial values:\n" );
-		write_averages();
+		display_averages();
 	}
 
 	return mpi;
@@ -1509,7 +1509,7 @@ void System::restore() {
 //    (b) determines the next move sequence by calling do_checkpoint()
 	
 	// restore the remaining observables 
-	restore_observables();
+	observables = checkpoint->observables;
 
 	// restore state by undoing the steps of make_move()
 	switch ( checkpoint->movetype ) {

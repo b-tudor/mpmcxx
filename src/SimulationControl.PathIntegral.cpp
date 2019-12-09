@@ -29,7 +29,7 @@ bool SimulationControl::PI_nvt_mc() {
 	System *system = systems[rank];  // System for which this MPI thread will compute energies
 	double &boltzmann_factor = sys.nodestats->boltzmann_factor; // Boltzmann factor for current system config
 	unsigned int &step = sys.step; // current MC step
-	const unsigned int nSteps = system->numsteps;  // total number of MC steps to perform
+	const unsigned int nSteps = sys.numsteps;  // total number of MC steps to perform
 	
 
 	int move = 0; // current MC move 
@@ -81,7 +81,7 @@ bool SimulationControl::PI_nvt_mc() {
 
 		// output observables to stdout
 		Output::out("MC: initial values:\n");
-		sys.write_averages();
+		sys.display_averages();
 	}
 	
 	// Pick the next MC move and target molecule
@@ -91,12 +91,13 @@ bool SimulationControl::PI_nvt_mc() {
 	backup_observables_ALL_SYSTEMS();
 
 	// Compute the initial values that will contribute to the Boltzmann factor
-	BFC.potential.current = sys.observables->potential();
-	BFC.chain_mass_len2.current = 0; // We will never use this  ( The molecule to which these refer changes from )
-	BFC.orient_mu_len2.current  = 0; // We will never use this  ( from step to step and observables only depend  )
-	BFC.EVERY_CHAIN.current     = 0; // We will never use this  ( on these values wrt the entire system.         )
-	if (!std::isfinite(BFC.potential.current))
-		sys.observables->energy = BFC.potential.current = MAXVALUE; // be a bit forgiving of the initial state 
+	BFC.potential.current = sys.observables->potential(); //  \/ be a bit forgiving of the initial state   \/ 
+	if (!std::isfinite(BFC.potential.current)) { sys.observables->energy = BFC.potential.current = MAXVALUE; }
+	BFC.chain_mass_len2.current = 0; // We will never use this  ( The single molecule to which each of these refers )
+	BFC.orient_mu_len2.current  = 0; // ...ditto...             ( changes from step to step and observables only    )
+	BFC.EVERY_CHAIN.current     = 0; // ...ditto...             ( depend on these values wrt the entire system.     )
+	// (i.e. a current value would only make sense for these if we were computing a number for the entire system.   )
+	
 
 
 	 //\    Main MC Loop 
@@ -110,12 +111,13 @@ bool SimulationControl::PI_nvt_mc() {
 		BFC. orient_mu_len2.init = (move == MOVETYPE_PERTURB_BEADS) ? PI_orientational_mu_length2() : 0;
 		BFC.EVERY_CHAIN.init = (move == MOVETYPE_PERTURB_BEADS) ? PI_chain_mass_length2_ENTIRE_SYSTEM() : 0;
 		
-		double chain_mass_length_all_molecules = PI_chain_mass_length2_ENTIRE_SYSTEM();
-		chain_mass_length_all_molecules *= 1e47;
-		char linebuf[500];
-		sprintf(linebuf, "Total chain length %lf\n", chain_mass_length_all_molecules);
-		Output::out1(linebuf);
-
+		if (step >= 100000) {
+			double chain_mass_length_all_molecules = PI_chain_mass_length2_ENTIRE_SYSTEM();
+			chain_mass_length_all_molecules *= 1e47;
+			char linebuf[500];
+			sprintf(linebuf, "Total chain length %lf\n", chain_mass_length_all_molecules);
+			Output::out1(linebuf);
+		}
 		// perturb the system 
 		PI_make_move( move );
 
@@ -170,8 +172,8 @@ bool SimulationControl::PI_nvt_mc() {
 		} else {
 
 			//\\//  REJECT: restore from last checkpoint  ///////////////////////////////////////////////////////////////
-			restore_PI_systems();      // restore pre-move system configs and the associated observables
-			sys.restore_observables(); // restore the aggregate PI observables 
+			restore_PI_systems(); // restore pre-move system configs and the associated observables
+			sys.observables = sys.checkpoint->observables; // restore the aggregate PI observables 
 			sys.register_reject(move); // register a rejected move (for computing move acceptance rates)
 		}
 
@@ -815,7 +817,9 @@ double SimulationControl::PI_calculate_kinetic() {
 	double energy_estimator_term2 = sys.temperature * nSys * PI_chain_mass_length2_ENTIRE_SYSTEM() / (2.0 * beta * hBar2); // (Kelvin)  (12.5.12)
 
 	sys.observables->kinetic_energy = energy_estimator_term1 - energy_estimator_term2;
-
+	char linebuf[1000];
+	sprintf(linebuf, "%0.4lf\t%0.4lf\n", energy_estimator_term1, energy_estimator_term2);
+	Output::out1(linebuf);
 	return sys.observables->kinetic_energy;
 }
 

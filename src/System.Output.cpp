@@ -284,15 +284,15 @@ void System::write_observables_csv( FILE *fp, observables_t * obs, double core_t
 }
 
 
-int System::write_averages() {
-	return write_averages("");
+int System::display_averages() {
+	return display_averages("");
 }
-int System::write_averages(int sysNum) {
+int System::display_averages(int sysNum) {
 	char sysID[16] = { 0 };
 	sprintf(sysID, "_%d", sysNum);
-	return write_averages(sysID);
+	return display_averages(sysID);
 }
-int System::write_averages( const char *sysID ) {
+int System::display_averages( const char *sysID ) {
 
 	int i;
 	char linebuf[maxLine];
@@ -347,8 +347,12 @@ int System::write_averages( const char *sysID ) {
 	}
 
 
-	if( gwp )
-		sprintf( linebuf, "OUTPUT%s: total energy = %.5lf +- %.5lf eV\n", sysID, avg.energy/EV2K, avg.energy_error/EV2K );
+	if (gwp)
+		sprintf( linebuf, "OUTPUT%s: total energy = %.5lf +- %.5lf eV\n", sysID, avg.energy / EV2K, avg.energy_error / EV2K );
+	else if (ensemble == ENSEMBLE_PATH_INTEGRAL_NVT) {
+		sprintf( linebuf, "OUTPUT%s: total energy          = %.5lf +- %.5lf K\n", sysID, avg.energy, avg.energy_error );
+		sprintf( linebuf+strlen(linebuf), "OUTPUT%s: total energy (virial) = %.5lf +- %.5lf K\n", sysID, avg.energy, avg.energy_error );
+	} 
 	else
 		sprintf( linebuf, "OUTPUT%s: potential energy = %.5lf +- %.5lf K\n", sysID, avg.energy, avg.energy_error );
 	Output::out1(linebuf);
@@ -407,26 +411,34 @@ int System::write_averages( const char *sysID ) {
 
 			sprintf( linebuf, "OUTPUT%s: kinetic energy = %.5lf +- %.5lf eV\n", 
 				sysID,
-				avg.kinetic_energy/EV2K, avg.kinetic_energy_error/EV2K);
+				avg.kinetic_energy/EV2K, 
+				avg.kinetic_energy_error/EV2K
+			);
 			Output::out1(linebuf);
 
 		} else {
-			sprintf( linebuf, "OUTPUT%s: kinetic energy = %.5lf +- %.5lf K\n", 
+			sprintf( linebuf, 
+				"OUTPUT%s: kinetic energy = %.5lf +- %.5lf K\n", 
 				sysID,
-				avg.kinetic_energy, avg.kinetic_energy_error);
+				avg.kinetic_energy, 
+				avg.kinetic_energy_error
+			);
 			Output::out1(linebuf);
 		}
 
-		sprintf( linebuf, "OUTPUT%s: kinetic temperature = %.5lf +- %.5lf K\n", 
+		sprintf( linebuf, 
+			"OUTPUT%s: kinetic temperature = %.5lf +- %.5lf K\n", 
 			sysID,
-			avg.temperature, avg.temperature_error);
+			avg.temperature, 
+			avg.temperature_error
+		);
 		Output::out1(linebuf);
 	}
 
 	sprintf( linebuf, "OUTPUT%s: N = %.5lf +- %.5lf molecules\n", sysID, avg.N, avg.N_error);
 	Output::out1(linebuf);
 
-	if( sorbateCount == 1 ) { //all based on calculations with assume only one type of sorbate
+	if( sorbateCount == 1 ) { //all based on calculations which assume only one type of sorbate
 
 		sprintf( linebuf, "OUTPUT%s: density = %.5f +- %.5f g/cm^3\n", sysID, avg.density, avg.density_error );
 		Output::out1(linebuf);

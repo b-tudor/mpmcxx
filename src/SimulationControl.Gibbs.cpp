@@ -319,7 +319,7 @@ bool SimulationControl::Gibbs_mc() {
 					Output::out("\n");
 				}
 
-				if (systems[i]->write_averages(i) < 0) {
+				if (systems[i]->display_averages(i) < 0) {
 					Output::err("MC: could not write statistics to stdout\n");
 					throw unknown_file_error;
 				}

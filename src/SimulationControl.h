@@ -108,7 +108,9 @@ private:
 	
 	void initialize_PI_NVT_Systems();        // Allocate data structures and initialize system data for multi-system ensembles
 	void backup_observables_ALL_SYSTEMS();   // backup observables for all systems in the system vector as well as the sys variable
-	void backup_observables_SYS_VECTOR();    // backup  only observables for systems in the system vector
+	void backup_observables_SYS_VECTOR();    // backup observables only for the systems in the system vector
+	void restore_observables_ALL_SYSTEMS();  // restore observables for all systems in the system vector as well as the sys variable
+	void restore_observables_SYS_VECTOR();   // restore observables only for the systems in the system vector
 
 	// Standard 
 	inline bool mc()                    { return sys.mc(); } // SimulationControl wrapper function for System.mc()

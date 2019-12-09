@@ -100,6 +100,23 @@ public:
 		       inline double potential() { 
 			       return coulombic_energy + rd_energy + polarization_energy + vdw_energy + three_body_energy;
 		       }
+			   _observables& operator=(const _observables& rhs) {
+		           energy              = rhs.energy;
+		           coulombic_energy    = rhs.coulombic_energy;
+		           rd_energy           = rhs.rd_energy;
+		           polarization_energy = rhs.polarization_energy;
+		           vdw_energy          = rhs.vdw_energy;
+		           three_body_energy   = rhs.three_body_energy;
+		           dipole_rrms         = rhs.dipole_rrms;
+		           kinetic_energy      = rhs.kinetic_energy;
+		           temperature         = rhs.temperature;
+		           volume              = rhs.volume;
+		           N                   = rhs.N;
+		           NU                  = rhs.NU;
+		           spin_ratio          = rhs.spin_ratio;
+		           frozen_mass         = rhs.frozen_mass;
+		           total_mass          = rhs.frozen_mass;
+			   }
 	} observables_t;
 
 	typedef struct _checkpoint {
@@ -255,7 +272,6 @@ public:
 	#endif	
 
 	// restore observables from checkpointed backup
-	inline void restore_observables() { std::memcpy(observables, checkpoint->observables, sizeof(observables_t)); } 
 
 	bool setup_simulation_box();
 	void read_molecules( FILE *fp         );
@@ -467,9 +483,9 @@ public:
 	void write_observables( FILE *fp_energy, observables_t * observables, double core_temp);
 	void append_observables_to_csv_file(); // "self-documenting" wrapper to write_observables_csv()
 	void write_observables_csv( FILE *fp_energy_csv, observables_t * observables, double core_temp);
-	int  write_averages();
-	int  write_averages(int sysNum);
-	int  write_averages(const char *sysID);
+	int  display_averages();
+	int  display_averages(int sysNum);
+	int  display_averages(const char *sysID);
 	static void track_ar(nodestats_t *ns);
 	static void update_nodestats( nodestats_t *nodestats, avg_nodestats_t *avg_nodestats );
 	void write_states();
