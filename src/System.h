@@ -97,26 +97,9 @@ public:
 		       spin_ratio,         // ortho:para spin ratio 
 		       frozen_mass,
 		       total_mass;         //updated in average.c
-		       inline double potential() { 
-			       return coulombic_energy + rd_energy + polarization_energy + vdw_energy + three_body_energy;
-		       }
-			   _observables& operator=(const _observables& rhs) {
-		           energy              = rhs.energy;
-		           coulombic_energy    = rhs.coulombic_energy;
-		           rd_energy           = rhs.rd_energy;
-		           polarization_energy = rhs.polarization_energy;
-		           vdw_energy          = rhs.vdw_energy;
-		           three_body_energy   = rhs.three_body_energy;
-		           dipole_rrms         = rhs.dipole_rrms;
-		           kinetic_energy      = rhs.kinetic_energy;
-		           temperature         = rhs.temperature;
-		           volume              = rhs.volume;
-		           N                   = rhs.N;
-		           NU                  = rhs.NU;
-		           spin_ratio          = rhs.spin_ratio;
-		           frozen_mass         = rhs.frozen_mass;
-		           total_mass          = rhs.frozen_mass;
-			   }
+		inline double potential() { 
+			return coulombic_energy + rd_energy + polarization_energy + vdw_energy + three_body_energy;
+		}
 	} observables_t;
 
 	typedef struct _checkpoint {
