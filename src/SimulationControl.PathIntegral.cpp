@@ -110,14 +110,14 @@ bool SimulationControl::PI_nvt_mc() {
 		BFC.chain_mass_len2.init = (move == MOVETYPE_PERTURB_BEADS) ? PI_chain_mass_length2() : 0;
 		BFC. orient_mu_len2.init = (move == MOVETYPE_PERTURB_BEADS) ? PI_orientational_mu_length2() : 0;
 		BFC.EVERY_CHAIN.init = (move == MOVETYPE_PERTURB_BEADS) ? PI_chain_mass_length2_ENTIRE_SYSTEM() : 0;
-		
+		/*
 		if (step >= 100000) {
 			double chain_mass_length_all_molecules = PI_chain_mass_length2_ENTIRE_SYSTEM();
 			chain_mass_length_all_molecules *= 1e47;
 			char linebuf[500];
 			sprintf(linebuf, "Total chain length %lf\n", chain_mass_length_all_molecules);
 			Output::out1(linebuf);
-		}
+		}*/
 		// perturb the system 
 		PI_make_move( move );
 
@@ -126,9 +126,11 @@ bool SimulationControl::PI_nvt_mc() {
 		BFC.chain_mass_len2.trial = (move==MOVETYPE_PERTURB_BEADS)?       PI_chain_mass_length2() : 0;
 		BFC. orient_mu_len2.trial = (move==MOVETYPE_PERTURB_BEADS)? PI_orientational_mu_length2() : 0;
 		BFC.EVERY_CHAIN.trial = (move == MOVETYPE_PERTURB_BEADS) ? PI_chain_mass_length2_ENTIRE_SYSTEM() : 0;
+		/*
 		double delta1 = BFC.EVERY_CHAIN.change();
 		double delta2 = BFC.chain_mass_len2.change();
 		double deltadelta = delta1 - delta2;
+		*/
 
 		#ifdef QM_ROTATION
 			// solve for the rotational energy levels 
@@ -817,9 +819,11 @@ double SimulationControl::PI_calculate_kinetic() {
 	double energy_estimator_term2 = sys.temperature * nSys * PI_chain_mass_length2_ENTIRE_SYSTEM() / (2.0 * beta * hBar2); // (Kelvin)  (12.5.12)
 
 	sys.observables->kinetic_energy = energy_estimator_term1 - energy_estimator_term2;
+	/*
 	char linebuf[1000];
 	sprintf(linebuf, "%0.4lf\t%0.4lf\n", energy_estimator_term1, energy_estimator_term2);
 	Output::out1(linebuf);
+	*/
 	return sys.observables->kinetic_energy;
 }
 
