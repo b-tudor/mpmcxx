@@ -1,4 +1,5 @@
 #include "SimulationControl.h"
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <stdlib.h>
