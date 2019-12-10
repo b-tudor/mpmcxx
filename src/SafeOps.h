@@ -43,7 +43,16 @@ public:
 	// returns true if all elements of string are identical, compared case-insensitively
 	static bool iequals( const char *A, const char *B );
 	
+	// returns true if a file exists
+	static bool file_exists(const char* filename) {
 
+		if( FILE *file = fopen(filename, "r")) {
+			fclose(file);
+			return true;
+		}
+
+		return false;
+	}
 
 	// The following memory functions were written to hopefully deal with some memory  
 	// issues that have been plaguing very large runs on PCN61. I believe that we may  
@@ -165,6 +174,7 @@ public:
 			std::free(pointer);
 		pointer = nullptr;
 	}
+
 };
 
 

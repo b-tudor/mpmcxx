@@ -837,7 +837,7 @@ int System::write_molecules_wrapper( char * filename ) {
 			//move most recent state file to file.last
 			if (SafeOps::file_exists(filename)) {
 				sprintf(filenameold, "%s.last", filenameno);
-				bool code = rename(filenameno, filenameold); // fxn marked _Check_return_ in VS
+				bool return_val = rename(filenameno, filenameold); // value caught--fxn marked _Check_return_ in VS
 			}
 
 			// open the file and free the filename string
@@ -861,7 +861,7 @@ int System::write_molecules_wrapper( char * filename ) {
 		//move most recent state "filename" to "filename.last"
 		if (SafeOps::file_exists(filename)) {
 			sprintf(filenameold, "%s.last", filename);
-			bool code = rename(filename, filenameold); // fxn marked _Check_return_ in VS
+			bool return_val = rename(filename, filenameold); // value caught--fxn marked _Check_return_ in VS
 		}
 
 		fp = SafeOps::openFile(filename, "w", __LINE__, __FILE__);
@@ -895,7 +895,7 @@ int System::write_molecules(FILE * fp) {
 	int        i            = 0,
 	           j            = 0,
 	           k            = 0;
-	int        ext_output   = 0;
+	int        ext_output   =  0;
 	
 	// Check if extended coordinate output is needed (CRC) 
 	// By default, PDB compliant coordinates are printed (%8.3f), else extended output is used (%11.6f)

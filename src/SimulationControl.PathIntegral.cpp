@@ -806,7 +806,6 @@ double SimulationControl::PI_calculate_potential() {
 
 
 double SimulationControl::PI_calculate_kinetic() {
-	
 	const double d    = 3.0;                          // dimensionality of the system
 	const double N    = systems[0]->countN();         // Number of sorbate (or moveable) molecules in the system
 	const double beta = 1.0 / (kB * sys.temperature); //  1/kT
