@@ -34,6 +34,9 @@ Atom::Atom()
 	last_volume          = 0.0; // currently only used in disp_expansion.c
 	es_self_point_energy = 0.0;
 
+	pairs                = nullptr;
+	next                 = nullptr;
+	
 	for( int i=0; i<3; i++ ) {
 		pos              [i] = 0.0;
 		wrapped_pos      [i] = 0.0; //absolute and wrapped (into main unit cell) position
@@ -45,10 +48,6 @@ Atom::Atom()
 		old_mu           [i] = 0.0;
 		new_mu           [i] = 0.0;
 	}
-	
-
-	// pair_t *pairs;
-
 }
 
 
@@ -96,38 +95,34 @@ Atom::Atom(const Atom &other) {
 		new_mu[i]            = other.new_mu[i];
 	}
 	
-	
-	next = nullptr;
-
 
 
 	// Copy the pair list
 	////////////////////////////////////////////////////////////////////
+			
+	Pair *other_pair_ptr = other.pairs;   // position in the 'other' pair list
+
+	if (other_pair_ptr) 
+	// If there is a list... 
 	{
-		
-		Pair *other_pair_ptr = other.pairs;   // position in the 'other' pair list
+		pairs = new Pair(*other_pair_ptr); // Create the first node for our new pairs list.
+		Pair *this_pair_ptr = pairs;       // iterator for the list we are building
 
-		if (other_pair_ptr) 
-		// If there is a list... 
-		{
-			pairs = new Pair(*other_pair_ptr); // Create the first node for our new pairs list.
-			Pair *this_pair_ptr = pairs;       // iterator for the list we are building
-
-			// Traverse the 'other' pair list...
-			for (other_pair_ptr = other_pair_ptr->next; other_pair_ptr; other_pair_ptr = other_pair_ptr->next) {
-				// ...creating new nodes in our list for each pair node we discover in the 'other' list.
-				this_pair_ptr->next = new Pair(*other_pair_ptr);
-				this_pair_ptr = this_pair_ptr->next;
-			}
-			this_pair_ptr->next = nullptr; // Terminate our new list.
-
-		} else {
-			// If there is no pair list on the original, we leave the new pair list empty as well
-			pairs = nullptr;
+		// Traverse the 'other' pair list...
+		for (other_pair_ptr = other_pair_ptr->next; other_pair_ptr; other_pair_ptr = other_pair_ptr->next) {
+			// ...creating new nodes in our list for each pair node we discover in the 'other' list.
+			this_pair_ptr->next = new Pair(*other_pair_ptr);
+			this_pair_ptr = this_pair_ptr->next;
 		}
+		this_pair_ptr->next = nullptr; // Terminate our new list.
+
+	} else {
+		// If there is no pair list on the original, we leave the new pair list empty as well
+		pairs = nullptr;
 	}
-	
-	
+
+
+	next = nullptr;
 }
 
 
@@ -147,13 +142,11 @@ void Atom::free_pairs() {
 		recursive_free_pairs( pairs );
 
 	pairs = nullptr;
-	return;
 }
 void Atom::recursive_free_pairs(Pair *pPair) {
 	
 	if( pPair->next )
 		recursive_free_pairs( pPair->next );
 
-	SafeOps::free(pPair);
-	return;
+	delete pPair;
 }

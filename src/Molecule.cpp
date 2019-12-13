@@ -44,6 +44,9 @@ Molecule::Molecule()
 		complex_t **quantum_vibrational_eigenvectors  = nullptr;
 		int        *quantum_vibrational_eigensymmetry = nullptr;
 	#endif // XXX
+
+		atoms = nullptr;
+		next  = nullptr;
 }
 Molecule::Molecule( const Molecule &other ) {
 	
@@ -65,20 +68,27 @@ Molecule::Molecule( const Molecule &other ) {
 		wrapped_com[i] = other.wrapped_com[i];
 	}
 
-	next = nullptr;
-
-
+	atoms = nullptr;
+	next  = nullptr;
+	
 	// Copy the atom list
-
 	Atom *atom_ptr = other.atoms;
-	if (atom_ptr)
-		atoms = new Atom(*atom_ptr);
 
-	Atom *a = atoms;
-	for (atom_ptr = atom_ptr->next; atom_ptr; atom_ptr = atom_ptr->next) {
-		a->next = new Atom(*atom_ptr);
-		a = a->next;
+	if ( atom_ptr ) {
+		// If the molecule has an atom list (it should), then we copy them
+		atoms = new Atom(*atom_ptr); // create the first atom in this molecule...
+		Atom* a = atoms;             // ... and create a pointer to traverse the list we are creating
+
+		for(  atom_ptr=atom_ptr->next;  atom_ptr;  atom_ptr=atom_ptr->next  ) {  
+			a->next = new Atom(*atom_ptr); // copy the next atom in the other list
+			a = a->next;                   // move to the next position in this list
+		}
+		a->next = nullptr;
 	}
+
+	
+
+	
 	
 
 

@@ -655,7 +655,7 @@ System::System( const System &sd ) {
 	sorbateInsert                 = sd.sorbateInsert; //which sorbate was last inserted
 
 
-	checkpoint                    = sd.checkpoint;
+	checkpoint                    = nullptr;;
 	fit_input_list.data.count     = 0;
 	fit_input_list.next           = nullptr;
 	ee_local                      = sd.ee_local;              // Exhaustive Enumeration option
@@ -868,11 +868,11 @@ void System::read_molecules( FILE *fp ) {
 
 	
 	// allocate the start of the list 
-	SafeOps::calloc(molecules, 1, sizeof(Molecule), __LINE__, __FILE__ );
+	molecules = new Molecule();
 	molecule_ptr = molecules;
 
 	molecule_ptr->id = 1;
-	SafeOps::calloc( molecule_ptr->atoms, 1, sizeof(Atom), __LINE__, __FILE__ );
+	molecule_ptr->atoms = new Atom();
 	atom_ptr = molecule_ptr->atoms;
 	prev_atom_ptr = atom_ptr;
 
@@ -997,11 +997,11 @@ void System::read_molecules( FILE *fp ) {
 				current_charge *= scale_charge;
 
 			if( molecule_ptr->id != current_moleculeid ) {
-				SafeOps::calloc( molecule_ptr->next, 1, sizeof(Molecule), __LINE__, __FILE__ );
+				molecule_ptr->next = new Molecule();
 				molecule_ptr = molecule_ptr->next;
-				SafeOps::calloc(molecule_ptr->atoms, 1, sizeof(Atom), __LINE__, __FILE__ );
+				molecule_ptr->atoms = new Atom();
 				prev_atom_ptr->next = nullptr;
-				SafeOps::free(atom_ptr);
+				delete atom_ptr;
 				atom_ptr = molecule_ptr->atoms;
 			}
 
@@ -1055,7 +1055,7 @@ void System::read_molecules( FILE *fp ) {
 				atom_ptr->gwp_spin = 0;
 
 			atom_ptr->site_neighbor_id = current_site_neighbor;
-			SafeOps::calloc( atom_ptr->next, 1, sizeof(Atom), __LINE__, __FILE__ );
+			atom_ptr->next = new Atom();
 			prev_atom_ptr = atom_ptr;
 			atom_ptr      = atom_ptr->next;
 		}
@@ -1065,7 +1065,7 @@ void System::read_molecules( FILE *fp ) {
 
 	// terminate the atom list 
 	prev_atom_ptr->next = nullptr;
-	SafeOps::free( atom_ptr );
+	delete atom_ptr;
 
 	// scan the list, make sure that there is at least one moveable molecule 
 	moveable = 0;
