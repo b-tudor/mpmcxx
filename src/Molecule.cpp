@@ -122,7 +122,7 @@ Molecule::Molecule( const Molecule &other ) {
 
 
 
-// free a molecule and all of it's associated stuff
+
 Molecule::~Molecule() {
 	
 	#ifdef QM_ROTATION
@@ -142,6 +142,27 @@ Molecule::~Molecule() {
 	
 	free_atoms();
 
+}
+void Molecule::free_atoms() {
+
+	if (atoms)
+		recursive_free_atoms(atoms);
+
+	atoms = nullptr;
+
+}
+void Molecule::recursive_free_atoms(Atom* pAtom) {
+
+	if (pAtom->next)
+		recursive_free_atoms(pAtom->next);
+
+	pAtom->free_pairs();
+	delete pAtom;
+
+}
+void Molecule::wipe_pair_refs() {
+	for (Atom* pAtom = atoms; pAtom; pAtom = pAtom->next)
+		pAtom->pairs = nullptr;
 }
 
 
@@ -385,33 +406,4 @@ void Molecule::displace_gwp( double scale, std::mt19937 *mt_rand ) {
 			atom_ptr->gwp_alpha = fabs(atom_ptr->gwp_alpha);
 		}
 	}
-}
-
-
-
-// Release memory used by the Molecule's linked list of atoms
-void Molecule::free_atoms() {
-
-	if(atoms)
-		recursive_free_atoms( atoms );
-
-	atoms = nullptr;
-
-}
-void Molecule::recursive_free_atoms(Atom *pAtom) {
-
-	if (pAtom->next)
-		recursive_free_atoms(pAtom->next);
-	
-	pAtom->free_pairs();
-	delete pAtom;
-
-}
-
-
-
-
-void Molecule::wipe_pair_refs() {
-	for (Atom *pAtom = atoms; pAtom; pAtom = pAtom->next) 
-		pAtom->pairs = nullptr;
 }

@@ -40,7 +40,7 @@ System::~System() {
 	// * avg_observables
 	// * sorbateInfo 
 	// * sorbateGlobal 
-	// * checkpoint;
+	
 	if (sorbateCount > 1 && sorbateGlobal) { 
 		SafeOps::free(sorbateGlobal); sorbateGlobal = nullptr; 
 	}
@@ -66,7 +66,8 @@ System::~System() {
 		SafeOps::free(grids);
 	}
 	if( checkpoint ) {
-		if (checkpoint->observables) { SafeOps::free(checkpoint->observables); }
+		if (checkpoint->observables    ) { SafeOps::free(checkpoint->observables);     }
+		if (checkpoint->molecule_backup) { SafeOps::free(checkpoint->molecule_backup); }
 		SafeOps::free(checkpoint);
 	}
 	if (mpi_data.rcv_strct)     { SafeOps::free(mpi_data.rcv_strct);     }
@@ -173,21 +174,21 @@ System::System() {
 
 
 	// RNG
-	preset_seed_on               = 0;  //for manual specification of random seed
+	preset_seed_on               = 0;  // for manual specification of random seed
 	preset_seed                  = 0;
 	
 	
-	read_pqr_box_on              = 0; //read box basis from pqr
+	read_pqr_box_on              = 0;  // read box basis from pqr
 	
 	// Simulated Annealing
-	simulated_annealing          = 0; 
+	simulated_annealing          = 0;
 	simulated_annealing_linear   = 0;
 	simulated_annealing_schedule = 0.0;
 	simulated_annealing_target   = 0.0;
 
 	// Spectre
 	spectre             = 0;
-	spectre_max_charge  = 0.0; 
+	spectre_max_charge  = 0.0;
 	spectre_max_target  = 0.0;
 
 

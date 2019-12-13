@@ -2830,12 +2830,12 @@ bool SimulationControl::check_qrot_options() {
 
 void SimulationControl::backup_observables_ALL_SYSTEMS() {
 	// Backup the observables for all systems 
-	sys.checkpoint->observables = sys.observables;
+	*sys.checkpoint->observables = *sys.observables;
 	backup_observables_SYS_VECTOR();
 }
 void SimulationControl::backup_observables_SYS_VECTOR() {
 	std::for_each(systems.begin(), systems.end(), [](System* SYS) {
-		SYS->checkpoint->observables = SYS->observables; 
+		*SYS->checkpoint->observables = *SYS->observables; 
 	});
 		
 }

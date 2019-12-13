@@ -1509,7 +1509,7 @@ void System::restore() {
 //    (b) determines the next move sequence by calling do_checkpoint()
 	
 	// restore the remaining observables 
-	observables = checkpoint->observables;
+	*observables = *checkpoint->observables;
 
 	// restore state by undoing the steps of make_move()
 	switch ( checkpoint->movetype ) {
@@ -1558,25 +1558,28 @@ void System::restore() {
 
 			// link the backup  molecule back into the working list
 			// checkpoint->head will be nullptr if the first item in the system list was the backed up molecule
-			if( ! checkpoint->head )
-				molecules = checkpoint->molecule_backup;
-			else
+			if( checkpoint->head )
 				checkpoint->head->next = checkpoint->molecule_backup;
+			else
+				molecules = checkpoint->molecule_backup;
+
 			checkpoint->molecule_backup->next = checkpoint->tail;
-			// Delete the molecule configuration that was rejected. The pair list pointer is zeroed in order to keep
-			// the pair list intact as it was transferred to the accepted molecule and is needed. 
-			checkpoint->molecule_altered->wipe_pair_refs();
+			
+			// wipe the backup reference, since this molecule is now linked into the system list...
+			checkpoint->molecule_backup = nullptr;
+			
+			// ... and delete the trial molecule configuration that was rejected.
 			delete checkpoint->molecule_altered;
 			checkpoint->molecule_altered = nullptr;
-			// wipe "backup" reference, since this molecule is now linked into the system list
-			checkpoint->molecule_backup  = nullptr;
+			
 	}	
 	
 	// renormalize charges
 	if( spectre ) spectre_charge_renormalize();
 
 	// eject early for the following ensembles:
-	if((ENSEMBLE_PATH_INTEGRAL_NVT==ensemble)  ||  (ENSEMBLE_NVT_GIBBS==ensemble)) return;
+	if((ENSEMBLE_PATH_INTEGRAL_NVT==ensemble)  ||  (ENSEMBLE_NVT_GIBBS==ensemble))
+		return;
 
 	// establish the previous checkpoint again
 	do_checkpoint();

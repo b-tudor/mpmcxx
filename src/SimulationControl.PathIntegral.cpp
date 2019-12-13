@@ -1097,8 +1097,6 @@ int SimulationControl::PI_pick_NVT_move() {
 
 		// if we have a molecule already backed up (from a previous accept), go ahead and free it
 		if (systems[s]->checkpoint->molecule_backup) {
-			// clear the references to the pair list, so that they aren't deleted in the process 
-			systems[s]->checkpoint->molecule_backup->wipe_pair_refs();
 			delete systems[s]->checkpoint->molecule_backup;
 			systems[s]->checkpoint->molecule_backup = nullptr;
 		}
