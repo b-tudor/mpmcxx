@@ -248,7 +248,7 @@ bool SimulationControl::Gibbs_mc() {
 					current_energy[i] = final_energy[i];
 
 					// backup observables for this system only
-					std::memcpy(systems[i]->checkpoint->observables, systems[i]->observables, sizeof(System::observables_t));
+					*systems[i]->checkpoint->observables = *systems[i]->observables;
 					systems[i]->register_accept();
 
 					// Simulated Annealing...

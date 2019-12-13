@@ -273,7 +273,7 @@ void System::setup_mpi_dataStructs( mpiData& md, int qty ) {
 
 	// save the current observables 
 	/////////////////////////////////////////////////////////////////////////////////////////////
-	std::memcpy( checkpoint->observables, observables, sizeof(observables_t) );
+	*checkpoint->observables = *observables;
 
 	// Count exchangeable and adiabatic molecules, then allocate an array whose size is 
 	// determined by said count. Populate the array with pointers to the molecules that

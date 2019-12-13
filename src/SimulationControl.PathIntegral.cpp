@@ -175,7 +175,7 @@ bool SimulationControl::PI_nvt_mc() {
 
 			//\\//  REJECT: restore from last checkpoint  ///////////////////////////////////////////////////////////////
 			restore_PI_systems(); // restore pre-move system configs and the associated observables
-			sys.observables = sys.checkpoint->observables; // restore the aggregate PI observables 
+			*sys.observables = *sys.checkpoint->observables; // restore the aggregate PI observables 
 			sys.register_reject(move); // register a rejected move (for computing move acceptance rates)
 		}
 
