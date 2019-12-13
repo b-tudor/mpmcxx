@@ -28,6 +28,7 @@ extern bool mpi;
 SimulationControl* sc;
 
 typedef struct _parameters {
+	char* prog_name;
 	char* in_filename;
 	int   Ptrotter_number; // P AKA trotter number (this variable is prounounced "Trotter" -- think pterodactyl).
 	bool  write_PI_Frames_at_corrtime;
@@ -65,15 +66,15 @@ void die(int success_code) {
 
 
 // Print brief application  user instructions and exit
-void displayUsageAndDie(char* progname_w_path, params &p) {
+void displayUsageAndDie( params &p ) {
+
+	char linebuf[maxLine];
 
 	if (!rank) {
-		char linebuf[maxLine];
-		char* progName = stripPath(progname_w_path);
 		sprintf( linebuf, "MPMC++\nMassively Parallel Monte Carlo: Multi-System Edition, v%s -- 2012-2019 GNU Public License\n", VERSION );
 		Output::out(linebuf);
 		std::cout << "\nUsage:" << std::endl;
-		std::cout << "\t" << progName << " INPUT_FILE [options]" << std::endl;
+		std::cout << "\t" << p.prog_name << " INPUT_FILE [options]" << std::endl;
 		std::cout << "Options:" << std::endl;
 		std::cout << "\t-P X        Where X is the trotter number for a single threaded path integral job." << std::endl;
 		std::cout << "\t-xyz        Write .xyz PI visualization frames at corrtime steps." << std::endl << std::endl;
@@ -82,8 +83,8 @@ void displayUsageAndDie(char* progname_w_path, params &p) {
 		std::cout << "use the -P option for multi-threaded/MPI runs. For multi-site/multi-atom sorbate molecule, the" << std::endl;
 		std::cout << "Trotter number must be a power of 2 greater than or equal to 4." << std::endl;
 		
-		std::cout << "\nExample:\n\t" << progName << " -n 8 <my_path_integral_sim_file>" << std::endl;
-		std::cout << "\n        \tmpirun -n 8 " << progName << " <my_path_integral_sim_file>" << std::endl;
+		std::cout << "\nExample:\n\t" << p.prog_name << " -n 8 <my_path_integral_sim_file>" << std::endl;
+		std::cout << "\n        \tmpirun -np 8 " << p.prog_name << " <my_path_integral_sim_file>" << std::endl;
 		std::cout << "\nSee https://github.com/mpmccode/mpmc for input file specification." << std::endl;
 		#ifndef _MPI
 			std::cout << "\nNOTE: MPI Functionality is not compiled into this executable." << std::endl;
@@ -157,26 +158,32 @@ void mpi_introspection_and_initialization(int& argc, char* argv[], int P) {
 	if( mpi ) {
 		if (P) {
 			// If we get here, we are using MPI, but a Trotter number has been manually specified 
+			char linebuf[maxLine];
+			char* progName = stripPath(argv[0]);
+			sprintf(linebuf, "MPMC++\nMassively Parallel Monte Carlo: Multi-System Edition, v%s -- 2012-2019 GNU Public License\n", VERSION);
+			Output::out(linebuf);
 			Output::err("Do not explicitly set a Trotter number (-P) for MPI jobs. The number of MPI threads\n");
 			Output::err("(i.e. MPI 'size') implicitly sets the Trotter number. E.g. for P=8, try:\n");
-			Output::err("\tmpirun -P 8 mpmc++ my-input-file\n");
+			Output::err("\tmpirun -np 8 mpmc++ my-input-file\n");
 			die(fail);
 		}
-	} else {
-		MPI_Finalize();
-	}
+	} 
+	#ifdef _MPI
+		else { MPI_Finalize(); }
+	#endif
 }
 
 
 
 // Parse command line arguments
 void processArgs(int argc, char* argv[], params &p) {
-
+	
 	std::string fname;
 	char linebuf[maxLine];
 	int n = 1;         // index into argv for argument we are currently parsing
 
 	// DEFAULT VALUES
+	p.prog_name                   = stripPath(argv[0]);  // filename of the executable on host system
 	p.in_filename                 = nullptr;
 	p.Ptrotter_number             = 0;
 	p.write_PI_Frames_at_corrtime = false;
@@ -212,12 +219,12 @@ void processArgs(int argc, char* argv[], params &p) {
 					// only be one argument that is not preceeded by an option flag (e.g. "-P")
 					sprintf(linebuf, "ERROR: Multiple input files specified(or unrecognized option \"%s\")\n", argv[n]);
 					Output::err(linebuf);
-					displayUsageAndDie(argv[0], p);
+					displayUsageAndDie(p);
 				}
 
 				issOptionToken >> fname;
 				if (!issOptionToken)
-					displayUsageAndDie(argv[0], p);
+					displayUsageAndDie(p);
 				p.in_filename = (char*)calloc(fname.size() + 1, sizeof(char));
 				if (p.in_filename) 
 					std::memcpy(p.in_filename, fname.c_str(), fname.size());
@@ -231,7 +238,7 @@ void processArgs(int argc, char* argv[], params &p) {
 		} // end arg processing
 	} // end arg count
 
-	else displayUsageAndDie(argv[0], p);
+	else displayUsageAndDie(p);
 }
 
 
