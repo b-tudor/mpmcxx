@@ -66,8 +66,8 @@ System::~System() {
 		SafeOps::free(grids);
 	}
 	if( checkpoint ) {
-		if (checkpoint->observables    ) { SafeOps::free(checkpoint->observables);     }
-		if (checkpoint->molecule_backup) { SafeOps::free(checkpoint->molecule_backup); }
+		if (checkpoint->observables    ) { SafeOps::free(checkpoint->observables); }
+		if (checkpoint->molecule_backup) { delete checkpoint->molecule_backup;     }
 		SafeOps::free(checkpoint);
 	}
 	if (mpi_data.rcv_strct)     { SafeOps::free(mpi_data.rcv_strct);     }
