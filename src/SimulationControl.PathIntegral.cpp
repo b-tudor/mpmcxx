@@ -683,46 +683,41 @@ void SimulationControl::initialize_PI_NVT_Systems() {
 
 
 void SimulationControl::write_PI_frame() {
-// output an XYZ format frame for all systems
+// output an XYZ format frame that records positions of sites in all systems
 
-	const int very_first_frame_number = 1;
-
-	
 	int nSites = nSys * systems[0]->countNatoms();
-
+	
+	// we will append to the existing file...
+	char write_mode[2] = { 'a', '\0' };
+	
+	// ... unless this is the first frame, in which case we will start a new file
+	const int very_first_frame_number = 1;
 	static int frame_number = very_first_frame_number;
-	char write_mode[2] = { 'w', '\0' };
 	if( frame_number == very_first_frame_number )
 		write_mode[0] = 'w';
 
+	// generate the filename and open the file
 	char filename[500];
-	
+	sprintf(filename, "frames.%d.xyz", rank);
+	FILE *outFile = fopen( filename, write_mode );
 
+	fprintf(outFile, "%d\nFrame: %d\n", nSites, frame_number);
 
-	for (int i = 0; i < size; i++) {
-		
-		if (i == rank) {
+	++frame_number;
 
-			sprintf(filename, "frames.%d.xyz", rank);
-			FILE *outFile = fopen( filename, write_mode );
-
-			fprintf(outFile, "%d\nFrame: %d\n", nSites, frame_number);
-
-			++frame_number;
-
-			Molecule * m;
-			Atom * a;
-			for (int s = 0; s < nSys; s++) {
-				for (m = systems[s]->molecules; m; m = m->next) {
-					for (a = m->atoms; a; a = a->next) {
-						fprintf(outFile, "%s     %0.4lf     %0.4lf     %0.4lf\n", a->atomtype, a->pos[0], a->pos[1], a->pos[2]);
-					}
-				}
+	// Record the position of every atom in every molecule in every PI system
+	Molecule * m;
+	Atom * a;
+	for (int s = 0; s < nSys; s++) {
+		for (m = systems[s]->molecules; m; m = m->next) {
+			for (a = m->atoms; a; a = a->next) {
+				fprintf(outFile, "%s     %0.4lf     %0.4lf     %0.4lf\n", a->atomtype, a->pos[0], a->pos[1], a->pos[2]);
 			}
-
-			fclose(outFile);
 		}
 	}
+
+	fclose(outFile);
+	
 }
 
 

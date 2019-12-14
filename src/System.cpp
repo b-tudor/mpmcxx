@@ -652,7 +652,7 @@ System::System( const System &sd ) {
 	
 	// Linked list head that will keep track of separate average-observables
 	// for each sorbate in the system.
-	sorbateCount                  = sorbateCount;  // Number of sorbates in the system.
+	sorbateCount                  = sd.sorbateCount;  // Number of sorbates in the system.
 	sorbateInsert                 = sd.sorbateInsert; //which sorbate was last inserted
 
 
