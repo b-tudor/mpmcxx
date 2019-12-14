@@ -36,13 +36,13 @@ void System::allocate_pair_lists() {
 		prev_pair_ptr = pair_ptr;
 
 		for(int j = (i + 1); j < n; j++) {
-			SafeOps::calloc(pair_ptr->next, 1, sizeof(Pair), __LINE__, __FILE__ );
+			pair_ptr->next = new Pair();
 			prev_pair_ptr = pair_ptr;
 			pair_ptr = pair_ptr->next;
 		}
 
 		prev_pair_ptr->next = nullptr;
-		SafeOps::free(pair_ptr);
+		delete pair_ptr;
 	}
 }
 
