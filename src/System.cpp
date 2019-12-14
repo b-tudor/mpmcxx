@@ -78,6 +78,9 @@ System::~System() {
 	if (mpi_data.sinfo && (sorbateCount > 1)) {
 		SafeOps::free(mpi_data.sinfo);
 	}
+
+	if (molecule_array) { SafeOps::free(molecule_array); }
+	if (atom_array)     { SafeOps::free(atom_array);     }
 };
 
 
@@ -1213,8 +1216,8 @@ void System::rebuild_arrays () {
 	Molecule * molecule_ptr;
 	Atom * atom_ptr;
 
-	SafeOps::free( atom_array );
-	SafeOps::free( molecule_array );
+	if (atom_array    ) { SafeOps::free(atom_array);     }
+	if (molecule_array) { SafeOps::free(molecule_array); }
 
 	//allocate the arrays
 	SafeOps::calloc( molecule_array, natoms, sizeof( Molecule *), __LINE__, __FILE__ );
