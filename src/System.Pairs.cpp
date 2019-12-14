@@ -31,7 +31,7 @@ void System::allocate_pair_lists() {
 	// setup the pairs, top-right triangle (analogous to an upper/lower triangle matrix)
 	for(int i = 0; i < (n - 1); i++) {
 
-		SafeOps::calloc( atom_array[i]->pairs, 1, sizeof(Pair), __LINE__, __FILE__ );
+		atom_array[i]->pairs = new Pair();
 		pair_ptr = atom_array[i]->pairs;
 		prev_pair_ptr = pair_ptr;
 
