@@ -248,6 +248,7 @@ public:
 	
 	// System.cpp
 	~System();
+	void recursive_delete_molecules(Molecule * &m);
 	System();
 	System( const System &sd );
 	#ifdef _MPI

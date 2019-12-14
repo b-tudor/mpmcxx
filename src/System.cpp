@@ -81,8 +81,13 @@ System::~System() {
 
 	if (molecule_array) { SafeOps::free(molecule_array); }
 	if (atom_array)     { SafeOps::free(atom_array);     }
+	if (molecules)      { recursive_delete_molecules(molecules); }
 };
-
+void System::recursive_delete_molecules(Molecule * &m) {
+	if (m->next) { recursive_delete_molecules(m->next); }
+	delete m;
+	m = nullptr;
+}
 
 
 
