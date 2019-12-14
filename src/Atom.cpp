@@ -137,16 +137,14 @@ Atom::~Atom() {
 
 
 void Atom::free_pairs() {
-
 	if(pairs)
 		recursive_free_pairs( pairs );
-
-	pairs = nullptr;
 }
-void Atom::recursive_free_pairs(Pair *pPair) {
+void Atom::recursive_free_pairs(Pair * &pr) {
 	
-	if( pPair->next )
-		recursive_free_pairs( pPair->next );
+	if( pr->next )
+		recursive_free_pairs( pr->next );
 
-	delete pPair;
+	delete pr;
+	pr = nullptr;
 }

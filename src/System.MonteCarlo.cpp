@@ -1660,17 +1660,17 @@ void System::unupdate_pairs_remove() {
 
 				// tag on the extra pairs
 				for( int i = 0; i < n; i++) {
-					SafeOps::calloc( pair_ptr->next, 1, sizeof(Pair), __LINE__, __FILE__ );
+					pair_ptr->next = new Pair();
 					pair_ptr = pair_ptr->next;
 				}
 
 			} else {
 
 				// needs a new list
-				SafeOps::calloc( atom_ptr->pairs, 1, sizeof(Pair), __LINE__, __FILE__ );
+				atom_ptr->pairs = new Pair();
 				pair_ptr = atom_ptr->pairs;
 				for( int i = 0; i < (n - 1); i++) {
-					SafeOps::calloc( pair_ptr->next, 1, sizeof(Pair), __LINE__, __FILE__ );
+					pair_ptr->next = new Pair();
 					pair_ptr = pair_ptr->next;
 				}
 

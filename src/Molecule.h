@@ -31,7 +31,7 @@ public:
 	void wipe_pair_refs(); // zero out all the pair list pointers while keeping the lists themselves
 	                       // (for use prior to deletion, when the pair list is to be preserved elsewhere)
 private:
-	void recursive_free_atoms(Atom *pAtom);
+	void recursive_free_atoms(Atom * &atom);
 
 
 

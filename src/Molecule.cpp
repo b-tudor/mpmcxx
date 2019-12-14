@@ -149,16 +149,15 @@ void Molecule::free_atoms() {
 		recursive_free_atoms(atoms);
 
 	atoms = nullptr;
-
 }
-void Molecule::recursive_free_atoms(Atom* pAtom) {
+void Molecule::recursive_free_atoms(Atom* &atom) {
 
-	if (pAtom->next)
-		recursive_free_atoms(pAtom->next);
+	if (atom->next)
+		recursive_free_atoms(atom->next);
 
-	pAtom->free_pairs();
-	delete pAtom;
-
+	atom->free_pairs();
+	delete atom;
+	atom = nullptr;
 }
 void Molecule::wipe_pair_refs() {
 	for (Atom* pAtom = atoms; pAtom; pAtom = pAtom->next)

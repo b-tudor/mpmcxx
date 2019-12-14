@@ -15,7 +15,7 @@ public:
 	~Atom();
 	void free_pairs();
 private:
-	void recursive_free_pairs( Pair *pPair);
+	void recursive_free_pairs( Pair * &pr);
 
 	
 public:
