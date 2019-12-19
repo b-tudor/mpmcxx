@@ -25,26 +25,17 @@ extern bool mpi;
 //  in the array of systems (referenced in the vector variable systems[]). 
 bool SimulationControl::PI_nvt_mc() {
 	
-	// For ease of reference:
+	// For ease of reference (to aid in self-documentation):
 	System *system = systems[rank];  // System for which this MPI thread will compute energies
+	System::observables_t &PI_sys_observables = *sys.observables; // observables for the aggregate PI system
+	System::observables_t &PI_checkpoint_observables = *sys.checkpoint->observables; // ^^ ditto-ish
 	double &boltzmann_factor = sys.nodestats->boltzmann_factor; // Boltzmann factor for current system config
-	unsigned int &step = sys.step; // current MC step
-	const unsigned int nSteps = sys.numsteps;  // total number of MC steps to perform
-	
-
+	unsigned       int &step        = sys.step;      // current MC step
+	const unsigned int  nSteps      = sys.numsteps;  // total number of MC steps to perform
+	const unsigned int  sample_time = sys.corrtime;  // Number of steps between system sampling (i.e. correlation time)
 	int move = 0; // current MC move 
 	
-	/*
-	if (mpi) {
-		system->setup_mpi_dataStructs(size);
-	}
-	else std::for_each(systems.begin(), systems.end(), [this](System *SYS) {
-		// in non-MPI runs, the mpi data structs will still be used to shuttle
-		// data between systems, in order to simplify coding  on the MPI end.
-		SYS->setup_mpi_dataStructs(nSys);			
-	});
-	*/
-
+	
 	std::for_each(systems.begin(), systems.end(), [this](System* SYS) {
 
 		// distribute initial temperature to all systems
@@ -95,7 +86,7 @@ bool SimulationControl::PI_nvt_mc() {
 	if (!std::isfinite(BFC.potential.current)) { sys.observables->energy = BFC.potential.current = MAXVALUE; }
 	BFC.chain_mass_len2.current = 0; // We will never use this  ( The single molecule to which each of these refers )
 	BFC.orient_mu_len2.current  = 0; // ...ditto...             ( changes from step to step and observables only    )
-	BFC.EVERY_CHAIN.current     = 0; // ...ditto...             ( depend on these values wrt the entire system.     )
+	//                                                          ( depend on these values wrt the entire system.     )
 	// (i.e. a current value would only make sense for these if we were computing a number for the entire system.   )
 	
 
@@ -107,17 +98,9 @@ bool SimulationControl::PI_nvt_mc() {
 
 		// restore the last accepted energy, chain-length and orientation-chain metrics
 		BFC.potential.init       = BFC.potential.current; 
-		BFC.chain_mass_len2.init = (move == MOVETYPE_PERTURB_BEADS) ? PI_chain_mass_length2() : 0;
+		BFC.chain_mass_len2.init = (move == MOVETYPE_PERTURB_BEADS) ? PI_chain_mass_length2()       : 0;
 		BFC. orient_mu_len2.init = (move == MOVETYPE_PERTURB_BEADS) ? PI_orientational_mu_length2() : 0;
-		BFC.EVERY_CHAIN.init = (move == MOVETYPE_PERTURB_BEADS) ? PI_chain_mass_length2_ENTIRE_SYSTEM() : 0;
-		/*
-		if (step >= 100000) {
-			double chain_mass_length_all_molecules = PI_chain_mass_length2_ENTIRE_SYSTEM();
-			chain_mass_length_all_molecules *= 1e47;
-			char linebuf[500];
-			sprintf(linebuf, "Total chain length %lf\n", chain_mass_length_all_molecules);
-			Output::out1(linebuf);
-		}*/
+		
 		// perturb the system 
 		PI_make_move( move );
 
@@ -125,13 +108,7 @@ bool SimulationControl::PI_nvt_mc() {
 		BFC.potential.trial = PI_calculate_potential();
 		BFC.chain_mass_len2.trial = (move==MOVETYPE_PERTURB_BEADS)?       PI_chain_mass_length2() : 0;
 		BFC. orient_mu_len2.trial = (move==MOVETYPE_PERTURB_BEADS)? PI_orientational_mu_length2() : 0;
-		BFC.EVERY_CHAIN.trial = (move == MOVETYPE_PERTURB_BEADS) ? PI_chain_mass_length2_ENTIRE_SYSTEM() : 0;
-		/*
-		double delta1 = BFC.EVERY_CHAIN.change();
-		double delta2 = BFC.chain_mass_len2.change();
-		double deltadelta = delta1 - delta2;
-		*/
-
+		
 		#ifdef QM_ROTATION
 			// solve for the rotational energy levels 
 			if (system->quantum_rotation && (system->checkpoint->movetype == MOVETYPE_SPINFLIP))
@@ -152,7 +129,7 @@ bool SimulationControl::PI_nvt_mc() {
 
 		if(   (Rando::rand() < boltzmann_factor)   &&   (system->iterator_failed == 0)   ) {
 			  
-			 //\\//  ACCEPT  /////////////////////////////////////////////////////////////////////////////////////////////
+			 //\//  ACCEPT  //////////////////////////////////////////////////////////////////////////////////////////////
 
 			sys.register_accept(move); // register an accepted move (for computing move acceptance rates)
 
@@ -173,10 +150,10 @@ bool SimulationControl::PI_nvt_mc() {
 			}
 		} else {
 
-			//\\//  REJECT: restore from last checkpoint  ///////////////////////////////////////////////////////////////
-			restore_PI_systems(); // restore pre-move system configs and the associated observables
-			*sys.observables = *sys.checkpoint->observables; // restore the aggregate PI observables 
-			sys.register_reject(move); // register a rejected move (for computing move acceptance rates)
+			//\//  REJECT: restore from last checkpoint  ///////////////////////////////////////////////////////////////
+			restore_PI_systems();  // restore pre-move system configs and the associated observables
+			PI_sys_observables = PI_checkpoint_observables;  // restore the aggregate PI observables 
+			sys.register_reject(move);  // register a rejected move (for computing move acceptance rates)
 		}
 
 		
@@ -185,22 +162,11 @@ bool SimulationControl::PI_nvt_mc() {
 	
 
 
-		//\\//  Do this every correlation time, and at the very end   ////////////////////////////////////////////////////
-		if(  !(step % sys.corrtime)   ||   (step == nSteps)) {
+		//\//  Do this every correlation time, and at the very end   /////////////////////////////////////////////////////
+		if(  !(step % sample_time)   ||   (step == nSteps)) {
 			do_PI_corrtime_bookkeeping();
-			if (step == nSteps) {
-				for (int i = 0; i < size; i++) {
-					if (mpi) {
-						#ifdef _MPI
-						MPI_Barrier(MPI_COMM_WORLD);
-						#endif
-					}
-					if (i == rank) { write_PI_frame(); }
-		}	}	}
-
-
+		}
 	} // main loop 
-
 
 	// Simulation has finished...
 	if (!rank) {
@@ -261,6 +227,24 @@ void SimulationControl::average_current_observables_into_PI_avgObservables() {
 void SimulationControl::do_PI_corrtime_bookkeeping() {
 
 	System *system = systems[rank];
+
+	// copy observables and avgs to the mpi send buffer; histogram array is at the end of the message
+	std::for_each(systems.begin(), systems.end(), [](System* SYS) {
+		if (SYS->calc_hist) {
+			SYS->zero_grid(SYS->grids->histogram->grid);
+			SYS->population_histogram();
+		}
+
+		// update frozen and total system mass
+		SYS->calc_system_mass();
+
+		// update sorbate info on each node
+		if (SYS->sorbateCount > 1)
+			SYS->update_sorbate_info();
+	});
+	sys.observables->total_mass  = system->observables->total_mass;
+	sys.observables->frozen_mass = system->observables->frozen_mass;
+
 	
 	if(  ! rank   &&   PI_xyz_corrtime_frames_requested()) 
 		write_PI_frame();
@@ -283,28 +267,44 @@ void SimulationControl::do_PI_corrtime_bookkeeping() {
 
 	sys.output_file_data();
 
-	return;
+	
 
+	// Write the state file, restart files, and dipole/field files
+	for (int sysID = 0; sysID < nSys; sysID++) {
+
+		#ifdef _MPI
+			// Write output files, one at a time to avoid disk congestion
+			if (mpi) { MPI_Barrier(MPI_COMM_WORLD); }
+		#endif // _MPI
+
+		// *THIS* thread will write the states for every system on non-MPI runs
+		// OTOH, MPI threads will only write the state for *its* thread
+		if (  ! mpi   ||   sysID==rank  ) {
+
+			// Determine the system of interst for this iteration
+			// systems[sysID] should normally work for both cases, but just in case...
+			System* SYS = (mpi ? system : systems[sysID]); 
+			
+			// write the trajectory 
+			SYS->write_states();
+
+			// write the restart geometry
+			if (SYS->write_molecules_wrapper(SYS->pqr_restart) < 0) {
+				Output::err("MC: could not write restart state to disk\n");
+				throw unknown_file_error;
+			}
+
+			// write the dipole/field data for each node
+			if (sys.polarization) {
+				SYS->write_dipole();
+				SYS->write_field();
+			}
+		} 
+	}
+	
+	
+	//  Original treatment follows:
 	/*
-
-	// copy observables and avgs to the mpi send buffer; histogram array is at the end of the message
-	std::for_each(systems.begin(), systems.end(), [](System *SYS) {
-		if (SYS->calc_hist) {
-			SYS->zero_grid(SYS->grids->histogram->grid);
-			SYS->population_histogram();
-		}
-
-		// update frozen and total system mass
-		SYS->calc_system_mass();
-
-		// update sorbate info on each node
-		if (SYS->sorbateCount > 1)
-			SYS->update_sorbate_info();
-		//system->update_sorbate_info();
-	});
-	sys.observables-> total_mass = system->observables-> total_mass;
-	sys.observables->frozen_mass = system->observables->frozen_mass;
-
 
 	// Write the state file, restart files, and dipole/field files
 	if (mpi) {

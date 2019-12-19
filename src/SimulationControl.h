@@ -44,7 +44,6 @@ private:
 	typedef struct _PI_NVT_BFContributors {
 		BoltzFactor_contributor potential;       // Potential energy in Kelvin
 		BoltzFactor_contributor chain_mass_len2; // kg * m^2
-		BoltzFactor_contributor EVERY_CHAIN;
 		BoltzFactor_contributor orient_mu_len2;  // kg * m^2
 	} PI_NVT_BFContributors;
 	PI_NVT_BFContributors BFC;

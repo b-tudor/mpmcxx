@@ -674,9 +674,8 @@ void System::write_states() {
 
 	fprintf(fp, "REMARK step=%d\n", step);
 	#ifdef _MPI
-		if (mpi) {
+		if (mpi) 
 			fprintf(fp, "REMARK node=%d\n", rank);
-		}
 		if (parallel_tempering)
 			fprintf(fp, "REMARK temperature=%.6lf\n", ptemp->templist[ptemp->index[rank]]);
 	#endif
@@ -765,7 +764,6 @@ void System::write_states() {
 
 	fprintf(fp, "ENDMDL\n");
 	fflush(fp);
-
 	fclose(fp);
 
 }
@@ -965,7 +963,7 @@ int System::write_molecules(FILE * fp) {
 				fprintf(fp, "%11.6f ", atom_ptr->pos[2]);
 			}
 			fprintf(fp, " %8.5f", atom_ptr->mass);
-			fprintf(fp, " %8.5f", atom_ptr->charge/E2REDUCED);	/* convert charge back to real units */
+			fprintf(fp, " %8.5f", atom_ptr->charge/E2REDUCED);	// convert charge back to real units
 			fprintf(fp, " %8.5f", atom_ptr->polarizability);
 			fprintf(fp, " %8.5f", atom_ptr->epsilon);
 			fprintf(fp, " %8.5f", atom_ptr->sigma);
@@ -989,64 +987,57 @@ int System::write_molecules(FILE * fp) {
 			for(j = 0; j < 2; j++) {
 				for(k = 0; k < 2; k++) {
 
-				// make this frozen
-				fprintf(fp, "ATOM  ");
-				fprintf(fp, "%5d", atom_box);
-				fprintf(fp, " %-4.45s", "X");
-				fprintf(fp, " %-3.3s ", "BOX");
-				fprintf(fp, "%-1.1s", "F");
-				fprintf(fp, " %4d   ", molecule_box);
+					// make this frozen
+					fprintf(fp, "ATOM  ");
+					fprintf(fp, "%5d", atom_box);
+					fprintf(fp, " %-4.45s", "X");
+					fprintf(fp, " %-3.3s ", "BOX");
+					fprintf(fp, "%-1.1s", "F");
+					fprintf(fp, " %4d   ", molecule_box);
 
-				// box coords
-				box_occupancy[0] = ((double)i) - 0.5;
-				box_occupancy[1] = ((double)j) - 0.5;
-				box_occupancy[2] = ((double)k) - 0.5;
+					// box coords
+					box_occupancy[0] = ((double)i) - 0.5;
+					box_occupancy[1] = ((double)j) - 0.5;
+					box_occupancy[2] = ((double)k) - 0.5;
 
-				for(p = 0; p < 3; p++)
-					for(q = 0, box_pos[p] = 0; q < 3; q++)
-						box_pos[p] += pbc.basis[q][p]*box_occupancy[q];
+					for(p = 0; p < 3; p++)
+						for(q = 0, box_pos[p] = 0; q < 3; q++)
+							box_pos[p] += pbc.basis[q][p]*box_occupancy[q];
 
-				for(p = 0; p < 3; p++)
-					if(ext_output == 0)
-						fprintf(fp, "%8.3f", box_pos[p]);
-					else
-						fprintf(fp, "%11.6f ", box_pos[p]);
+					for(p = 0; p < 3; p++)
+						if(ext_output == 0)
+							fprintf(fp, "%8.3f", box_pos[p]);
+						else
+							fprintf(fp, "%11.6f ", box_pos[p]);
 
-				// null interactions
-				fprintf(fp, " %8.4f", 0.0);
-				fprintf(fp, " %8.4f", 0.0);
-				fprintf(fp, " %8.5f", 0.0);
-				fprintf(fp, " %8.5f", 0.0);
-				fprintf(fp, " %8.5f", 0.0);
-				fprintf(fp, "\n");
+					// null interactions
+					fprintf(fp, " %8.4f", 0.0);
+					fprintf(fp, " %8.4f", 0.0);
+					fprintf(fp, " %8.5f", 0.0);
+					fprintf(fp, " %8.5f", 0.0);
+					fprintf(fp, " %8.5f", 0.0);
+					fprintf(fp, "\n");
 
-				box_labels[i][j][k] = atom_box;
-				++atom_box;
+					box_labels[i][j][k] = atom_box;
+					++atom_box;
 
 				}
 			}
 		}
 
-		for(i = 0; i < 2; i++) {
-			for(j = 0; j < 2; j++) {
-				for(k = 0; k < 2; k++) {
-	
-					for(l = 0; l < 2; l++) {
-						for(m = 0; m < 2; m++) {
-							for(n = 0; n < 2; n++) {
+		for(i = 0; i < 2; i++) 
+			for(j = 0; j < 2; j++) 
+				for(k = 0; k < 2; k++) 
+					for(l = 0; l < 2; l++) 
+						for (m = 0; m < 2; m++) 
+							for (n = 0; n < 2; n++) {
 
-									diff = (int)fabs(i - l) + (int)fabs(j - m) + (int)fabs(k - n);
-									if(diff == 1)
-										fprintf(fp, "CONECT %4d %4d\n", box_labels[i][j][k], box_labels[l][m][n]);
-	
-							} // n 
-						} // m 
-					} // l 
+								diff = (int)fabs(i - l) + (int)fabs(j - m) + (int)fabs(k - n);
+								if (diff == 1)
+									fprintf(fp, "CONECT %4d %4d\n", box_labels[i][j][k], box_labels[l][m][n]);
+							}
 
-
-				} // k 
-			} // j 
-		} // i 
+		
 
 	} // if wrapall 
 
@@ -1226,8 +1217,8 @@ int System::write_performance( int i ) {
 	
 
 	if( i > corrtime ) {
-
-		sec_step = Output::calctimediff(current_time, last_time) / ((double)(i) - last_step);
+		double di = (double) i;
+		sec_step = Output::calctimediff(current_time, last_time) / (di - last_step);
 
 		if( ensemble == ENSEMBLE_UVT ) {
 			sprintf(linebuf, "OUTPUT: Grand Canonical Monte Carlo simulation running on %d core(s)\n", (mpi?size:1));
@@ -1244,10 +1235,11 @@ int System::write_performance( int i ) {
 		#else
 			sprintf(linebuf, "OUTPUT: Root collecting statistics at %s", ctime( &(current_time.tv_sec)) );
 		#endif
+		
 		Output::out1( linebuf );
-		sprintf(linebuf, "OUTPUT: Completed step %d/%d  (%.3f %%)\n", i, numsteps, (i/(double)(numsteps))*100);
+		sprintf(linebuf, "OUTPUT: Completed step %d/%d  (%.3f %%)\n", i, numsteps, (di/numsteps)*100);
 		Output::out1( linebuf );
-		sprintf(linebuf, "OUTPUT: %.3lf sec/step, ETA = %.3lf hrs\n", sec_step, sec_step*(numsteps - i)/3600.0);
+		sprintf(linebuf, "OUTPUT: %.3lf sec/step, ETA = %.3lf hrs\n", sec_step, sec_step*(numsteps - di)/3600.0);
 		Output::out1( linebuf );
 
 	}	
