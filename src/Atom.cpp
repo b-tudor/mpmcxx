@@ -29,7 +29,7 @@ Atom::Atom()
 	rank_metric          = 0.0;
 	gwp_spin             = 0;
 	gwp_alpha            = 0.0;
-	site_neighbor_id     = 0; // dr fluctuations will be applied along the vector from this atom to the atom identified by this variable
+	//site_neighbor_id     = 0; // dr fluctuations will be applied along the vector from this atom to the atom identified by this variable
 	lrc_self             = 0.0;
 	last_volume          = 0.0; // currently only used in disp_expansion.c
 	es_self_point_energy = 0.0;

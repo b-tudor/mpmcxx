@@ -146,6 +146,7 @@ private:
 	void   PI_perturb_bead_COMs_ENTIRE_SYSTEM();
 	void   PI_perturb_bead_COMs(); // perturb the user-specified number of beads
 	void   PI_perturb_bead_COMs(int n); // specify number of beads to perturb
+	void   PI_scale_beads_about_COM( double scaleFactor ); // scale the bead positions w respect to COM by scaleFactor
 	void   PI_perturb_beads_orientations();
 	void   generate_orientation_configs();
 	void   generate_orientation_configs(unsigned int start, unsigned int end, unsigned int P, unsigned int numBeads, double b2, double uMkT );

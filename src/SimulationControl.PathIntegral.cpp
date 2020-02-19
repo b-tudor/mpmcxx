@@ -1525,6 +1525,41 @@ void SimulationControl::PI_perturb_bead_COMs(int n) {
 
 
 
+void SimulationControl::PI_scale_beads_about_COM( double scaleFactor ) {
+// Expand or shrink the beads around the COM of the PI representation for the molecule
+	
+	std::vector<Vector3D> beads;
+	Vector3D chain_COM(0, 0, 0);
+	for (int s = 0; s < nSys; s++) {
+
+		systems[s]->checkpoint->molecule_altered->update_COM();
+
+		double x = systems[s]->checkpoint->molecule_altered->com[0];
+		double y = systems[s]->checkpoint->molecule_altered->com[1];
+		double z = systems[s]->checkpoint->molecule_altered->com[2];
+		Vector3D bead_COM(x, y, z);
+		beads.push_back(bead_COM);
+		chain_COM += bead_COM;
+	}
+	chain_COM /= nSys;
+
+	for (int s = 0; s < nSys; s++) {
+		// Move bead vectors such that COM is at the origin,
+		beads[s] = beads[s] - chain_COM;
+		// multiply them by scaleFactor,
+		beads[s] = beads[s] * scaleFactor;
+		// and then slide them back to their original positions.
+		beads[s] = beads[s] + chain_COM;
+	}
+
+	// now impose the scaling we've computed back onto the actual system representations
+	for (int s = 0; s < nSys; s++)
+		systems[s]->checkpoint->molecule_altered->move_to_(beads[s].x(), beads[s].y(), beads[s].z());
+}
+
+
+
+
 void SimulationControl::PI_perturb_beads_orientations() {
 	char * moleculeID       = systems[0]->checkpoint->molecule_altered->moleculetype;
 	int    orientation_site = SimulationControl::get_orientation_site(moleculeID);
