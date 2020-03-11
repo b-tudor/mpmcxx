@@ -1379,8 +1379,17 @@ void SimulationControl::PI_displace() {
 
 
 void SimulationControl::PI_perturb_beads() {
+	
 	PI_perturb_beads_orientations();
-	PI_perturb_bead_COMs();
+	
+	
+	double die_roll = Rando::rand();
+	double scale_factor = 0.5 * (Rando::rand() - 0.5);
+
+	if (die_roll >= 0.25) // Do we perturb the beads individually, or do we expand/contract them as a set?
+		PI_perturb_bead_COMs();
+	else
+		PI_scale_beads_about_COM(scale_factor);
 }
 
 
