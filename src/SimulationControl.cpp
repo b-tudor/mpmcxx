@@ -34,7 +34,8 @@ SimulationControl::~SimulationControl() {
 	if (polarization_energies) SafeOps::free(polarization_energies);
 	if (vdw_energies         ) SafeOps::free(vdw_energies         );
 }
-SimulationControl::SimulationControl(char *inFilename, int P, bool write_PI_frames) : nSys(P), write_PI_frames(write_PI_frames)
+SimulationControl::SimulationControl(char *inFilename, int P, bool write_PI_frames, char *PI_fname):
+	nSys(P), write_PI_frames(write_PI_frames), PI_frames_filename(PI_fname)
 {
 	char linebuf[maxLine];
 	PI_trial_chain_length = 0;
@@ -585,7 +586,7 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 		else return fail;
 		return ok;
 	}
-	if (SafeOps::iequals(token[0], "spectre_max_charge")) {
+	if( SafeOps::iequals(token[0], "spectre_max_charge")) {
 		if( !SafeOps::atod(token[1], sys.spectre_max_charge) )
 			return fail;
 		sys.spectre_max_charge = abs(sys.spectre_max_charge);
@@ -653,7 +654,7 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 			return fail;
 		return ok;
 	}
-	if(  SafeOps::iequals(token[0], "polarvdw") || SafeOps::iequals(token[0], "cdvdw")  ) {
+	if( SafeOps::iequals(token[0], "polarvdw") || SafeOps::iequals(token[0], "cdvdw")  ) {
 		if ( SafeOps::iequals(token[1], "on") ) {
 			sys.polarvdw = 1;
 			sys.polarization = 1;
@@ -815,7 +816,7 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 			return fail;
 		return ok;
 	}
-	if (SafeOps::iequals( token[0], "insert_probability") ) {
+	if( SafeOps::iequals(token[0], "insert_probability") ) {
 		if ( !SafeOps::atod(token[1], sys.insert_probability) ) 
 			return fail;
 		return ok;
@@ -830,7 +831,7 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 			return fail;
 		return ok;
 	}
-	if( SafeOps::iequals( token[0], "volume_probability") ) {
+	if( SafeOps::iequals(token[0], "volume_probability") ) {
 		if( !SafeOps::atod(token[1], sys.volume_probability) )
 			return fail;
 		return ok;
@@ -840,12 +841,12 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 			return fail;
 		return ok;
 	}
-	if( SafeOps::iequals( token[0], "transfer_probability") ) {
+	if( SafeOps::iequals(token[0], "transfer_probability") ) {
 		if( !SafeOps::atod(token[1], sys.transfer_probability) )
 			return fail;
 		return ok;
 	}
-	if( SafeOps::iequals( token[0], "bead_perturb_probability" )) {
+	if( SafeOps::iequals(token[0], "bead_perturb_probability" )) {
 		if( !SafeOps::atod(token[1], sys.bead_perturb_probability ))
 			return fail;
 		return ok;
@@ -923,7 +924,7 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 		else return fail;
 		return ok;
 	}
-	if(SafeOps::iequals(token[0], "co2_fugacity") ) {
+	if( SafeOps::iequals(token[0], "co2_fugacity") ) {
 		if( SafeOps::iequals(token[1], "on") )
 			sys.co2_fugacity = 1;
 		else if( SafeOps::iequals(token[1], "off") )
@@ -1061,7 +1062,8 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 			return fail;
 		return ok;
 	}
-	if( SafeOps::iequals(token[0], "sg") ) {
+	//Silvera-Goldman potential. 
+	if( SafeOps::iequals(token[0], "sg") ) {     
 		if( SafeOps::iequals(token[1], "on") )
 			sys.use_sg = 1;
 		else if( SafeOps::iequals(token[1], "off") )
@@ -1333,13 +1335,13 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 		else return fail;
 		return ok;
 	}
-	if( SafeOps::iequals( token[0], "pqr_input") ) {
+	if( SafeOps::iequals(token[0], "pqr_input") ) {
 		if( strlen(token[1]) )
 			strcpy(sys.pqr_input, token[1]);
 		else return fail;
 		return ok;
 	}
-	if (SafeOps::iequals(token[0], "pqr_input_B")) {
+	if( SafeOps::iequals(token[0], "pqr_input_B")) {
 		if (strlen(token[1]))
 			strcpy(sys.pqr_input_B, token[1]);
 		else return fail;
@@ -1602,7 +1604,6 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 	Output::err("SIM_CONTROL: Unknown Command.\n");
 	return fail;
 }
-
 
 
 
@@ -1930,11 +1931,12 @@ bool SimulationControl::check_mc_options( ) {
 	if( sys.ensemble == ENSEMBLE_PATH_INTEGRAL_NVT ) {
 
 		// PI and Feynmann-Hibbs approx cannot be used in conjunction as they will "double count" nuclear quantum effects
+		/*
 		if (sys.feynman_hibbs) {
 			Output::err("The Feynmann hibbs approximation cannot be used with a Path Integral technique.\n");
 			return fail;
 		}
-
+		*/
 		// Check and report relevant probability settings 
 		if((sys.spinflip_probability + sys.bead_perturb_probability) > 1.0) {
 			Output::err("The requested probabilities for all MC moves sum to a value greater than 1.0.\n");

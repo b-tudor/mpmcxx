@@ -32,18 +32,19 @@ typedef struct _parameters {
 	char* in_filename;
 	int   Ptrotter_number; // P AKA trotter number (this variable is prounounced "Trotter" -- think pterodactyl).
 	bool  write_PI_Frames_at_corrtime;
+	char* PI_frame_file; // file name of PI frames file
 } params;
 
 
 
-void  die(int code);                                                 // Kill any MPI Processes and stop execution
-void  displayUsageAndDie(char* progname, params* p);                 // Print brief application  user instructions and exit
-void  install_signal_handler(SimulationControl *sc);                 // Initialize signal handlers for clean exits (on Posix systems)
-void  introduce_self();                                              // Display program name and welcome message. 
-void  mpi_introspection_and_initialization(int& argc, char* argv[]); // Check if MPI service is available at runtime and configure job accordingly
-void  processArgs(int argc, char* argv[], params* p);                // Parse command line arguments
-void  signal_handler(int sigtype);                                   // Function to handle interrupt signals (on Posix systems)
-char* stripPath(char* full_path);                                    // Removes the path from a filename, leaving on the filename
+void  die(int code);                                                      // Kill any MPI Processes and stop execution
+void  displayUsageAndDie(char* progname, params* p);                      // Print brief application  user instructions and exit
+void  install_signal_handler(SimulationControl *sc);                      // Initialize signal handlers for clean exits (on Posix systems)
+void  introduce_self();                                                   // Display program name and welcome message. 
+void  mpi_introspection_and_initialization(int& argc, char* argv[], int); // Check if MPI service is available at runtime and configure job accordingly
+void  processArgs(int argc, char* argv[], params* p);                     // Parse command line arguments
+void  signal_handler(int sigtype);                                        // Function to handle interrupt signals (on Posix systems)
+char* stripPath(char* full_path);                                         // Removes the path from a filename, leaving on the filename
 
 
 
@@ -77,13 +78,13 @@ void displayUsageAndDie( params &p ) {
 		std::cout << "\t" << p.prog_name << " INPUT_FILE [options]" << std::endl;
 		std::cout << "Options:" << std::endl;
 		std::cout << "\t-P X        Where X is the trotter number for a single threaded path integral job." << std::endl;
-		std::cout << "\t-xyz        Write .xyz PI visualization frames at corrtime steps." << std::endl << std::endl;
+		std::cout << "\t-xyz  FILE  Write .xyz PI visualization frames at corrtime steps to file FILE." << std::endl << std::endl;
 		std::cout << "\nWhen using MPI with path integral ensembles, the number of MPI processes will determine the" << std::endl;
 		std::cout << "number of path integral \"beads\" (i.e. the Trotter number). It is therefore the uneccessary to " << std::endl;
 		std::cout << "use the -P option for multi-threaded/MPI runs. For multi-site/multi-atom sorbate molecule, the" << std::endl;
 		std::cout << "Trotter number must be a power of 2 greater than or equal to 4." << std::endl;
 		
-		std::cout << "\nExample:\n\t" << p.prog_name << " -n 8 <my_path_integral_sim_file>" << std::endl;
+		std::cout << "\nExample:\n\t" << p.prog_name << " -P 8 <my_path_integral_sim_file>" << std::endl;
 		std::cout << "\n        \tmpirun -np 8 " << p.prog_name << " <my_path_integral_sim_file>" << std::endl;
 		std::cout << "\nSee https://github.com/mpmccode/mpmc for input file specification." << std::endl;
 		#ifndef _MPI
@@ -187,6 +188,7 @@ void processArgs(int argc, char* argv[], params &p) {
 	p.in_filename                 = nullptr;
 	p.Ptrotter_number             = 0;
 	p.write_PI_Frames_at_corrtime = false;
+	p.PI_frame_file               = nullptr;
 
 
 
@@ -209,6 +211,19 @@ void processArgs(int argc, char* argv[], params &p) {
 			else if (!strncmp(issOptionToken.str().c_str(), "-xyz", 5)) {
 				n++;
 				p.write_PI_Frames_at_corrtime = true;
+				std::istringstream issArgToken(argv[n]);
+				issArgToken >> fname;
+				if (!issArgToken)
+					displayUsageAndDie(p);
+				p.PI_frame_file = (char*)calloc(fname.size() + 1, sizeof(char));
+				if (p.PI_frame_file)
+					std::memcpy(p.PI_frame_file, fname.c_str(), fname.size());
+				else {
+					Output::err("Unable to allocate xyz PI filename buffer.\n");
+					die(fail);
+				}
+				n++;
+				continue;
 			}
 
 			else // if token is not a flag (-x) then it must be the filename
@@ -229,7 +244,7 @@ void processArgs(int argc, char* argv[], params &p) {
 				if (p.in_filename) 
 					std::memcpy(p.in_filename, fname.c_str(), fname.size());
 				else {
-					Output::err("Unable to allocate filename buffer.\n");
+					Output::err("Unable to allocate input filename buffer.\n");
 					die(fail);
 				}
 				n++;

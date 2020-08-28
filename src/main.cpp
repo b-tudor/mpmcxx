@@ -2,6 +2,8 @@
 // Department of Chemistry
 // University of South Florida
 
+
+
 #ifndef VERSION
 #define VERSION "0.81"
 #endif
@@ -22,6 +24,8 @@ bool mpi = false;
 
 int main(int argc, char * argv[])
 {
+	std::cout << "REINSTATE Feynmann-Hibbs/PI SIMULTANEOUS ERROR CHECK!!!\n";
+
 	//  Parse command line
 	params args;
 	processArgs(argc, argv, args);
@@ -32,13 +36,13 @@ int main(int argc, char * argv[])
 	//  Say hello
 	introduce_self();
 
-	
-	
+
 	
 	try {
 
 		// Read the input file
-		SimulationControl simController(args.in_filename, args.Ptrotter_number, args.write_PI_Frames_at_corrtime ); 
+
+		SimulationControl simController( args.in_filename, args.Ptrotter_number, args.write_PI_Frames_at_corrtime, args.PI_frame_file );
 		Output::out1("MAIN: Simulation parameters established.\n");
 
 		install_signal_handler(&simController);
