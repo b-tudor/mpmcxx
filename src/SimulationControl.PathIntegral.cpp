@@ -825,11 +825,7 @@ double SimulationControl::PI_calculate_kinetic() {
 	double energy_estimator_term_2 = 0.5 * omega2 * chain_mass_len2; // [12.5.12]
 
 	sys.observables->kinetic_energy = (1.0/kB) * (energy_estimator_term_1 - energy_estimator_term_2); // converted to Kelvin
-	/*
-	char linebuf[1000];
-	sprintf(linebuf, "%0.4lf\t%0.4lf\n", energy_estimator_term1, energy_estimator_term2);
-	Output::out1(linebuf);
-	*/
+	
 	return sys.observables->kinetic_energy;
 }
 
@@ -1490,7 +1486,8 @@ void SimulationControl::PI_perturb_bead_COMs(int n) {
 	                                                 //  (this bead is also stationary, and may be the same as prevBead)
 		 
 	
-	// Advance the index for the starter bead to the next in the chain so every bead gets to start before any bead can go twice. 
+	// Advance the index for the starter bead to the next in the chain. This will be the starter
+	// next time, so that every bead gets to start before any bead can start twice. 
 	starterBead = (starterBead + 1 ) % nSys; 
 	
 	
@@ -1512,9 +1509,9 @@ void SimulationControl::PI_perturb_bead_COMs(int n) {
 		Vector3D image_COM(x, y, z); // center of mass of the  target molecule for bead s,
 		                             // which is only 1/nSys of the aggregate PI rep of this molecule
 		beads.push_back( image_COM );
-		/////////////////////chain_COM += image_COM;
+		chain_COM += image_COM;
 	}
-	///////////////////chain_COM /= nSys;
+	chain_COM /= nSys;
 
 	// compute the perturbation for bead COM positions
 	

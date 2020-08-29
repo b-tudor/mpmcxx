@@ -38,11 +38,11 @@ typedef struct _parameters {
 
 
 void  die(int code);                                                      // Kill any MPI Processes and stop execution
-void  displayUsageAndDie(char* progname, params* p);                      // Print brief application  user instructions and exit
+void  displayUsageAndDie( params &p );                                    // Print brief application  user instructions and exit
 void  install_signal_handler(SimulationControl *sc);                      // Initialize signal handlers for clean exits (on Posix systems)
 void  introduce_self();                                                   // Display program name and welcome message. 
 void  mpi_introspection_and_initialization(int& argc, char* argv[], int); // Check if MPI service is available at runtime and configure job accordingly
-void  processArgs(int argc, char* argv[], params* p);                     // Parse command line arguments
+void  processArgs(int argc, char* argv[], params &p);                     // Parse command line arguments
 void  signal_handler(int sigtype);                                        // Function to handle interrupt signals (on Posix systems)
 char* stripPath(char* full_path);                                         // Removes the path from a filename, leaving on the filename
 
@@ -77,11 +77,11 @@ void displayUsageAndDie( params &p ) {
 		std::cout << "\nUsage:" << std::endl;
 		std::cout << "\t" << p.prog_name << " INPUT_FILE [options]" << std::endl;
 		std::cout << "Options:" << std::endl;
-		std::cout << "\t-P X        Where X is the trotter number for a single threaded path integral job." << std::endl;
+		std::cout << "\t-P X        Where X is the trotter number for a non-MPI path integral job." << std::endl;
 		std::cout << "\t-xyz  FILE  Write .xyz PI visualization frames at corrtime steps to file FILE." << std::endl << std::endl;
 		std::cout << "\nWhen using MPI with path integral ensembles, the number of MPI processes will determine the" << std::endl;
 		std::cout << "number of path integral \"beads\" (i.e. the Trotter number). It is therefore the uneccessary to " << std::endl;
-		std::cout << "use the -P option for multi-threaded/MPI runs. For multi-site/multi-atom sorbate molecule, the" << std::endl;
+		std::cout << "use the -P option for multi-threaded MPI runs. For multi-site/multi-atom sorbate molecule, the" << std::endl;
 		std::cout << "Trotter number must be a power of 2 greater than or equal to 4." << std::endl;
 		
 		std::cout << "\nExample:\n\t" << p.prog_name << " -P 8 <my_path_integral_sim_file>" << std::endl;
@@ -120,7 +120,7 @@ void introduce_self() {
 
 	char mpi_msg[20] = { 0 };
 	#ifdef _MPI
-		sprintf(mpi_msg, " (MPI eneabled)");
+		sprintf(mpi_msg, " (MPI enabled)");
 	#endif
 
 	sprintf(
