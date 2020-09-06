@@ -1,0 +1,42 @@
+The tests beginning with 'pi' are tests of the path integral functionality. They are all
+set up to be run with 8 PI images (8 beads), but this is a function of the input file
+settings 'PI_trial_chain_length', 'bead_perturb_probability' and 'corrtime'.
+PI_trial_chain_length sets the number of beads to perturb when exercising an MC move that
+reconfigures the beads of the PI polymer loop relative to each other. This value is
+typically 25% - 40% of the total number of beads used for the PI representation and a
+suitable setting is determined by the acceptance rate for bead perturbing moves (usually
+you want to set the PI_trial_chain_length such that your acceptance rate for these moves
+is about 40-50%). corrtime sets the number of MC steps between sampling data stats, while
+bead_perturb_probability is the percentage of these moves that will be bead perturbations.
+A higher bead count will often require a higher corrtime to allow the PI polymer chain to
+evolve into an uncorrelated configuration between samples. I.e. the number of accepted
+bead perturbation moves, on average, should be such that, in consideration with the
+PI_trial_chain_length, on average, each bead is moved once between data sampling
+(corrtime).
+
+These files will work with a higher PI bead count, but for best results the values of
+PI_trial_chain_length, bead_perturb_probability and corrtime in the input files should be
+set to appropriate values. 
+
+sample-input/pi000-free-argon-2K/
+
+	Since MPMC++ will not run with a single particle, this test simulates a free
+	argon atom by simulating two argon atoms separated with enough distance that 
+	they are effectively non-interacting. Additionally,  the LJ epsilon for both 
+	atoms is set to 0. In the input file, bead_perturb_probability is set to 1.0,
+	so that the only trial moves proposed are rearrangements of the	beads relative
+	to each other. The centers of mass for the atoms do not change. 
+	
+	Example command sequence:
+		mpmcxx -P 8 equilibrate.in > equilibrate.log
+		mpmcxx -P 8 -xyz frames.xyz input.in > sim.log
+
+
+
+sample-input/pi001-argon-dimer-2K/
+
+	An argon dimer at 2K--potential is LJ only.
+
+	Example command sequence:
+		mpmcxx -P 8 equilibrate.in > equilibrate.log
+		mpmcxx -P 8 -xyz frames.xyz input.in > sim.log

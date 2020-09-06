@@ -1,0 +1,30 @@
+job_name                       Ar2K
+
+ensemble                       pi_nvt
+
+temperature                    2.0
+
+polarization                   off
+
+numsteps                       10000
+corrtime                       20
+seed                           1
+rot_factor                     1.0
+
+bead_perturb_probability       1.0
+
+free_volume                    1000000.0
+
+PI_trial_chain_length          4
+
+basis1                         100.0    0.0    0.0
+basis2                           0.0  100.0    0.0
+basis3                           0.0    0.0  100.0
+
+h2_fugacity                    off
+feynman_hibbs                  off
+
+wrapall                        on
+pop_histogram                  off
+traj_output                    off
+pqr_input                      Ar.pqr
