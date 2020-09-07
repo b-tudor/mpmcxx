@@ -827,7 +827,7 @@ double SimulationControl::PI_calculate_kinetic() {
 	sys.observables->kinetic_energy = (1.0/kB) * (energy_estimator_term_1 - energy_estimator_term_2); // converted to Kelvin
 	
 	return sys.observables->kinetic_energy;
-}
+} 
 
 
 
@@ -1449,9 +1449,10 @@ void SimulationControl::PI_perturb_bead_COMs() {
 	PI_perturb_bead_COMs( PI_trial_chain_length ); // number of beads in a "trial chain" -- the number beads to move when generating trial COM configs)
 }
 void SimulationControl::PI_perturb_bead_COMs(int n) {
+// n is the number of beads to move
+
 // The algorithm for center-of-mass bead perturbation methods comes from:
 // Coker et al.;  J.Chem.Phys. 86, 5689 (1987); doi: 10.1063/1.452495
-// n is the number of beads to move
 
 // General algorithm:
 // 1. Isolate a segment of the PI chain representation for a single molecule. Every molecule will move, but only these
@@ -1553,41 +1554,6 @@ void SimulationControl::PI_perturb_bead_COMs(int n) {
 		systems[s]->checkpoint->molecule_altered->move_to_(beads[s].x(), beads[s].y(), beads[s].z());
 }
 
-
-
-/*
-void SimulationControl::PI_scale_beads_about_COM( double scaleFactor ) {
-// Expand or shrink the beads around the COM of the PI representation for the molecule
-	
-	std::vector<Vector3D> beads;
-	Vector3D chain_COM(0, 0, 0);
-	for (int s = 0; s < nSys; s++) {
-
-		systems[s]->checkpoint->molecule_altered->update_COM();
-
-		double x = systems[s]->checkpoint->molecule_altered->com[0];
-		double y = systems[s]->checkpoint->molecule_altered->com[1];
-		double z = systems[s]->checkpoint->molecule_altered->com[2];
-		Vector3D bead_COM(x, y, z);
-		beads.push_back(bead_COM);
-		chain_COM += bead_COM;
-	}
-	chain_COM /= nSys;
-
-	for (int s = 0; s < nSys; s++) {
-		// Move bead vectors such that COM is at the origin,
-		beads[s] = beads[s] - chain_COM;
-		// multiply them by scaleFactor,
-		beads[s] = beads[s] * scaleFactor;
-		// and then slide them back to their original positions.
-		beads[s] = beads[s] + chain_COM;
-	}
-
-	// now impose the scaling we've computed back onto the actual system representations
-	for (int s = 0; s < nSys; s++)
-		systems[s]->checkpoint->molecule_altered->move_to_(beads[s].x(), beads[s].y(), beads[s].z());
-}
-*/
 
 
 

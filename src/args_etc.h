@@ -4,6 +4,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <omp.h>
 #include <sstream>
 #include <stdlib.h>
 
@@ -37,15 +38,14 @@ typedef struct _parameters {
 
 
 
-void  die(int code);                                                      // Kill any MPI Processes and stop execution
-void  displayUsageAndDie( params &p );                                    // Print brief application  user instructions and exit
-void  install_signal_handler(SimulationControl *sc);                      // Initialize signal handlers for clean exits (on Posix systems)
-void  introduce_self();                                                   // Display program name and welcome message. 
-void  mpi_introspection_and_initialization(int& argc, char* argv[], int); // Check if MPI service is available at runtime and configure job accordingly
-void  processArgs(int argc, char* argv[], params &p);                     // Parse command line arguments
-void  signal_handler(int sigtype);                                        // Function to handle interrupt signals (on Posix systems)
-char* stripPath(char* full_path);                                         // Removes the path from a filename, leaving on the filename
-
+void  die(int code);                                   // Kill any MPI Processes and stop execution
+void  displayUsageAndDie( params &p );                 // Print brief application  user instructions and exit
+void  install_signal_handler(SimulationControl *sc);   // Initialize signal handlers for clean exits (on Posix systems)
+void  introduce_self();                                // Display program name and welcome message. 
+void  processArgs(int argc, char* argv[], params &p);  // Parse command line arguments
+void  signal_handler(int sigtype);                     // Function to handle interrupt signals (on Posix systems)
+char* stripPath(char* full_path);                      // Removes the path from a filename, leaving on the filename
+void  parallel_introspection_and_initialization(int& argc, char* argv[], int); // Check if MPI service is available at runtime and configure job accordingly
 
 
 
@@ -131,21 +131,42 @@ void introduce_self() {
 	);
 	Output::out1(linebuf);
 
-	sprintf(
-		linebuf,
-		"MAIN: process%s started on %d thread%s @ %d-%d-%d %d:%d:%d\n",
-		(mpi ? "es" : ""),
-		(mpi ? size : 1 ),
-		(mpi ?  "s" : ""),
-		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec
-	);
+	if (mpi) {
+		sprintf(
+			linebuf,
+			"MAIN: process%s started on %d MPI thread%s @ %d-%d-%d %d:%d:%d\n",
+			((size>1) ? "es" : ""),
+			size,
+			((size>1) ? "s" : ""),
+			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec
+		);
+	}
+	else {
+
+		int thread_count = omp_get_num_threads();
+		#pragma omp parallel 
+		{
+			int np = omp_get_num_threads();
+			int id = omp_get_thread_num();
+			if (!id)
+				thread_count = np;
+		}
+		sprintf(
+			linebuf,
+			"MAIN: process%s started on %d thread%s @ %d-%d-%d %d:%d:%d\n",
+			((thread_count > 1) ? "es" : ""),
+			thread_count,
+			((thread_count > 1) ? "s" : ""),
+			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec
+		);
+	}
 	Output::out1(linebuf);
 }
 
 
 
-// Check if MPI service is available at runtime and configure job accordingly
-void mpi_introspection_and_initialization(int& argc, char* argv[], int P) {
+// Check if MPI or openMP service is available at runtime and configure job accordingly
+void parallel_introspection_and_initialization(int& argc, char* argv[], int P) {
 
 	#ifdef _MPI	 // Start up the MPI chain
 		if (MPI_Init(&argc, &argv) == MPI_SUCCESS)
@@ -170,8 +191,12 @@ void mpi_introspection_and_initialization(int& argc, char* argv[], int P) {
 		}
 	} 
 	#ifdef _MPI
+		// finalize MPI services if MPI is available, but we are only running on a single MPI thread
 		else { MPI_Finalize(); }
 	#endif
+	
+	if (!mpi) 
+		omp_set_num_threads(P);
 }
 
 

@@ -24,14 +24,12 @@ bool mpi = false;
 
 int main(int argc, char * argv[])
 {
-	std::cout << "REINSTATE Feynmann-Hibbs/PI SIMULTANEOUS ERROR CHECK!!!\n";
-
 	//  Parse command line
 	params args;
 	processArgs(argc, argv, args);
 
-	//  Detect/start MPI services 
-	mpi_introspection_and_initialization(argc, argv, args.Ptrotter_number);
+	//  Detect/start parallel services 
+	parallel_introspection_and_initialization(argc, argv, args.Ptrotter_number);
 
 	//  Say hello
 	introduce_self();

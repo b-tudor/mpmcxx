@@ -1931,12 +1931,10 @@ bool SimulationControl::check_mc_options( ) {
 	if( sys.ensemble == ENSEMBLE_PATH_INTEGRAL_NVT ) {
 
 		// PI and Feynmann-Hibbs approx cannot be used in conjunction as they will "double count" nuclear quantum effects
-		/*
 		if (sys.feynman_hibbs) {
 			Output::err("The Feynmann hibbs approximation cannot be used with a Path Integral technique.\n");
 			return fail;
 		}
-		*/
 		// Check and report relevant probability settings 
 		if((sys.spinflip_probability + sys.bead_perturb_probability) > 1.0) {
 			Output::err("The requested probabilities for all MC moves sum to a value greater than 1.0.\n");
