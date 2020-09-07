@@ -128,11 +128,11 @@ void SimulationControl::initializeSimulationObjects() {
 
 		case ENSEMBLE_PATH_INTEGRAL_NVT:
 			initialize_PI_NVT_Systems();
-			return;
+			break;
 		
 		case ENSEMBLE_NVT_GIBBS:
 			initialize_Gibbs_systems();
-			return;
+			break;
 
 		default:
  
@@ -191,8 +191,11 @@ void SimulationControl::initializeSimulationObjects() {
 			if( sys.spectre ) 
 				sys.spectre_wrapall();
 
-			return;
+			break;
 	}
+
+	Output::out1("MAIN: Input parameters checked. System data structures allocated and initialized.\n");
+	return;
 }
 
 

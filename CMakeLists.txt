@@ -1,15 +1,18 @@
 # CMakeLists.txt : CMake project for MPMC++
 
 project(mpmc++)
-cmake_minimum_required (VERSION 3.5.1)
+cmake_minimum_required (VERSION 3.9)
 
 # execute_process(COMMAND bash "-c" "git rev-list HEAD| wc -l |sed 's: ::g'" VERBATIM OUTPUT_VARIABLE REV)
 # add_definitions(-DVERSION=${REV})
-message("Compiling For ${CMAKE_BUILD_TYPE}")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ggdb -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ggdb -Wall")
 
-option(MPI "Use MPI to parallelize the calculations (requires MPI)" OFF)
+option(OMP "Use -DOMP=on to enable paralellization on multicore processors" on)
+option(MPI "Use -DMPI=on to parallelize the calculations in an HPC environment (requires MPI)" )
+
+
+message("\nCompiling For ${CMAKE_BUILD_TYPE}")
 
 set(LIB m)
 set(INCLUDE src)
@@ -39,6 +42,16 @@ set(SRC
 	src/main.cpp
 )
 
+if(OMP)
+	message("-- OpenMP enabled")
+	find_package(OpenMP)
+	if(OpenMP_CXX_FOUND)
+		add_definitions(" -D_OMP ")
+		set(LIB PUBLIC OpenMP::OpenMP_CXX ${LIB})
+	else()
+		message("WARNING: OpenMP package not found.\n*** OpenMP MULTITHREADING REQUESTED BUT NOT ENABLED ***")
+	endif()
+endif()
 
 if(MPI)
     message("-- MPI Enabled")

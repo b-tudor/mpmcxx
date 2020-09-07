@@ -2,7 +2,6 @@
 #include <cstring>
 #include <iostream>
 #include <map>
-#include <omp.h>
 #include <time.h>
 #include <vector>
 
@@ -15,12 +14,19 @@
 #ifdef _MPI
 #include <mpi.h>
 #endif
+
+#ifdef _OMP
+#include <omp.h>
+#endif
+
+
+
+
+
 extern int rank, size;
 extern bool mpi;
 
-
  
-
 //  In PI ensembles, the sys variable (the main and typically only system variable in traditional runs)
 //  is used to track the aggregate observables that are derived from the simulation results generated
 //  in the array of systems (referenced in the vector variable systems[]). 
@@ -759,14 +765,11 @@ double SimulationControl::PI_calculate_potential() {
 			MPI_Allgather( &obs->polarization_energy, 1, MPI_DOUBLE, polarization_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
 			MPI_Allgather(          &obs->vdw_energy, 1, MPI_DOUBLE,          vdw_energies, 1, MPI_DOUBLE, MPI_COMM_WORLD);
 		#endif
-		//for (int s=0; s<nSys; s++)
-		//	net_potentials[s] = rd_energies[s] + coulombic_energies[s] + polarization_energies[s] + vdw_energies[s];
-
+		
 	} else {
 		// For single-MPI-thread systems, energy computations happen on every system
 		
 		#pragma omp parallel for num_threads(nSys)
-
 		for (int s = 0; s < nSys; s++) {
 			systems[s]->energy();
 			rd_energies[s]           = systems[s]->observables->rd_energy;
@@ -774,11 +777,6 @@ double SimulationControl::PI_calculate_potential() {
 			polarization_energies[s] = systems[s]->observables->polarization_energy;
 			vdw_energies[s]          = systems[s]->observables->vdw_energy;
 		}
-		/*
-		#pragma omp barrier	// debug
-		for( int s=0; s<nSys; s++) // debug
-			printf("\tSys: %d\tEnergy: %lf\n", s, rd_energies[s]); // debug
-		*/
 	}
 
 	// Observables for the aggregate Path Integral (PI) system will be accumulated in sys.observables

@@ -14,6 +14,7 @@ bool mpi = false;
 
 #include <stdio.h>
 #include <time.h>
+
 #include "args_etc.h"
 #include "constants.h"
 #include "Output.h"
@@ -47,7 +48,6 @@ int main(int argc, char * argv[])
 
 		// Check simulation parameters, read geometry and allocate/populate required data structures
 		simController.initializeSimulationObjects();
-		Output::out1("MAIN: Input parameters checked. System data structures allocated and initialized.\n");
 
 		// Execute the simulation
 		simController.runSimulation();

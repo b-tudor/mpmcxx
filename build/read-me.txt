@@ -2,13 +2,11 @@
  GENERAL BUILD INSTRUCTIONS
 ============================
 
-1. Install CMake version 3.7 or later.
+1. Install CMake version 3.9 or later.
 2. Initialize the build environment using the CMake command:
 	cmake ..
 3. Then, builds can be performed normally using the make command:
 	make
-
-
 
 
 ============
@@ -17,4 +15,16 @@
 
 To build binaries for MPI parallel runs, substitute the command in step 2 with:
 	cmake .. -DMPI=on
-	
+
+
+============
+ OpenMP
+============	
+
+OpenMP support is included by default, and if the OpenMP package is not found
+on your system, then it is not compiled into the executable. However, if OpenMP
+is found for your compiler, but you wish to exclude the OpenMP libraries, add 
+option -DOMP=off
+
+E.g., to include MPI but exclude OpenMP issue the command:
+	cmake ..  -DOMP=off -DMPI=on

@@ -4,13 +4,16 @@
 
 #include <cstring>
 #include <iostream>
-#include <omp.h>
 #include <sstream>
 #include <stdlib.h>
 
 #include "Output.h"
 #include "SafeOps.h"
 #include "SimulationControl.h"
+
+#ifdef _OMP
+#include <omp.h>
+#endif
 
 #ifdef __unix__
 #include <unistd.h>
@@ -143,11 +146,16 @@ void introduce_self() {
 	}
 	else {
 
-		int thread_count = omp_get_num_threads();
+		int thread_count = 1;
+				
 		#pragma omp parallel 
 		{
-			int np = omp_get_num_threads();
-			int id = omp_get_thread_num();
+			int np = 1;
+			int id = 0;
+			#ifdef _OMP
+				np = omp_get_num_threads();
+				id = omp_get_thread_num();
+			#endif
 			if (!id)
 				thread_count = np;
 		}
@@ -195,8 +203,10 @@ void parallel_introspection_and_initialization(int& argc, char* argv[], int P) {
 		else { MPI_Finalize(); }
 	#endif
 	
-	if (!mpi) 
-		omp_set_num_threads(P);
+	#ifdef _OMP
+		if (!mpi) 
+			omp_set_num_threads(P);
+	#endif
 }
 
 
