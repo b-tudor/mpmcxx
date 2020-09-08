@@ -1,6 +1,6 @@
 # CMakeLists.txt : CMake project for MPMC++
 
-project(mpmc++)
+project(mpmcxx)
 cmake_minimum_required (VERSION 3.9)
 
 # execute_process(COMMAND bash "-c" "git rev-list HEAD| wc -l |sed 's: ::g'" VERBATIM OUTPUT_VARIABLE REV)
@@ -68,7 +68,7 @@ endif()
 
 
 # Add source to this project's executable
-add_executable(mpmc++ ${SRC})
+add_executable(${PROJECT_NAME} ${SRC})
 
 # Add required libraries to the linker list
 target_link_libraries(${PROJECT_NAME} ${LIB})

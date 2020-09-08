@@ -5,7 +5,7 @@
 
 
 #ifndef VERSION
-#define VERSION "0.81"
+#define VERSION "0.9"
 #endif
 
 int rank = 0;

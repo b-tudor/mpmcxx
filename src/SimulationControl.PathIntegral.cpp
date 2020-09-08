@@ -554,10 +554,10 @@ double SimulationControl::PI_NVT_boltzmann_factor( PI_NVT_BFContributors BF ) {
 
 bool SimulationControl::check_PI_options() {
 	
-	//  Check to see if the bead count (i.e. MPI size) is a power of 2
-	//  (i.e. count the number of ones in the binary representation of 'size' and make sure there is only 1)
+	//  Check to see if the bead count is a power of 2
+	//  (i.e. count the number of ones in the binary representation of 'size' or nSys and make sure there is only 1)
 
-	unsigned int bits = sizeof(size) * 8;
+	unsigned int bits = 8 * (mpi ? sizeof(size) : sizeof(nSys));
 	unsigned int bitcount = 0;
 	unsigned long long int bitmask = 1; 
 	char linebuf[maxLine];
@@ -589,13 +589,13 @@ bool SimulationControl::check_PI_options() {
 		throw invalid_setting;
 	}
 	if( (PI_trial_chain_length < 0)  ||  (PI_trial_chain_length >= nSys) ){
-		Output::err( "SIM_CONTROL: PI_trial_chain_length must be in [1..P-1], where P is the Trotter number,\n"     );
-		Output::err( "             i.e. the number of 'beads' (1 bead per MPI thread). For a single (non-MPI)\n"    );
-		Output::err( "             thread, bead count is set with the 'trotter_number' option in the input file.\n" );
+		Output::err( "SIM_CONTROL: PI_trial_chain_length must be in [1..P-1], where P is the Trotter number,\n"   );
+		Output::err( "             i.e. the number of 'beads' (1 bead per MPI thread). For a non-MPI runs, the\n" );
+		Output::err( "             bead count is set with the -P option on the command line.\n" );
 		if(mpi) 
-			sprintf(linebuf, "SIM_CONTROL: MPI-Reported world-size (PI bead count): %d.\n", size);
+			sprintf(linebuf, "SIM_CONTROL: MPI-Reported world-size (i.e. PI bead count): %d.\n", size);
 		else 
-			sprintf(linebuf, "SIM_CONTROL: user requested bead count (single thread): %d\n", nSys );
+			sprintf(linebuf, "SIM_CONTROL: user requested bead count: %d\n", nSys );
 		Output::err(linebuf);
 		sprintf(linebuf, "SIM_CONTROL: requested length of trial chain: %d.\n", PI_trial_chain_length);
 		Output::err(linebuf);

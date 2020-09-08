@@ -2192,7 +2192,7 @@ bool SimulationControl::check_spectre_options() {
 bool SimulationControl::check_io_files_options() {
 
 	char linebuf[maxLine*2];
-	int file_count = (mpi) ? size : nSys;
+	int file_count = mpi ? size : nSys;
 
 
 	if (SafeOps::iequals(sys.pqr_restart, "off")) { // Optionally turn off restart configuration output
