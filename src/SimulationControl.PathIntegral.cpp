@@ -588,7 +588,7 @@ bool SimulationControl::check_PI_options() {
 		Output::err("SIMULATION CONTROL: PI_trial_chain_length must be set when using Path Integral ensembles.\n");
 		throw invalid_setting;
 	}
-	if( (PI_trial_chain_length < 0)  ||  (PI_trial_chain_length >= nSys) ){
+if( (PI_trial_chain_length < 0)  ||  (PI_trial_chain_length >= nSys) ){
 		Output::err( "SIM_CONTROL: PI_trial_chain_length must be in [1..P-1], where P is the Trotter number,\n"   );
 		Output::err( "             i.e. the number of 'beads' (1 bead per MPI thread). For a non-MPI runs, the\n" );
 		Output::err( "             bead count is set with the -P option on the command line.\n" );

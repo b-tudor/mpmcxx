@@ -1947,6 +1947,8 @@ bool SimulationControl::check_mc_options( ) {
 		Output::out1(linebuf);
 		sprintf(linebuf, "SIM_CONTROL: bead perturbation probability is %lf.\n", sys.bead_perturb_probability);
 		Output::out1(linebuf);
+		sprintf(linebuf, "SIM_CONTROL: bead perturbation trial moves will be performed on chains of length %d.\n", PI_trial_chain_length);
+		Output::out1(linebuf);
 		sprintf(linebuf, "SIM_CONTROL: displace probability is %lf.\n", 1.0 - sys.spinflip_probability - sys.bead_perturb_probability);
 		Output::out1(linebuf);
 	}
