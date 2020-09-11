@@ -601,7 +601,7 @@ bool SimulationControl::check_PI_options() {
 		Output::err(linebuf);
 		throw invalid_setting;
 	} else {
-		sprintf(linebuf, "SIM_CONTROL: bead perturbation trials will be performed on chains of length %d.\n", PI_trial_chain_length);
+		sprintf(linebuf, "SIM_CONTROL: bead perturbation trials will be performed on sub-chains of length %d.\n", PI_trial_chain_length);
 		Output::out1(linebuf);
 	}
 	

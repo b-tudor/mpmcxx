@@ -51,8 +51,7 @@ public:
 	       gwp_alpha,
 	       lrc_self,
 	       last_volume;
-	int    gwp_spin,
-	       site_neighbor_id; // dr fluctuations will be applied along the vector from this atom to the atom identified by this variable
+	int    gwp_spin;
 	Pair   *pairs;
 	Atom   *next;
 };

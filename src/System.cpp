@@ -881,8 +881,8 @@ void System::read_molecules( FILE *fp ) {
 	molecule_ptr = molecules;
 
 	molecule_ptr->id = 1;
-	molecule_ptr->atoms = new Atom();
-	atom_ptr = molecule_ptr->atoms;
+	atom_ptr = new Atom();
+	molecule_ptr->atoms = atom_ptr;
 	prev_atom_ptr = atom_ptr;
 
 	// clear the linebuffer and read the tokens in 
@@ -1063,7 +1063,6 @@ void System::read_molecules( FILE *fp ) {
 			else
 				atom_ptr->gwp_spin = 0;
 
-			atom_ptr->site_neighbor_id = current_site_neighbor;
 			atom_ptr->next = new Atom();
 			prev_atom_ptr = atom_ptr;
 			atom_ptr      = atom_ptr->next;

@@ -81,7 +81,6 @@ Atom::Atom(const Atom &other) {
 	lrc_self                 = other.lrc_self;
 	last_volume              = other.last_volume;
 	gwp_spin                 = other.gwp_spin;
-	site_neighbor_id         = other.site_neighbor_id;
 	
 	for (int i = 0; i < 3; i++) {
 		pos[i]               = other.pos[i];
