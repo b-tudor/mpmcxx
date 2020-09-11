@@ -9,7 +9,6 @@ Atom::Atom()
 {
 	
 	id                   = 0;
-	bond_id              = 0;
 	atomtype[0]          = (char) 0;
 	frozen               = 0;
 	adiabatic            = 0;
@@ -59,7 +58,6 @@ Atom::Atom(const Atom &other) {
 	strcpy(atomtype, other.atomtype);
 
 	id        = other.id;
-	bond_id   = other.bond_id;
 	frozen    = other.frozen;
 	adiabatic = other.adiabatic;
 	spectre   = other.spectre;

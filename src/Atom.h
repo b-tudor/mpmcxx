@@ -19,8 +19,7 @@ private:
 
 	
 public:
-	int    id,
-	       bond_id;
+	int    id;
 	char   atomtype[maxLine];
 	int    frozen, 
 	       adiabatic,

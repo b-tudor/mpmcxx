@@ -867,7 +867,7 @@ void System::read_molecules( FILE *fp ) {
 	       token_c10         [maxLine] = {0},   token_c9    [maxLine] = {0};
 
 	int    current_frozen     = 0,  current_adiabatic = 0,  current_spectre       = 0,  current_target = 0,
-	       current_moleculeid = 0,  current_atomid    = 0,  current_site_neighbor = 0,   
+	       current_moleculeid = 0,  current_atomid    = 0,  
 	       moveable           = 0,  spectres          = 0,  targets               = 0,  atom_counter   = 0;
 
 	double current_x       = 0,  current_y      = 0,  current_z     = 0,
@@ -997,11 +997,7 @@ void System::read_molecules( FILE *fp ) {
 					current_sigma = 1.0;
 				}
 			}
-			// Functionality of site_neighbor disabled in favor of omega/gwp_alpha parameters
-			// Current behavior is to default to atom 0, typically the center of mass for
-			// the molecule.
-			current_site_neighbor = 0; //atoi( token_site_neighbor );
-                        
+			            
 			if( current_frozen )
 				current_charge *= scale_charge;
 
@@ -1037,7 +1033,6 @@ void System::read_molecules( FILE *fp ) {
 
 			++atom_counter;
 			atom_ptr->id             = atom_counter;
-			atom_ptr->bond_id        = current_atomid;
 			atom_ptr->frozen         = current_frozen;
 			atom_ptr->adiabatic      = current_adiabatic;
 			atom_ptr->spectre        = current_spectre;
