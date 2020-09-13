@@ -71,8 +71,7 @@ SimulationControl::SimulationControl(char *inFilename, int P, bool write_PI_fram
 		throw invalid_input;
 	}
 
-	orientations.resize(size); // allocate space for one orientation vector per bead
-
+	orientations.resize( nSys ); // allocate space for one orientation vector per bead
 }
 
 
@@ -135,8 +134,9 @@ void SimulationControl::initializeSimulationObjects() {
 			break;
 
 		default:
- 
-			//  This is the normal MPMC setup (i.e. non-Gibbs, non-Path Integral)  ////////////////
+			  //\  /////////////////////////////////////////////////////////////////////////
+			 //\\\//  This is the normal MPMC setup (i.e. non-Gibbs, non-Path Integral)  //
+			//\\\/////////////////////////////////////////////////////////////////////////
 
 			// set up the simulation box: pbc and read in molecules
 			sys.setup_simulation_box();
@@ -2851,6 +2851,8 @@ bool SimulationControl::runSimulation() {
 
 	char start_up_msg[maxLine] = { 0 };   // Message to display when sim starts
 	char err_exit_msg[maxLine] = { 0 };   // Message to display if sim errors out
+	char exit_msg    [maxLine] = { "SIM_CONTROL: Simulation complete!\nCleaning up & exiting...\n" }; // Message to display upon clean exit:
+	
 	bool (SimulationControl::*run_sim)(); // run_sim is a pointer  to the function that we will run in order  to execute the 
 	                                      // simulation. The syntax is weird because this  is a pointer to a member function
 	                                      // rather than a C or static function. Member fxns invoked via: (this->*run_sim)()
@@ -2861,7 +2863,7 @@ bool SimulationControl::runSimulation() {
 		Output::out1(start_up_msg);
 	}
 	#endif
-	
+	strcpy(exit_msg, "SIM_CONTROL: Simulation complete!\nCleaning up & exiting...\n");
 
 
 	// Set which simulation function to run, set the start-up message, and the message to display upon failure
@@ -2960,8 +2962,7 @@ bool SimulationControl::runSimulation() {
 		Output::err(err_exit_msg);
 		return fail;
 	}
-	Output::out1("SIM_CONTROL: Simulation complete!\n");
-	Output::out1("Cleaning up & exiting... ");
+	Output::out1(exit_msg);
 	return ok;
 }
 

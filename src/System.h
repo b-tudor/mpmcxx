@@ -18,6 +18,15 @@ class Pair;
 
 
 
+static const double  ewald_alpha_default = 0.5;
+static const int     ewald_kmax_default  = 7;
+static const int     ptemp_freq_default  = 20; // default frequency for parallel tempering bath swaps
+static const double  wolf_alpha_lookup_cutoff_default = 30.0; //angstroms
+
+
+
+
+
 
 
 class System
@@ -30,7 +39,7 @@ public:
 		int     * index; 
 		double  * templist;
 	} ptemp_t;
-
+	
 	typedef struct avg_observables {
 		// these are uncorrelated averages of the observables 
 		double energy, energy_sq, energy_error;
@@ -493,67 +502,69 @@ public:
 
 	
 public:
+	// a priori system defaults
+
 
 	// Compilation type flags and data
-	int         cuda;
-	int         opencl;
+	int         cuda   = 0;
+	int         opencl = 0;
 	#ifdef OPENCL
-		ocl_t * ocl;
+		ocl_t * ocl = nullptr;
 	#endif
 
 
-	int         ensemble;
-	char        job_name[maxLine];     // (CRC)
+	int         ensemble = 0;
+	char        job_name[maxLine] = { 'u', 'n','t','i','t','l','e','d','\0' }; // (CRC)
 	
 	// Monte Carlo Controls
-	unsigned int numsteps;              // Total number of MC simulation steps to perform
-	unsigned int step;                  // Current MC step
-	int          corrtime;              // Number of steps between MC correlation times
-	int          ptemp_freq;
+	unsigned int numsteps   = 0;       // Total number of MC simulation steps to perform
+	unsigned int step       = 0;       // Current MC step
+	int          corrtime   = 0;       // Number of steps between MC correlation times
+	int          ptemp_freq = 0;
 
-	double       move_factor;
-	double       rot_factor;
-	double       last_volume;            // NPT option
-	double       volume_change_factor;   // NPT option
-	double       adiabatic_probability,
-	             gwp_probability,
-	             insert_probability,
-	             spinflip_probability,
-	             volume_probability,
-		         transfer_probability;
+	double       move_factor           = 1.0;
+	double       rot_factor            = 1.0;
+	double       last_volume           = 0;    // NPT option
+	double       volume_change_factor  = 0.25; // set default volume change factor (for NPT) 
+	double       adiabatic_probability = 0,
+	             gwp_probability       = 0,
+	             insert_probability    = 0,
+	             spinflip_probability  = 0,
+	             volume_probability    = 0,
+		         transfer_probability  = 0;
 
 	// Path-Integral settings
-	double      bead_perturb_probability;   //  PI option--probability for move that changes bead configuration
+	double      bead_perturb_probability = { 0 }; //  PI option--probability for move that changes bead configuration
 	
 
 
 	// io filenames
-	char        dipole_output     [maxLine],
-	            energy_output     [maxLine],
-	            energy_output_csv [maxLine],
-	            field_output      [maxLine],
-	            frozen_output     [maxLine],
-	            histogram_output  [maxLine],
-	            insert_input      [maxLine],
-	            pqr_input         [maxLine],
-	            pqr_input_B       [maxLine],
-	            pqr_output        [maxLine],
-	            pqr_restart       [maxLine],
-	            surf_output       [maxLine],
-	            traj_input        [maxLine],
-	            traj_output       [maxLine],
-	            virial_output     [maxLine];
+	char        dipole_output     [maxLine] = { 0 },
+	            energy_output     [maxLine] = { 0 },
+	            energy_output_csv [maxLine] = { 0 },
+	            field_output      [maxLine] = { 0 },
+	            frozen_output     [maxLine] = { 0 },
+	            histogram_output  [maxLine] = { 0 },
+	            insert_input      [maxLine] = { 0 },
+	            pqr_input         [maxLine] = { 0 },
+	            pqr_input_B       [maxLine] = { 0 },
+	            pqr_output        [maxLine] = { 0 },
+	            pqr_restart       [maxLine] = { 0 },
+	            surf_output       [maxLine] = { 0 },
+	            traj_input        [maxLine] = { 0 },
+	            traj_output       [maxLine] = { 0 },
+	            virial_output     [maxLine] = { 0 };
 	    
 	 
 
 	// Observables
-	double      temperature,
-	            pressure,
-	            free_volume,
-	            total_energy,
-	            N;
-	int         fugacitiesCount;
-	double      fugacities[maxTokens];
+	double      temperature     = 0,
+	            pressure        = 0,
+	            free_volume     = 0,
+	            total_energy    = 0,
+	            N               = 0;
+	int         fugacitiesCount = 0;
+	double      fugacities[maxTokens] = {0};
 	
 
 	// Inter-node/Inter-system Data relay
@@ -561,203 +572,203 @@ public:
 
 
 	// Simulation Flags & Data
-	int         gwp;
-	int         long_output;       // Flag: signals request to print extended (%11.6f) coordinates
-	int         parallel_restarts; // Flag: signals that this run is a restart of a parallel job
-	double      max_bondlength;    // Bond threshold (re:output files)
+	int         gwp               = 0;
+	int         long_output       = 0; // Flag: signals request to print extended (%11.6f) coordinates
+	int         parallel_restarts = 0; // Flag: signals that this run is a restart of a parallel job
+	double      max_bondlength    = 0; // Bond threshold (re:output files)
 	
 	
 
-	cavity_t   *** cavity_grid;
-	int            cavity_bias, 
-	               cavity_grid_size,
-	               cavities_open;
-	double         cavity_autoreject_repulsion,
-	               cavity_autoreject_scale, 
-	               cavity_radius, 
-	               cavity_volume;
+	cavity_t   *** cavity_grid      = nullptr;
+	int            cavity_bias      = 0,
+	               cavity_grid_size = 0,
+	               cavities_open    = 0;
+	double         cavity_autoreject_repulsion = 0,
+	               cavity_autoreject_scale     = 0,
+	               cavity_radius               = 0,
+	               cavity_volume               = 0;
 	// Auto-reject Options --- first is in terms of sigma and only
 	// applies to LJ; latter is in Angstroms and applies to all pairs
-	int            cavity_autoreject;           // Flag: autoreject in terms of sigma--only applies to LJ
-	int            cavity_autoreject_absolute;  // Flag: autoreject in Angstroms and applies to all pairs
+	int            cavity_autoreject          = 0;  // Flag: autoreject in terms of sigma--only applies to LJ
+	int            cavity_autoreject_absolute = 0;  // Flag: autoreject in Angstroms and applies to all pairs
 
 	// Parallel Tempering Options
-	int            parallel_tempering;
-	double         max_temperature;
-	ptemp_t      * ptemp;
+	int            parallel_tempering = 0;
+	double         max_temperature    = 0;
+	ptemp_t      * ptemp              = nullptr;
 	
 	// Info regarding  periodic boundary and unit cell geometry
-	int              wrapall;  // Flag: wrap all option requested
-	PeriodicBoundary pbc;      // Periodic boundary conditions of THIS system 
+	int              wrapall = 1;  // Flag: wrap all option requested
+	PeriodicBoundary pbc;          // Periodic boundary conditions of THIS system 
 	
 	
 	// (P)RNG
 	std::mt19937   mt_rand;
 	std::uniform_real_distribution<double> dist{0,1};
-	int            preset_seed_on;  //for manual specification of random seeds
-	uint32_t       preset_seed;
+	int            preset_seed_on = 0;  //for manual specification of random seeds
+	uint32_t       preset_seed    = 0;
 	
-	int            read_pqr_box_on; //read box basis from pqr
+	int            read_pqr_box_on = 0; //read box basis from pqr
 	
 	// Simulated Annealing
-	int            simulated_annealing, 
-	               simulated_annealing_linear;
-	double         simulated_annealing_schedule,
-	               simulated_annealing_target;
+	int            simulated_annealing          = 0,
+	               simulated_annealing_linear   = 0;
+	double         simulated_annealing_schedule = 0,
+	               simulated_annealing_target   = 0;
 
 	// Spectre
-	int            spectre;
-	double         spectre_max_charge, 
-	               spectre_max_target;
+	int            spectre            = 0;
+	double         spectre_max_charge = 0,
+	               spectre_max_target = 0;
 
 
 	// Energy-corrections
-	int            feynman_hibbs,
-	               feynman_kleinert,
-	               feynman_hibbs_order;
-	int            vdw_fh_2be;          // Flag: 2BE method for polarvdw requested
-	int            rd_lrc, 
-	               rd_crystal,
-	               rd_crystal_order;
+	int            feynman_hibbs       = 0,
+	               feynman_kleinert    = 0,
+	               feynman_hibbs_order = 0;
+	int            vdw_fh_2be          = 0; // Flag: 2BE method for polarvdw requested
+	int            rd_lrc              = 1, // default rd LRC flag 
+	               rd_crystal          = 0,
+	               rd_crystal_order    = 0;
 
 	// uVT Fugacity Functions
-	int            h2_fugacity, 
-	               co2_fugacity, 
-	               ch4_fugacity,
-	               n2_fugacity,
-	               user_fugacities;
+	int            h2_fugacity     = 0,
+	               co2_fugacity    = 0,
+	               ch4_fugacity    = 0,
+	               n2_fugacity     = 0,
+	               user_fugacities = 0;
 
 
 	// Force-field Options
-	int            rd_only, 
-	               rd_anharmonic;
-	double         rd_anharmonic_k, 
-	               rd_anharmonic_g;
-	int            c6_mixing, 
-	               damp_dispersion,
-	               disp_expansion_mbvdw,
-	               use_dreiding, 
-	               extrapolate_disp_coeffs, 
-	               halgren_mixing,
+	int            rd_only         = 0,
+	               rd_anharmonic   = 0;
+	double         rd_anharmonic_k = 0,
+	               rd_anharmonic_g = 0;
+	int            c6_mixing       = 0,
+	               damp_dispersion = 0,
+	               disp_expansion_mbvdw    = 0,
+	               use_dreiding            = 0,
+	               extrapolate_disp_coeffs = 0,
+	               halgren_mixing          = 0,
 	         
-	               midzuno_kihara_approx,
-	               schmidt_ff,
-	               use_sg,
-	               waldmanhagler;
+	               midzuno_kihara_approx   = 0,
+	               schmidt_ff              = 0,
+	               waldmanhagler           = 0;
 
-	bool           using_axilrod_teller, 
-	               using_lj_buffered_14_7,
-	               using_disp_expansion;
+	bool           using_axilrod_teller    = false,
+	               using_lj_buffered_14_7  = false,
+	               using_disp_expansion    = false,
+	               use_sg                  = false;
 
 	// ES Options
-	int            wolf, 
-	               ewald_alpha_set, 
-	               ewald_kmax, 
-	               polar_ewald_alpha_set;
-	double         ewald_alpha,
-		           polar_ewald_alpha;
+	int            wolf                  = 0,
+	               ewald_alpha_set       = 0,
+	               ewald_kmax            = ewald_kmax_default,
+	               polar_ewald_alpha_set = 0;
+	double         ewald_alpha           = ewald_alpha_default,
+		           polar_ewald_alpha     = ewald_alpha_default;
 	
 	
 	// Thole Options
-	int            polarization; // Flag signaling that polarization calculation has been requested
-	int            polarvdw,
-		           polarizability_tensor,
-		           cdvdw_exp_repulsion,
-		           cdvdw_sig_repulsion,
-		           cdvdw_9th_repulsion;
-	int            iterator_failed; //flag set when iterative solver fails to converge (when polar_precision is used)
-	int            polar_iterative,
-		           polar_ewald,
-		           polar_ewald_full,
-		           polar_zodid,
-		           polar_palmo,
-		           polar_rrms,
-		           polar_gs;
+	int            polarization = 0; // Flag signaling that polarization calculation has been requested
+	int            polarvdw              = 0,
+		           polarizability_tensor = 0,
+		           cdvdw_exp_repulsion   = 0,
+		           cdvdw_sig_repulsion   = 0,
+		           cdvdw_9th_repulsion   = 0;
+	int            iterator_failed       = 0; //flag set when iterative solver fails to converge (when polar_precision is used)
+	int            polar_iterative       = 0,
+		           polar_ewald           = 0,
+		           polar_ewald_full      = 0,
+		           polar_zodid           = 0,
+		           polar_palmo           = 0,
+		           polar_rrms            = 0,
+		           polar_gs              = 0;
 
 	
-	int            polar_gs_ranked;  // Flag indicating if the ranked gauss-seidell algorithm will be used in polar calculations.
-	int            polar_sor,
-	               polar_esor,
-	               polar_max_iter,
-	               polar_wolf,
-	               polar_wolf_full,
-	               polar_wolf_alpha_lookup;
-	double         polar_wolf_alpha, 
-	               polar_gamma,
-	               polar_damp,
-	               field_damp,
-	               polar_precision,
-	             * polar_wolf_alpha_table,
-	               polar_wolf_alpha_lookup_cutoff;
-	int            polar_wolf_alpha_table_max;     //stores the total size of the array double polar_wolf_alpha_table[]
+	int            polar_gs_ranked         = 0;  // Flag indicating if the ranked gauss-seidell algorithm will be used in polar calculations.
+	int            polar_sor               = 0,
+	               polar_esor              = 0,
+	               polar_max_iter          = 0,
+	               polar_wolf              = 0,
+	               polar_wolf_full         = 0,
+	               polar_wolf_alpha_lookup = 0;
+	double         polar_wolf_alpha        = 0,
+	               polar_gamma             = 1.0,
+	               polar_damp              = 0,
+	               field_damp              = 0,
+	               polar_precision         = 0,
+	             * polar_wolf_alpha_table         = nullptr,
+	               polar_wolf_alpha_lookup_cutoff = wolf_alpha_lookup_cutoff_default;
+	int            polar_wolf_alpha_table_max     = 0; //stores the total size of the array double polar_wolf_alpha_table[]
 	int            damp_type;
-	double      ** A_matrix;       // A matrix (Thole polarization) 
-	double      ** B_matrix;       // B matrix (Thole polarization)
-	double         C_matrix[3][3]; // Polarizability tensor 
+	double      ** A_matrix       = nullptr;             // A matrix (Thole polarization) 
+	double      ** B_matrix       = nullptr;             // B matrix (Thole polarization)
+	double         C_matrix[3][3] = {0}; // Polarizability tensor 
 
-	vdw_t        * vdw_eiso_info; //keeps track of molecule vdw self energies
+	vdw_t        * vdw_eiso_info = nullptr; //keeps track of molecule vdw self energies
 	
 
 	//misc
-	double         scale_charge;
-	int            independent_particle;
+	double         scale_charge         = 1.0;
+	int            independent_particle = 0;
 
 	// insertions from a separate linked list
-	int            num_insertion_molecules;   // the number of elements found in the Molecule::insertion_molecules and Molecule::insertion_molecules_array
-	Molecule     * insertion_molecules;       // linked list of molecules to be randomly inserted
-	Molecule    ** insertion_molecules_array; // array providing direct access to the linked list holding molecules from which insertions are chosen
+	int            num_insertion_molecules   = 0;       // the number of elements found in the Molecule::insertion_molecules and Molecule::insertion_molecules_array
+	Molecule     * insertion_molecules       = nullptr; // linked list of molecules to be randomly inserted
+	Molecule    ** insertion_molecules_array = nullptr; // array providing direct access to the linked list holding molecules from which insertions are chosen
 
 
 	// quantum rotation stuff
-	int            quantum_rotation, 
-	               quantum_rotation_hindered,
-	               quantum_rotation_l_max,  
-	               quantum_rotation_level_max, 
-	               quantum_rotation_phi_max,
-	               quantum_rotation_sum,
-	               quantum_rotation_theta_max,
-	               quantum_vibration;
-	double         quantum_rotation_B,
-	               quantum_rotation_hindered_barrier;
+	int            quantum_rotation                  = 0, 
+	               quantum_rotation_hindered         = 0,
+	               quantum_rotation_l_max            = 0,  
+	               quantum_rotation_level_max        = 0, 
+	               quantum_rotation_phi_max          = 0,
+	               quantum_rotation_sum              = 0,
+	               quantum_rotation_theta_max        = 0,
+	               quantum_vibration                 = 0;
+	double         quantum_rotation_B                = 0,
+	               quantum_rotation_hindered_barrier = 0;
 	
 
 	// histogram stuff
-	grid_t       * grids;
-	int            calc_hist;         // flag to calculate a 3D histogram 
-	double         hist_resolution;
-	int            n_histogram_bins;
+	grid_t       * grids            = nullptr;
+	int            calc_hist        = 0; // flag to calculate a 3D histogram 
+	double         hist_resolution  = 0;
+	int            n_histogram_bins = 0;
 
 	// atom array	
-	int            natoms;
-	Atom        ** atom_array;
-	Molecule    ** molecule_array;
+	int            natoms = 0;
+	Atom        ** atom_array     = nullptr;
+	Molecule    ** molecule_array = nullptr;
 
 	//replay option
-	int            calc_pressure;
-	double         calc_pressure_dv;
+	int            calc_pressure    = 0;
+	double         calc_pressure_dv = 0;
 
-	Molecule            * molecules;
+	Molecule            * molecules        = nullptr;
 
-	nodestats_t         * nodestats;
-	avg_nodestats_t     * avg_nodestats;
-	observables_t       * observables;
-	avg_observables_t   * avg_observables;
+	nodestats_t         * nodestats        = nullptr;
+	avg_nodestats_t     * avg_nodestats    = nullptr;
+	observables_t       * observables      = nullptr;
+	avg_observables_t   * avg_observables  = nullptr;
 
 	// Linked list head that will keep track of separate average-observables for each sorbate in the system.
-	int                  sorbateCount;   // Number of sorbates in the system.
-	sorbateInfo_t      * sorbateInfo;    // stores an array of sorbate Info
-	int                  sorbateInsert;  // which sorbate was last inserted
-	sorbateAverages_t  * sorbateGlobal;  // where the global average is stored
+	int                  sorbateCount      = 0;        // Number of sorbates in the system.
+	sorbateInfo_t      * sorbateInfo       = nullptr;  // stores an array of sorbate Info
+	int                  sorbateInsert     = 0;        // which sorbate was last inserted
+	sorbateAverages_t  * sorbateGlobal     = nullptr;  // where the global average is stored
 
-	checkpoint_t       * checkpoint;
+	checkpoint_t       * checkpoint        = nullptr;
 
-	FILE               * fp_energy;
-	FILE               * fp_energy_csv;
-	FILE               * fp_field;
-	FILE               * fp_histogram;
-	FILE               * fp_frozen;
-	FILE               * fp_traj_replay;
-	FILE               * fp_surf;
+	FILE               * fp_energy         = nullptr;
+	FILE               * fp_energy_csv     = nullptr;
+	FILE               * fp_field          = nullptr;
+	FILE               * fp_histogram      = nullptr;
+	FILE               * fp_frozen         = nullptr;
+	FILE               * fp_traj_replay    = nullptr;
+	FILE               * fp_surf           = nullptr;
 
 
 
@@ -765,58 +776,58 @@ public:
 	///////////////////////////////////////////////////////////
 
 	fileNode_t     fit_input_list;
-	int            ee_local;                     // Exhaustive Enumeration option
-	double         fit_best_square_error,
-	               fit_max_energy,
-	               fit_schedule,
-	               fit_start_temp;
-	int            fit_boltzmann_weight;
-	int            surf_decomp,
-	               surf_fit_arbitrary_configs,
-	               surf_qshift_on,
-	               surf_weight_constant_on,
-	               surf_global_axis_on;
-	double         surf_ang,
-	               surf_inc,
-	               surf_min,
-	               surf_max;
-	int            surf_descent,
-	               surf_preserve,
-	               surf_preserve_rotation_on;
-	double         surf_preserve_rotation_alpha1,
-	               surf_preserve_rotation_alpha2,
-	               surf_preserve_rotation_beta1,
-	               surf_preserve_rotation_beta2,
-	               surf_preserve_rotation_gamma1,
-	               surf_preserve_rotation_gamma2;
-	double         range_eps, 
-	               range_sig, 
-	               step_eps,
-	               step_sig;
-	int            surf_print_level;             // sets the amount of output (1-6) that correspond to the nested loops in surface.c
-	int            surf_scale_alpha_on, 
-	               surf_scale_epsilon_on,
-	               surf_scale_omega_on,
-	               surf_scale_sigma_on,
-	               surf_scale_pol_on,
-	               surf_scale_q_on,
-	               surf_scale_r_on,
-	               surf_scale_c6_on,
-	               surf_scale_c8_on, 
-   	               surf_scale_c10_on;
-	double         surf_scale_epsilon, 
-	               surf_scale_r,
-	               surf_scale_omega,
-	               surf_scale_sigma,
-	               surf_scale_q,
-	               surf_scale_alpha,
-	               surf_scale_pol,
-	               surf_scale_c6,
-	               surf_scale_c8,
-	               surf_scale_c10;
-	int            surf_virial;
-	double         surf_quadrupole,
-	               surf_weight_constant;
+	int            ee_local                   = 0; // Exhaustive Enumeration option
+	double         fit_best_square_error      = 0,
+	               fit_max_energy             = 0,
+	               fit_schedule               = 0,
+	               fit_start_temp             = 0;
+	int            fit_boltzmann_weight       = 0;
+	int            surf_decomp                = 0,
+	               surf_fit_arbitrary_configs = 0,
+	               surf_qshift_on             = 0,
+	               surf_weight_constant_on    = 0,
+	               surf_global_axis_on        = 0;
+	double         surf_ang = 0,
+	               surf_inc = 0,
+	               surf_min = 0,
+	               surf_max = 0;
+	int            surf_descent  = 0,
+	               surf_preserve = 0,
+	               surf_preserve_rotation_on     = 0;
+	double         surf_preserve_rotation_alpha1 = 0,
+	               surf_preserve_rotation_alpha2 = 0,
+	               surf_preserve_rotation_beta1  = 0,
+	               surf_preserve_rotation_beta2  = 0,
+	               surf_preserve_rotation_gamma1 = 0,
+	               surf_preserve_rotation_gamma2 = 0;
+	double         range_eps = 0,
+	               range_sig = 0,
+	               step_eps  = 0,
+	               step_sig  = 0;
+	int            surf_print_level      = 0; // sets the amount of output (1-6) that correspond to the nested loops in surface.c
+	int            surf_scale_alpha_on   = 0,
+	               surf_scale_epsilon_on = 0,
+	               surf_scale_omega_on   = 0,
+	               surf_scale_sigma_on   = 0,
+	               surf_scale_pol_on     = 0,
+	               surf_scale_q_on       = 0,
+	               surf_scale_r_on       = 0,
+	               surf_scale_c6_on      = 0,
+	               surf_scale_c8_on      = 0,
+   	               surf_scale_c10_on     = 0;
+	double         surf_scale_epsilon    = 0,
+	               surf_scale_r          = 0,
+	               surf_scale_omega      = 0,
+	               surf_scale_sigma      = 0,
+	               surf_scale_q          = 0,
+	               surf_scale_alpha      = 0,
+	               surf_scale_pol        = 0,
+	               surf_scale_c6         = 0,
+	               surf_scale_c8         = 0,
+	               surf_scale_c10        = 0;
+	int            surf_virial           = 0;
+	double         surf_quadrupole       = 0,
+	               surf_weight_constant  = 0;
 
 };
 

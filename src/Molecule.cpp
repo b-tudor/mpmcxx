@@ -13,64 +13,28 @@
 
 
 
-Molecule::Molecule()
+Molecule::Molecule(){ }
+Molecule::Molecule( const Molecule &other ) :
+	id(             other.id),
+	mass(           other.mass),
+	frozen(         other.frozen),
+	adiabatic(      other.adiabatic),
+	spectre(        other.spectre),
+	target(         other.target),
+	nuclear_spin(   other.nuclear_spin),
+	rot_partfunc_g( other.rot_partfunc_g),
+	rot_partfunc_u( other.rot_partfunc_u),
+	rot_partfunc(   other.rot_partfunc),
+	atoms(          nullptr),
+	next(           nullptr)
 {
-	id = 0;
-	moleculetype[0] = (char) 0;
-	mass            = 0.0;
-	frozen          = 0; 
-	adiabatic       = 0;
-	spectre         = 0;
-	target          = 0;
-	nuclear_spin    = 0;
-	rot_partfunc_g  = 0;
-	rot_partfunc_u  = 0;
-	rot_partfunc    = 0;
-	for( int i=0; i<3; i++ ) {
-		com        [i] = 0.0;
-	    wrapped_com[i] = 0.0;  //center of mass
-	    iCOM       [i] = 0.0;  // initial Center of Mass
-	}
-
-	#ifdef QM_ROTATION
-		double     *quantum_rotational_energies      = nullptr;
-		complex_t **quantum_rotational_eigenvectors  = nullptr;
-		int        *quantum_rotational_eigensymmetry = nullptr;
-		double      quantum_rotational_potential_grid[QUANTUM_ROTATION_GRID][QUANTUM_ROTATION_GRID] = {0};
-	#endif // QM_ROTATION
-	#ifdef XXX
-		// XXX - vib work in progress
-		double     *quantum_vibrational_energies      = nullptr;
-		complex_t **quantum_vibrational_eigenvectors  = nullptr;
-		int        *quantum_vibrational_eigensymmetry = nullptr;
-	#endif // XXX
-
-		atoms = nullptr;
-		next  = nullptr;
-}
-Molecule::Molecule( const Molecule &other ) {
-	
 	strcpy(moleculetype, other.moleculetype);
 
-	id             = other.id;
-	mass           = other.mass;
-	frozen         = other.frozen;
-	adiabatic      = other.adiabatic;
-	spectre        = other.spectre;
-	target         = other.target;
-	nuclear_spin   = other.nuclear_spin;
-	rot_partfunc_g = other.rot_partfunc_g;
-	rot_partfunc_u = other.rot_partfunc_u;
-	rot_partfunc   = other.rot_partfunc;
-
 	for( int i=0; i<3; i++ ) {
-		com        [i] = other.com        [i];
-		wrapped_com[i] = other.wrapped_com[i];
+		com        [i]  =  other.com        [i];
+		wrapped_com[i]  =  other.wrapped_com[i];
 	}
 
-	atoms = nullptr;
-	next  = nullptr;
-	
 	// Copy the atom list
 	Atom *atom_ptr = other.atoms;
 
@@ -85,11 +49,6 @@ Molecule::Molecule( const Molecule &other ) {
 		}
 		a->next = nullptr;
 	}
-
-	
-
-	
-	
 
 
 	#ifdef QM_ROTATION
@@ -117,7 +76,6 @@ Molecule::Molecule( const Molecule &other ) {
 			std::memcpy(dst->quantum_rotational_eigensymmetry, src->quantum_rotational_eigensymmetry, system->quantum_rotation_level_max*sizeof(int));
 		}
 	#endif // QM_ROTATION
-
 }
 
 
@@ -189,7 +147,7 @@ void Molecule::rotate( double x, double y, double z, double angle ) {
 	int n=0;
 	for( atom_ptr = atoms; atom_ptr; atom_ptr = atom_ptr->next)
 		++n;
-	SafeOps::calloc( new_coord_array, n*3, sizeof(double), __LINE__, __FILE__ );
+	SafeOps::calloc( new_coord_array, (size_t)(n)*3, sizeof(double), __LINE__, __FILE__ );
 	
 	// translate the molecule to the origin 
 	for(atom_ptr = atoms; atom_ptr; atom_ptr = atom_ptr->next) {

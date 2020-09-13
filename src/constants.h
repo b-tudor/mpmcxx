@@ -137,13 +137,11 @@ const int invalid_box_dimensions        =  6004; // simulation box was an invali
 const int incongruent_bead_states       =  6005; // the beads representing a molecule have become dissimilar in an invalid way (missing beads/corresponding beads are different elements/etc)
 
 const int surface_fit_module_fail       = 10001; // surface fitting function failed to complete
-//const int surface_module_fail           = 10002; // surface function failed to complete
 
 const int infinite_energy_calc          = 11000; // energy calculation was not finite
 const int lapack_error                  = 11001; // lapack function call returned error 
 const int attempted_singular_mtx_inv    = 11002; // function attempted to invert a matrix whose determinant is 0
 
-const int invalid_MPI_size_for_PI  = 12000; // Path Integral "bead chains" require at least three systems
-// const int invalid_bead_count            = 12001; // Requested number of Local beads for Path Integral calculations zero or negative
+const int invalid_MPI_size_for_PI       = 12000; // Path Integral "bead chains" require at least three systems
 
 const int internal_err_invalid_mc_move  = 20000; // Moves in different systems within a coordinated ensemble are incompatible

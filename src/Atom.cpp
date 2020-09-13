@@ -5,96 +5,55 @@
 #include <cstring>
 
 
-Atom::Atom()
+Atom::Atom() {}
+
+
+
+
+Atom::Atom(const Atom &other) : 
+	id(                   other.id), 
+	frozen(               other.frozen),
+	adiabatic(            other.adiabatic),
+	spectre(              other.spectre),
+	target(               other.target),
+	mass(                 other.mass),
+	charge(               other.charge),
+	polarizability(       other.polarizability),
+	epsilon(              other.epsilon),
+	sigma(                other.sigma),
+	omega(                other.omega),
+	c6(                   other.c6),
+	c8(                   other.c8),
+	c10(                  other.c10),
+	c9(                   other.c9),
+	es_self_point_energy( other.es_self_point_energy),
+	dipole_rrms(          other.dipole_rrms),
+	rank_metric(          other.rank_metric),
+	gwp_alpha(            other.gwp_alpha),
+	lrc_self(             other.lrc_self),
+	last_volume(          other.last_volume),
+	gwp_spin(             other.gwp_spin),
+	pairs(                nullptr),
+	next(                 nullptr)
 {
-	
-	id                   = 0;
-	atomtype[0]          = (char) 0;
-	frozen               = 0;
-	adiabatic            = 0;
-	spectre              = 0;
-	target               = 0;
-	mass                 = 0.0;
-	charge               = 0.0;
-	polarizability       = 0.0;
-	epsilon              = 0.0;
-	sigma                = 0.0;
-	omega                = 0.0;
-	c6                   = 0;
-	c8                   = 0;
-	c10                  = 0;
-	c9                   = 0;
-	dipole_rrms          = 0.0;
-	rank_metric          = 0.0;
-	gwp_spin             = 0;
-	gwp_alpha            = 0.0;
-	//site_neighbor_id     = 0; // dr fluctuations will be applied along the vector from this atom to the atom identified by this variable
-	lrc_self             = 0.0;
-	last_volume          = 0.0; // currently only used in disp_expansion.c
-	es_self_point_energy = 0.0;
-
-	pairs                = nullptr;
-	next                 = nullptr;
-	
-	for( int i=0; i<3; i++ ) {
-		pos              [i] = 0.0;
-		wrapped_pos      [i] = 0.0; //absolute and wrapped (into main unit cell) position
-		ef_static        [i] = 0.0;
-		ef_static_self   [i] = 0.0;
-		ef_induced       [i] = 0.0;
-		ef_induced_change[i] = 0.0;
-		mu               [i] = 0.0;
-		old_mu           [i] = 0.0;
-		new_mu           [i] = 0.0;
-	}
-}
-
-
-
-
-
-Atom::Atom(const Atom &other) {
 	
 	strcpy(atomtype, other.atomtype);
 
-	id        = other.id;
-	frozen    = other.frozen;
-	adiabatic = other.adiabatic;
-	spectre   = other.spectre;
-	target    = other.target;
-	mass      = other.mass;
-	charge    = other.charge;
-	epsilon   = other.epsilon;
-	sigma     = other.sigma;
-	omega     = other.omega;
-	c6        = other.c6;
-	c8        = other.c8;
-	c10       = other.c10;
-	c9        = other.c9;
-	polarizability           = other.polarizability;
-	es_self_point_energy     = other.es_self_point_energy;
-	dipole_rrms              = other.dipole_rrms;
-	rank_metric              = other.rank_metric;
-	gwp_alpha                = other.gwp_alpha;
-	lrc_self                 = other.lrc_self;
-	last_volume              = other.last_volume;
-	gwp_spin                 = other.gwp_spin;
-	
-	for (int i = 0; i < 3; i++) {
-		pos[i]               = other.pos[i];
-		wrapped_pos[i]       = other.wrapped_pos[i];
-		ef_static[i]         = other.ef_static[i];
-		ef_static_self[i]    = other.ef_static_self[i];
-		ef_induced[i]        = other.ef_induced[i];
+	//\\///////////////////////////////////////////////////////////////
+	for (int i = 0; i < 3; i++) {                          
+		pos[i] = other.pos[i];
+		wrapped_pos[i] = other.wrapped_pos[i];
+		ef_static[i] = other.ef_static[i];
+		ef_static_self[i] = other.ef_static_self[i];
+		ef_induced[i] = other.ef_induced[i];
 		ef_induced_change[i] = other.ef_induced_change[i];
-		mu[i]                = other.mu[i];
-		old_mu[i]            = other.old_mu[i];
-		new_mu[i]            = other.new_mu[i];
-	}
+		mu[i] = other.mu[i];
+		old_mu[i] = other.old_mu[i];
+		new_mu[i] = other.new_mu[i];
+	}//\\//////////////////////////////////////////////////////////////
 	
 
-
-	// Copy the pair list
+	// Copy the pair list, if one exists
 	////////////////////////////////////////////////////////////////////
 			
 	Pair *other_pair_ptr = other.pairs;   // position in the 'other' pair list
@@ -117,9 +76,6 @@ Atom::Atom(const Atom &other) {
 		// If there is no pair list on the original, we leave the new pair list empty as well
 		pairs = nullptr;
 	}
-
-
-	next = nullptr;
 }
 
 

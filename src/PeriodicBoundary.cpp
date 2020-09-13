@@ -8,30 +8,19 @@
 #include "Output.h"
 
 
-PeriodicBoundary::~PeriodicBoundary() { }
-PeriodicBoundary:: PeriodicBoundary() {
-	cutoff =  0.0; // radial cutoff (A)
-	volume =  0.0; // unit cell volume (A^3) 
-
-	for( int i=0; i<3; i++)
-		for( int j=0; j<3; j++ ) {
-			basis[i][j]            = 0.0;  // unit cell lattice (A)
-			reciprocal_basis[i][j] = 0.0;  // reciprocal space lattice (1/A)
-		}
-}
+PeriodicBoundary::~PeriodicBoundary() {}
+PeriodicBoundary:: PeriodicBoundary() {}
 
 
+PeriodicBoundary & PeriodicBoundary::operator=( const PeriodicBoundary& rhs ) {
 
-
-PeriodicBoundary & PeriodicBoundary::operator=( const PeriodicBoundary& rvalue ) {
-
-	cutoff = rvalue.cutoff;
-	volume = rvalue.volume;
+	cutoff = rhs.cutoff;
+	volume = rhs.volume;
 
 	for(int i=0; i<3; i++)
 		for (int j = 0; j < 3; j++) {
-			           basis[i][j] = rvalue.basis[i][j];
-			reciprocal_basis[i][j] = rvalue.reciprocal_basis[i][j];
+			           basis[i][j] = rhs.basis[i][j];
+			reciprocal_basis[i][j] = rhs.reciprocal_basis[i][j];
 		}
 
 	return *this;

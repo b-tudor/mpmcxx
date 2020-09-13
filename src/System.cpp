@@ -12,11 +12,6 @@
 extern int size, rank;
 
 
-static const double  ewald_alpha_default              = 0.5;
-static const int     ewald_kmax_default               = 7;
-static const int     ptemp_freq_default               = 20;   // default frequency for parallel tempering bath swaps
-static const double  wolf_alpha_lookup_cutoff_default = 30.0; //angstroms
-
 
 
 
@@ -93,344 +88,15 @@ void System::recursive_delete_molecules(Molecule * &m) {
 
 System::System() {
 	
-	// a priori system defaults
-
-	cuda       = 0;
-	opencl     = 0;
-
-	ensemble   = 0;	
-	numsteps   = 0;
-	step       = 0;
-	corrtime   = 0;
-	ptemp_freq = 0;
-
-
-	
-
-	move_factor               = 1.0; 
-	rot_factor                = 1.0; 
-	scale_charge              = 1.0;
-	last_volume               = 0.0;  // NPT
-	volume_change_factor      = 0.25; // set default volume change factor (for NPT) to 0.25 
-	adiabatic_probability     = 0.0;
-	gwp_probability           = 0.0;
-	insert_probability        = 0.0;
-	spinflip_probability      = 0.0; 
-	volume_probability        = 0.0;
-	transfer_probability      = 0.0;
-	bead_perturb_probability  = 0.0;
-
-
-	// io filenames
-	dipole_output     [0] = 0;
-	energy_output     [0] = 0;
-	energy_output_csv [0] = 0;
-	field_output      [0] = 0;
-	frozen_output     [0] = 0;
-	histogram_output  [0] = 0;
-	insert_input      [0] = 0;
-	pqr_input         [0] = 0;
-	pqr_input_B       [0] = 0;
-	pqr_output        [0] = 0;
-	pqr_restart       [0] = 0;
-	surf_output       [0] = 0;
-	traj_input        [0] = 0;
-	traj_output       [0] = 0;
-	virial_output     [0] = 0;
-	
-
-	// Observables
-	temperature     = 0.0; 
-	pressure        = 0.0;
-	free_volume     = 0.0;
-	total_energy    = 0.0;	
-	N               = 0.0;
-
-	// Simulation Flags & Data
-	gwp               = 0;
-	long_output       = 0; // prints extended (%11.6f) coordinates
-	max_bondlength    = 0; // threshold to bond (re:output files)
-	parallel_restarts = 0; // is this a restart of a parallel job?
-
-
-	// Cavity Stuff
-	cavity_grid                  = nullptr;
-	cavity_bias                  = 0; 
-	cavity_grid_size             = 0;
-	cavities_open                = 0;
-	cavity_autoreject_repulsion  = 0.0;
-	cavity_autoreject_scale      = 0.0; 
-	cavity_radius                = 0.0; 
-	cavity_volume                = 0.0;
-
-
-	// Auto-reject Options
-	//first is in terms of sigma and only applies to LJ; latter is in Angstroms and applies to all pairs
-	cavity_autoreject            = 0, 
-	cavity_autoreject_absolute   = 0;
-
-
-	// Parallel Tempering Options
-	parallel_tempering           = 0;
-	max_temperature              = 0.0;
-	ptemp                        = nullptr;
-
-	
-	// Info regarding  periodic boundary and unit cell geometry
-	wrapall                      = 1;
-	
-
-
-	// RNG
-	preset_seed_on               = 0;  // for manual specification of random seed
-	preset_seed                  = 0;
-	
-	
-	read_pqr_box_on              = 0;  // read box basis from pqr
-	
-	// Simulated Annealing
-	simulated_annealing          = 0;
-	simulated_annealing_linear   = 0;
-	simulated_annealing_schedule = 0.0;
-	simulated_annealing_target   = 0.0;
-
-	// Spectre
-	spectre             = 0;
-	spectre_max_charge  = 0.0;
-	spectre_max_target  = 0.0;
-
-
-	// Energy-corrections
-	feynman_hibbs       = 0; 
-	feynman_kleinert    = 0;
-	feynman_hibbs_order = 0;
-	vdw_fh_2be          = 0; //2BE method for polarvdw 
-	rd_lrc              = 0; 
-	rd_crystal          = 0;
-	rd_crystal_order    = 0;
-
-	// uVT Fugacity Functions
-	h2_fugacity         = 0; 
-	co2_fugacity        = 0; 
-	ch4_fugacity        = 0;
-	n2_fugacity         = 0;
-	user_fugacities     = 0;
-	fugacitiesCount     = 0;
-	for( int i=0; i<maxTokens; i++ )
-		fugacities[i]   = 0.0;
-
-
-	// Force-field Options
-	rd_only                 = 0; 
-	rd_anharmonic           = 0;
-	rd_anharmonic_k         = 0.0;
-	rd_anharmonic_g         = 0.0;
-	using_axilrod_teller    = false; 
-	c6_mixing               = 0; 
-	damp_dispersion         = 0; 
-	using_disp_expansion    = false;
-	disp_expansion_mbvdw    = 0;
-	use_dreiding            = 0; 
-	extrapolate_disp_coeffs = 0; 
-	halgren_mixing          = 0;
-	using_lj_buffered_14_7  = false;
-	midzuno_kihara_approx   = 0;
-	schmidt_ff              = 0;
-	use_sg                  = false;
-	waldmanhagler           = 0;
-
-
-	// ES Options
-	wolf                    = 0;
-	ewald_alpha_set         = 0; 
-	ewald_kmax              = 0; 
-	polar_ewald_alpha_set   = 0;
-	ewald_alpha             = 0;
-	polar_ewald_alpha       = 0;
-	
-	
-	// Thole Options
-	polarization            = 0; 
-	polarvdw                = 0;
-	polarizability_tensor   = 0;
-	cdvdw_exp_repulsion     = 0; 
-	cdvdw_sig_repulsion     = 0;
-	cdvdw_9th_repulsion     = 0;
-	iterator_failed         = 0; //flag set when iterative solver fails to converge (when polar_precision is used)
-	polar_iterative         = 0; 
-	polar_ewald             = 0;
-	polar_ewald_full        = 0;
-	polar_zodid             = 0;
-	polar_palmo             = 0;
-	polar_rrms              = 0;
-	polar_gs                = 0;
-	polar_gs_ranked         = 0;
-	polar_sor               = 0;
-	polar_esor              = 0;
-	polar_max_iter          = 0;
-	polar_wolf              = 0;
-	polar_wolf_full         = 0;
-	polar_wolf_alpha_lookup = 0;
-	polar_wolf_alpha        = 0.0; 
-	polar_gamma             = 0.0;
-	polar_damp              = 0.0;
-	field_damp              = 0.0;
-	polar_precision         = 0.0;
-	polar_wolf_alpha_table         = nullptr;
-	polar_wolf_alpha_lookup_cutoff = 0.0;
-	polar_wolf_alpha_table_max     = 0;       //stores the total size of the array
-	damp_type                      = 0;
-	A_matrix                       = nullptr; // A matrix, B matrix and polarizability tensor 
-	B_matrix                       = nullptr;
-	for( int i=0; i<3; i++)
-		for( int j=0; j<3; j++ ) {
-			C_matrix[i][j]  = 0;
-		}
-
-	vdw_eiso_info = nullptr; //keeps track of molecule vdw self energies
-	
-
-	//misc
-	independent_particle = 0;
-
-	// insertions from a separate linked list
-	num_insertion_molecules   = 0;         // the number of elements found in both lists below:
-	insertion_molecules       = nullptr;   // linked list of molecules to be randomly inserted
-	insertion_molecules_array = nullptr;   // array providing direct access to elements of above list
-
-
-	// quantum rotation stuff
-	quantum_rotation                  = 0; 
-	quantum_rotation_hindered         = 0;
-	quantum_rotation_l_max            = 0;  
-	quantum_rotation_level_max        = 0; 
-	quantum_rotation_phi_max          = 0;
-	quantum_rotation_sum              = 0;
-	quantum_rotation_theta_max        = 0;
-	quantum_vibration                 = 0;
-	quantum_rotation_B                = 0.0;
-	quantum_rotation_hindered_barrier = 0.0;
-	
-	// histogram stuff
-	grids            = nullptr; // Initialize Grid fields
-	calc_hist        = 0;       // flag to calculate a 3D histogram 
-	hist_resolution  = 0.0;
-	n_histogram_bins = 0;
-
-	//atom array	
-	natoms         = 0;
-	molecules      = nullptr;
-	atom_array     = nullptr;
-	molecule_array = nullptr;
-
-	//replay option
-	calc_pressure    = 0;
-	calc_pressure_dv = 0.0;
-
-	// Linked list head that will keep track of separate average-observables for each sorbate in the system.
-	sorbateCount     = 0;        // number of sorbates in the system.
-	sorbateInfo      = nullptr;  // stores an array of sorbate Info
-	sorbateInsert    = 0;        // which sorbate was last inserted
-	sorbateGlobal    = nullptr;  // where the global average is stored
-
-	fp_energy        = nullptr;
-	fp_energy_csv    = nullptr;
-	fp_field         = nullptr;
-	fp_histogram     = nullptr;
-	fp_frozen        = nullptr;
-	fp_traj_replay   = nullptr;
-	fp_surf          = nullptr;
-
-
-	ee_local                      = 0;   // Exhaustive Enumeration option
-	fit_best_square_error         = 0.0;
-	fit_max_energy                = 0.0;
-	fit_schedule                  = 0.0;
-	fit_start_temp                = 0.0;
-	fit_boltzmann_weight          = 0;
-	surf_decomp                   = 0;
-	surf_fit_arbitrary_configs    = 0;
-	surf_qshift_on                = 0;
-	surf_weight_constant_on       = 0;
-	surf_global_axis_on           = 0;
-	surf_ang                      = 0.0;
-	surf_inc                      = 0.0;
-	surf_min                      = 0.0;
-	surf_max                      = 0.0;
-	surf_descent                  = 0;
-	surf_preserve                 = 0;
-	surf_preserve_rotation_on     = 0;
-	surf_preserve_rotation_alpha1 = 0.0;
-	surf_preserve_rotation_alpha2 = 0.0;
-	surf_preserve_rotation_beta1  = 0.0;
-	surf_preserve_rotation_beta2  = 0.0;
-	surf_preserve_rotation_gamma1 = 0.0;
-	surf_preserve_rotation_gamma2 = 0.0;
-	range_eps                     = 0.0; 
-	range_sig                     = 0.0; 
-	step_eps                      = 0.0;  
-	step_sig                      = 0.0;
-	surf_print_level              = 0;   // sets the amount of output (1-6) that correspond to the nested loops in surface.c
-	surf_scale_alpha_on           = 0; 
-	surf_scale_epsilon_on         = 0;
-	surf_scale_omega_on           = 0;
-	surf_scale_sigma_on           = 0;
-	surf_scale_pol_on             = 0;
-	surf_scale_q_on               = 0;
-	surf_scale_r_on               = 0;
-	surf_scale_c6_on              = 0;
-	surf_scale_c8_on              = 0;
-	surf_scale_c10_on             = 0;
-	surf_scale_epsilon            = 0.0; 
-	surf_scale_r                  = 0.0;
-	surf_scale_omega              = 0.0;
-	surf_scale_sigma              = 0.0;
-	surf_scale_q                  = 0.0;
-	surf_scale_alpha              = 0.0;
-	surf_scale_pol                = 0.0;
-	surf_scale_c6                 = 0.0;
-	surf_scale_c8                 = 0.0;
-	surf_scale_c10                = 0.0;
-	surf_virial                   = 0;
-	surf_quadrupole               = 0.0;
-	surf_weight_constant          = 0.0;
-
-	// default ewald parameters 
-	ewald_alpha                    = ewald_alpha_default;
-	ewald_kmax                     = ewald_kmax_default;
-	polar_ewald_alpha              = ewald_alpha_default;
-	polar_wolf_alpha_lookup_cutoff = wolf_alpha_lookup_cutoff_default; 
-
-	// default polarization parameters 
-	polar_gamma = 1.0;
-
-	// default rd LRC flag 
-	rd_lrc = 1;
-
-	// Initialize fit_input_list to reflect an empty list
-	fit_input_list.next = nullptr;
-	fit_input_list.data.count = 0;
-
-	//set default jobname
-	sprintf( job_name, "untitled");
-
-	// Allocate space for statistics
-	nodestats       = nullptr;
-	avg_nodestats   = nullptr;
-	observables     = nullptr;
-    avg_observables = nullptr;
-    checkpoint      = nullptr;
-
 	// Mpi structs
-	mpi_data.msgsize = 0;
+	mpi_data.msgsize      = 0;
 	mpi_data.observables   = nullptr;
 	mpi_data.avg_nodestats = nullptr;
 	mpi_data.sinfo         = nullptr;
 	mpi_data.temperature   = nullptr;
 	mpi_data.snd_strct     = nullptr;
 	mpi_data.rcv_strct     = nullptr;
-
-    
+	
 }
 
 
@@ -913,11 +579,12 @@ void System::read_molecules( FILE *fp ) {
 		std::memset(token_c9,           0, maxLine);
 
 		// parse the line 
-		sscanf(linebuf, "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n", 
-			token_atom, token_atomid, token_atomtype, token_moleculetype, token_frozen, 
-			token_moleculeid, token_x, token_y, token_z, token_mass, token_charge, 
-			token_alpha, token_epsilon, token_sigma, token_omega, token_gwp_alpha,
-			token_c6, token_c8, token_c10, token_c9);
+		if(	! sscanf(linebuf, "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n", 
+			     token_atom, token_atomid, token_atomtype, token_moleculetype, token_frozen, 
+			     token_moleculeid, token_x, token_y, token_z, token_mass, token_charge, 
+			     token_alpha, token_epsilon, token_sigma, token_omega, token_gwp_alpha,
+			     token_c6, token_c8, token_c10, token_c9)
+		) throw invalid_input;
 
 		if( SafeOps::strncasecmp(token_atom, "END", 3)) break; //we've reached the end of the current molecule, quit looping
 
@@ -1122,8 +789,9 @@ void System::read_pqr_box( char * input_file ) {
 		if( basis_set[0]  &&  basis_set[1]  &&  basis_set[2] )
 			break; // All basis vectors set
 
-		sscanf(buffer, "%s %s %s %s %s %s %s", 
-			token[0], token[1], token[2], token[3], token[4], token[5], token[6]);
+		
+		if( ! sscanf(buffer, "%s %s %s %s %s %s %s", token[0], token[1], token[2], token[3], token[4], token[5], token[6]))
+			throw invalid_input;
 
 		if( (!strncmp(token[0],"END",3)) ) break; //if end of molecule, then stop searching
 

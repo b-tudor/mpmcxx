@@ -630,6 +630,8 @@ void SimulationControl::initialize_PI_NVT_Systems() {
 		Output::out1(linebuf);
 		
 		systems[i]->setup_simulation_box();
+		for( Molecule *mol = systems[i]->molecules; mol; mol=mol->next)
+			mol->update_COM();
 		sprintf(linebuf, "SIM_CONTROL->SYSTEM[ %d ]: simulation box configured.\n\n", i);
 		Output::out1(linebuf);
 	
