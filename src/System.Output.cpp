@@ -1,27 +1,28 @@
-// MPI Includes
-#ifdef _MPI
-	#include <mpi.h>
-#endif
-extern int rank, size;
-extern bool mpi;
+#include "System.h"
 
 #include <cstring>
-
 // (OS Dependent) Timing Includes
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
-	#include <time.h>
-	#include <windows.h>
+#	include <time.h>
+#	include <windows.h>
 #else
-	#include <sys/time.h>
+#	include <sys/time.h>
 #endif
-
 
 #include "Atom.h"
 #include "Molecule.h"
 #include "Output.h"
 #include "SafeOps.h"
-#include "System.h"
 #include "UsefulMath.h"
+
+
+// MPI Includes
+#ifdef _MPI
+#	include <mpi.h>
+#endif
+extern uint rank, size;
+extern bool mpi;
+
 
 
 
@@ -675,9 +676,9 @@ void System::write_states() {
 	fprintf(fp, "REMARK step=%d\n", step);
 	#ifdef _MPI
 		if (mpi) 
-			fprintf(fp, "REMARK node=%d\n", rank);
+			fprintf(fp, "REMARK node=%d\n", (int) rank);
 		if (parallel_tempering)
-			fprintf(fp, "REMARK temperature=%.6lf\n", ptemp->templist[ptemp->index[rank]]);
+			fprintf(fp, "REMARK temperature=%.6lf\n", (double) ptemp->templist[ptemp->index[rank]]);
 	#endif
 
 	fprintf(fp, "REMARK total_molecules=%d, total_atoms=%d\n", 
@@ -783,7 +784,7 @@ FILE * System::open_traj_file() {
 				if (parallel_tempering)
 					filename = Output::make_filename(traj_output, ptemp->index[rank]); //append bath index to filename
 				else
-					filename = Output::make_filename(traj_output, rank); //append core index to filename
+					filename = Output::make_filename(traj_output, (int) rank); //append core index to filename
 			#endif
 
 		} else {
@@ -823,19 +824,20 @@ int System::write_molecules_wrapper( char * filename ) {
 
 		#ifdef _MPI
 
-			int    j = 0;
+			uint32_t j = 0;
 			char* filenameno = nullptr;
 
 			//make a new filename with the core/or bath number appended
 			if (parallel_tempering)
 				filenameno = Output::make_filename(filename, ptemp->index[rank]); //append bath index to filename
 			else
-				filenameno = Output::make_filename(filename, rank); //append core index to filename
+				filenameno = Output::make_filename(filename, (int) rank); //append core index to filename
 
 			//move most recent state file to file.last
 			if (SafeOps::file_exists(filename)) {
 				sprintf(filenameold, "%s.last", filenameno);
-				bool code = rename(filenameno, filenameold); // fxn marked _Check_return_ in VS
+				int code = rename(filenameno, filenameold); // fxn marked _Check_return_ in VS
+				if (code) Output::err("WARNING: Unable to rename .last file.");
 			}
 
 			// open the file and free the filename string
@@ -859,7 +861,8 @@ int System::write_molecules_wrapper( char * filename ) {
 		//move most recent state "filename" to "filename.last"
 		if (SafeOps::file_exists(filename)) {
 			sprintf(filenameold, "%s.last", filename);
-			bool code = rename(filename, filenameold); // fxn marked _Check_return_ in VS
+			int code = rename(filename, filenameold); // fxn marked _Check_return_ in VS
+			if (code) Output::err("WARNING: Unable to rename .last file.");
 		}
 
 		fp = SafeOps::openFile(filename, "w", __LINE__, __FILE__);
@@ -1079,7 +1082,7 @@ FILE * System::open_dipole_file() {
 			if( parallel_tempering )
 				filename = Output::make_filename( dipole_output, ptemp->index[rank]); //append bath index to filename
 			else 
-				filename = Output::make_filename( dipole_output, rank); //append core index to filename
+				filename = Output::make_filename( dipole_output, (int) rank); //append core index to filename
 		#else
 			filename = dipole_output;
 		#endif // MPI
@@ -1146,7 +1149,7 @@ FILE * System::open_field_file() {
 			if ( parallel_tempering )
 				filename = Output::make_filename( field_output, ptemp->index[rank] ); //append bath index to filename
 			else 
-				filename = Output::make_filename( field_output, rank ); //append core index to filename
+				filename = Output::make_filename( field_output, (int) rank ); //append core index to filename
 		#else
 				filename = field_output;
 		#endif // MPI
@@ -1205,7 +1208,7 @@ void System::write_field() {
 
 
 
-int System::write_performance( int i ) {
+int System::write_performance(  unsigned int i ) {
 
 	static struct timeval current_time, last_time;
 
@@ -1221,10 +1224,10 @@ int System::write_performance( int i ) {
 		sec_step = Output::calctimediff(current_time, last_time) / (di - last_step);
 
 		if( ensemble == ENSEMBLE_UVT ) {
-			sprintf(linebuf, "OUTPUT: Grand Canonical Monte Carlo simulation running on %d core(s)\n", (mpi?size:1));
+			sprintf(linebuf, "OUTPUT: Grand Canonical Monte Carlo simulation running on %d core(s)\n", (int)(mpi?size:1));
 			Output::out1( linebuf );
 		} else {
-			sprintf( linebuf, "OUTPUT: Canonical Monte Carlo simulation running on %d core(s)\n", (mpi?size:1) );
+			sprintf( linebuf, "OUTPUT: Canonical Monte Carlo simulation running on %d core(s)\n", (int)(mpi?size:1) );
 			Output::out1( linebuf );
 		}
 

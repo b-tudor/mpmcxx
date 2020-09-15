@@ -7,56 +7,46 @@
 #include <sstream>
 #include <stdlib.h>
 
+#ifdef _OMP
+#	include <omp.h>
+#endif
+
+
+
+
 #include "Output.h"
 #include "SafeOps.h"
 #include "SimulationControl.h"
 
-#ifdef _OMP
-#include <omp.h>
-#endif
-
-#ifdef __unix__
-#include <unistd.h>
-#include <signal.h>
-#endif
-
-
-
-extern int rank;
-extern int size;
+using uint = size_t;
+extern uint rank;
+extern uint size;
 extern bool mpi;
 
 
 
-// Includes for interrupt signal handler 
-SimulationControl* sc;
+
+
 
 typedef struct _parameters {
 	char* prog_name;
 	char* in_filename;
-	int   Ptrotter_number; // P AKA trotter number (this variable is prounounced "Trotter" -- think pterodactyl).
+	uint  Ptrotter_number; // P AKA trotter number (this variable is prounounced "Trotter" -- think pterodactyl).
 	bool  write_PI_Frames_at_corrtime;
 	char* PI_frame_file; // file name of PI frames file
 } params;
 
 
 
-void  die(int code);                                   // Kill any MPI Processes and stop execution
-void  displayUsageAndDie( params &p );                 // Print brief application  user instructions and exit
-void  install_signal_handler(SimulationControl *sc);   // Initialize signal handlers for clean exits (on Posix systems)
-void  introduce_self();                                // Display program name and welcome message. 
-void  processArgs(int argc, char* argv[], params &p);  // Parse command line arguments
-void  signal_handler(int sigtype);                     // Function to handle interrupt signals (on Posix systems)
-char* stripPath(char* full_path);                      // Removes the path from a filename, leaving on the filename
-void  parallel_introspection_and_initialization(int& argc, char* argv[], int); // Check if MPI service is available at runtime and configure job accordingly
 
 
 
 
-// Kill MPI before quitting, when neccessary
+//\//// Clean up & exit /////////////////////////////////////////////////
 void die(int success_code) {
 
 	#ifdef _MPI
+		// Kill MPI before quitting, when neccessary
 		if (mpi) { MPI_Finalize(); }
 	#endif
 
@@ -64,8 +54,27 @@ void die(int success_code) {
 		exit(EXIT_SUCCESS);
 	else
 		exit(EXIT_FAILURE);
+} //\////////////////////////////////////////////////////////////////////
 
+
+
+
+//\/// Install the signal handler for clean exits (on Unix systems) /////
+#ifdef __unix__
+#	include <unistd.h>
+#	include <signal.h>
+#endif 
+SimulationControl* sc;
+void install_signal_handler(SimulationControl* simControl) {
+	sc = simControl;
+#if defined( _POSIX_VERSION )  
+	signal(SIGTERM, signal_handler);
+	signal(SIGUSR1, signal_handler);
+	signal(SIGUSR2, signal_handler);
+#endif
 }
+//\//////////////////////////////////////////////////////////////////////
+
 
 
 
@@ -102,19 +111,8 @@ void displayUsageAndDie( params &p ) {
 
 
 
-// Install the signal handler for clean exits (on Unix systems)
-void install_signal_handler(SimulationControl* simControl) {
-	sc = simControl;
-	#if defined( _POSIX_VERSION )  
-		signal(SIGTERM, signal_handler);
-		signal(SIGUSR1, signal_handler);
-		signal(SIGUSR2, signal_handler);
-	#endif
-}
 
-
-
-// Display program name and welcome message. 
+//\/// Display program name and welcome message. ////////////////////////
 void introduce_self() {
 
 	char linebuf[maxLine];
@@ -139,14 +137,14 @@ void introduce_self() {
 			linebuf,
 			"MAIN: process%s started on %d MPI thread%s @ %d-%d-%d %d:%d:%d\n",
 			((size>1) ? "es" : ""),
-			size,
+			(int)size,
 			((size>1) ? "s" : ""),
 			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec
 		);
 	}
 	else {
 
-		int thread_count = 1;
+		uint thread_count = 1;
 				
 		#pragma omp parallel 
 		{
@@ -157,13 +155,13 @@ void introduce_self() {
 				id = omp_get_thread_num();
 			#endif
 			if (!id)
-				thread_count = np;
+				thread_count = (uint) np;
 		}
 		sprintf(
 			linebuf,
 			"MAIN: process%s started on %d thread%s @ %d-%d-%d %d:%d:%d\n",
 			((thread_count > 1) ? "es" : ""),
-			thread_count,
+			(int)thread_count,
 			((thread_count > 1) ? "s" : ""),
 			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec
 		);
@@ -173,14 +171,17 @@ void introduce_self() {
 
 
 
-// Check if MPI or openMP service is available at runtime and configure job accordingly
-void parallel_introspection_and_initialization(int& argc, char* argv[], int P) {
+//\/// Check if MPI or openMP service is available at runtime and configure job accordingly
+void parallel_introspection_and_initialization(int& argc, char* argv[], uint P) {
 
 	#ifdef _MPI	 // Start up the MPI chain
 		if (MPI_Init(&argc, &argv) == MPI_SUCCESS)
 		{
-			MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-			MPI_Comm_size(MPI_COMM_WORLD, &size);
+			int r, s;
+			MPI_Comm_rank(MPI_COMM_WORLD, &r);
+			MPI_Comm_size(MPI_COMM_WORLD, &s);
+			rank = (uint) r;
+			size = (uint) s;
 		}
 	#endif
 
@@ -189,7 +190,6 @@ void parallel_introspection_and_initialization(int& argc, char* argv[], int P) {
 		if (P) {
 			// If we get here, we are using MPI, but a Trotter number has been manually specified 
 			char linebuf[maxLine];
-			char* progName = stripPath(argv[0]);
 			sprintf(linebuf, "MPMC++\nMassively Parallel Monte Carlo: Multi-System Edition, v%s -- 2012-2019 GNU Public License\n", VERSION);
 			Output::out(linebuf);
 			Output::err("Do not explicitly set a Trotter number (-P) for MPI jobs. The number of MPI threads\n");
@@ -198,20 +198,46 @@ void parallel_introspection_and_initialization(int& argc, char* argv[], int P) {
 			die(fail);
 		}
 	} 
+
 	#ifdef _MPI
 		// finalize MPI services if MPI is available, but we are only running on a single MPI thread
 		else { MPI_Finalize(); }
 	#endif
-	
+
 	#ifdef _OMP
 		if (!mpi) 
-			omp_set_num_threads(P);
+			omp_set_num_threads((int)P);
 	#endif
 }
 
 
 
-// Parse command line arguments
+//\/// Removes the path from a filename, leaving on the filename ////////
+char* stripPath(char* full_path) {
+
+	// Select either MS Windows or Unix file separator
+	#ifndef _WIN32
+		const char file_separator = '/';
+	#else
+		const char file_separator = '\\';
+	#endif
+
+	char* simple_filename = full_path;
+	char* path = full_path;
+
+	// Skip to the last separator in the filename
+	while (*path != '\0') {
+		path++;
+		if ((*path) == file_separator)
+			simple_filename = path + 1;
+	}
+
+	return simple_filename;
+}
+
+
+
+//\/// Parse command line arguments /////////////////////////////////////
 void processArgs(int argc, char* argv[], params &p) {
 	
 	std::string fname;
@@ -236,7 +262,9 @@ void processArgs(int argc, char* argv[], params &p) {
 			// report acceptance/rejection 
 			if (!strncmp(issOptionToken.str().c_str(), "-P", 3)) {
 				n++;
-				if (SafeOps::atoi(argv[n], p.Ptrotter_number)) {
+				int trotter;
+				if (SafeOps::atoi(argv[n], trotter )) {
+					p.Ptrotter_number = (uint) trotter;
 					n++;
 					continue;
 				} 
@@ -330,30 +358,6 @@ void signal_handler(int sigtype) {
 	return;
 }
 
-
-
-// Removes the path from a filename, leaving on the filename
-char* stripPath(char* full_path) {
-
-	// Select either MS Windows or Unix file separator
-	#ifndef _WIN32
-		const char file_separator = '/';
-	#else
-		const char file_separator = '\\';
-	#endif
-
-	char* simple_filename = full_path;
-	char* path            = full_path;
-
-	// Skip to the last separator in the filename
-	while (*path != '\0') {
-		path++;
-		if ((*path) == file_separator)
-			simple_filename = path + 1;
-	}
-
-	return simple_filename;
-}
 
 
 #endif	/* ARGS_H */

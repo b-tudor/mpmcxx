@@ -13,12 +13,12 @@
 #ifdef _MPI
 	#include <mpi.h>
 #endif
-extern int size, rank;
+extern uint size, rank;
 extern bool mpi;
 
 
 
-std::map<std::string, int> SimulationControl::sorbate_data_index;
+std::map<std::string, uint32_t> SimulationControl::sorbate_data_index;
 std::vector<SimulationControl::molecular_metadata> SimulationControl::sorbate_data;
 
 
@@ -34,7 +34,7 @@ SimulationControl::~SimulationControl() {
 	if (polarization_energies) SafeOps::free(polarization_energies);
 	if (vdw_energies         ) SafeOps::free(vdw_energies         );
 }
-SimulationControl::SimulationControl(char *inFilename, int P, bool write_PI_frames, char *PI_fname):
+SimulationControl::SimulationControl(char *inFilename, uint P, bool write_PI_frames, char *PI_fname):
 	nSys(P), write_PI_frames(write_PI_frames), PI_frames_filename(PI_fname)
 {
 	char linebuf[maxLine];
@@ -52,7 +52,7 @@ SimulationControl::SimulationControl(char *inFilename, int P, bool write_PI_fram
 
 	if (mpi) {
 		if (nSys) {
-			if (nSys != size) {
+			if (nSys != (uint32_t) size) {
 				// Execution path should never arrive here, as this case should have caused a program exit in the mpi
 				// init function in args_etc.h: mpi_introspection_and_initialization()
 				Output::err("When computing path integrals with MPI, the Trotter number is set by the MPI\n");
@@ -61,7 +61,7 @@ SimulationControl::SimulationControl(char *inFilename, int P, bool write_PI_fram
 				throw invalid_setting;
 			}
 		}
-		nSys = size;
+		nSys = (uint32_t) size;
 	}
 
 	if( check_system() )             // Check system for compatible parameters.
@@ -86,11 +86,11 @@ void SimulationControl::initializeSimulationObjects() {
 
 	//  Seed the global Random Number Generator (RNG)  ////////////////////////////////////////////
 
-	uint32_t seed;
+	unsigned long int seed; // datatype expected by MPI_UNSIGNED_LONG
 	if( sys.preset_seed_on ) 
-		seed = sys.preset_seed;
+		seed = (unsigned long int) sys.preset_seed;
 	else {
-		seed = (unsigned int) time(0);
+		seed = (unsigned long int) time(0);
 		if( mpi )
 			if (sys.ensemble == ENSEMBLE_PATH_INTEGRAL_NVT) {
 				#ifdef _MPI
@@ -104,17 +104,17 @@ void SimulationControl::initializeSimulationObjects() {
 	if (mpi) {
 
 		#ifdef _MPI
-			for (int i = 0; i < size; i++) {
+			for( uint32_t i=0; i<size; i++ ) {
 				MPI_Barrier(MPI_COMM_WORLD);
 				if (rank == i) {
-					sprintf(linebuf, "SIM_CONTROL->SYSTEM[ %d ]: RNG initialized. Seed = %u\n", rank, seed);
+					sprintf(linebuf, "SIM_CONTROL->SYSTEM[ %d ]: RNG initialized. Seed = %u\n", (int)rank, (int)seed);
 					Output::out(linebuf);
 				}
 			}
 		#endif
 
 	} else {
-		sprintf(linebuf, "SIM_CONTROL: RNG initialized. Seed = %u\n", seed);
+		sprintf(linebuf, "SIM_CONTROL: RNG initialized. Seed = %u\n", (int) seed);
 		Output::out1(linebuf);
 	}
 	
@@ -225,9 +225,11 @@ void SimulationControl::read_config(char *inFilename) {
 		// grab a line and parse it out 
 		for( i=0; i<maxTokens; i++)
 			std::memset(token[i], 0, maxLine); //clear a token
-		int ck = sscanf(linebuffer, "%s %s %s %s %s %s %s %s %s %s",
-			token[0], token[1], token[2], token[3], token[4],
-			token[5], token[6], token[7], token[8], token[9]);
+		if( ! sscanf(linebuffer, "%s %s %s %s %s %s %s %s %s %s",
+			         token[0], token[1], token[2], token[3], token[4],
+			         token[5], token[6], token[7], token[8], token[9])
+		)
+			throw invalid_input;
 
 		//parse and apply a command
 		if( !process_command( token )) {
@@ -787,11 +789,11 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 			return fail;
 		if( nSteps < 1 )
 			return fail;
-		sys.numsteps = nSteps; 
+		sys.numsteps = (uint32_t) nSteps; 
 		return ok;
 	}
 	if( SafeOps::iequals(token[0], "corrtime") ) {
-		if( !SafeOps::atoi(token[1], sys.corrtime) ) 
+		if( !SafeOps::atou(token[1], sys.corrtime) ) 
 			return fail;
 		return ok;
 	}
@@ -855,8 +857,10 @@ bool SimulationControl::process_command( char token[maxTokens][maxLine] ) {
 		return ok;
 	}
 	if( SafeOps::iequals(token[0], "PI_trial_chain_length" )) {
-		if( !SafeOps::atoi( token[1], PI_trial_chain_length ))
+		uint32_t chain_length = 0;
+		if( !SafeOps::atou( token[1], chain_length ))
 			return fail;
+		PI_trial_chain_length = (size_t) chain_length;
 		return ok;
 	}
 	if( SafeOps::iequals(token[0], "ptemp_freq") ) {
@@ -2192,7 +2196,7 @@ bool SimulationControl::check_spectre_options() {
 bool SimulationControl::check_io_files_options() {
 
 	char linebuf[maxLine*2];
-	int file_count = mpi ? size : nSys;
+	uint file_count = mpi ? size : nSys;
 
 
 	if (SafeOps::iequals(sys.pqr_restart, "off")) { // Optionally turn off restart configuration output
@@ -2209,26 +2213,26 @@ bool SimulationControl::check_io_files_options() {
 
 		
 		if (file_count > 1) {
-			for (int j = 0; j < file_count; j++) {
+			for (uint j = 0; j < file_count; j++) {
 				if (mpi) {
 					#ifdef _MPI
 						MPI_Barrier(MPI_COMM_WORLD);
-						char *filename_cstr  = Output::make_filename(sys.pqr_restart, rank);
+						char *filename_cstr  = Output::make_filename(sys.pqr_restart, (int)rank);
 						std::string filename = filename_cstr;
 						pqr_restart_filenames.push_back(filename);
 						SafeOps::free(filename_cstr);
 						if (j == rank) {
-							sprintf(linebuf, "SIM_CONTROL: Thread/SYSTEM %d will be writing restart configuration to ./%s\n", rank, pqr_restart_filenames[rank].c_str());
+							sprintf(linebuf, "SIM_CONTROL: Thread/SYSTEM %d will be writing restart configuration to ./%s\n", (int)rank, pqr_restart_filenames[rank].c_str());
 							Output::out(linebuf);
 						}
 					#endif
 				}
 				else {
-					char* filename_cstr = Output::make_filename(sys.pqr_restart, j);
+					char* filename_cstr = Output::make_filename(sys.pqr_restart, (int)j);
 					std::string filename = filename_cstr;
 					pqr_restart_filenames.push_back(filename);
 					SafeOps::free(filename_cstr);
-					sprintf(linebuf, "SIM_CONTROL: SYSTEM %d will be writing restart configuration to ./%s\n", j, pqr_restart_filenames[j].c_str());
+					sprintf(linebuf, "SIM_CONTROL: SYSTEM %u will be writing restart configuration to ./%s\n", (int)j, pqr_restart_filenames[j].c_str());
 					Output::out1(linebuf);
 				}
 			}
@@ -2256,27 +2260,27 @@ bool SimulationControl::check_io_files_options() {
 
 		if (file_count > 1) {
 
-			for (int j = 0; j < file_count; j++) {
+			for (uint j = 0; j < file_count; j++) {
 					
 				if( mpi ) {
 					#ifdef _MPI
 					MPI_Barrier(MPI_COMM_WORLD);
-					char *filename_cstr = Output::make_filename(sys.pqr_output, rank);
+					char *filename_cstr = Output::make_filename(sys.pqr_output, (int)rank);
 					std::string filename = filename_cstr;
 					pqr_final_filenames.push_back(filename);
 					SafeOps::free(filename_cstr);
 					if (j == rank) {
-						sprintf(linebuf, "SIM_CONTROL: Thread/SYSTEM %d will be writing final configuration to ./%s\n", rank, pqr_final_filenames[rank].c_str());
+						sprintf(linebuf, "SIM_CONTROL: Thread/SYSTEM %d will be writing final configuration to ./%s\n", (int)rank, pqr_final_filenames[rank].c_str());
 						Output::out(linebuf);
 					}
 					#endif
 
 				} else {
-					char * filename_cstr = Output::make_filename(sys.pqr_output, j);
+					char * filename_cstr = Output::make_filename(sys.pqr_output, (int)j);
 					std::string filename = filename_cstr;
 					pqr_final_filenames.push_back(filename);
 					SafeOps::free(filename_cstr);
-					sprintf(linebuf, "SIM_CONTROL: SYSTEM %d will be writing final configuration to ./%s\n", j, pqr_final_filenames[j].c_str());
+					sprintf(linebuf, "SIM_CONTROL: SYSTEM %u will be writing final configuration to ./%s\n", (int)j, pqr_final_filenames[j].c_str());
 					Output::out(linebuf);
 				}
 			}
@@ -2296,13 +2300,13 @@ bool SimulationControl::check_io_files_options() {
 		
 
 		if (file_count > 1) {
-			for (int j = 0; j < file_count; j++) {
+			for (uint j = 0; j < file_count; j++) {
 
 				FILE *test;
 
 				// Try to open the plain restart file.
-				int id = mpi ? rank : j;
-				std::string filename = Output::make_filename(sys.pqr_restart, id);
+				uint id = mpi ? rank : j;
+				std::string filename = Output::make_filename(sys.pqr_restart, (int)id);
 				test = fopen(filename.c_str(), "r");
 				if (test) {
 					// File was successfully opened so this is the one we will use
@@ -2310,7 +2314,7 @@ bool SimulationControl::check_io_files_options() {
 				
 				} else {
 					// No restart files available, try to open a "last" file
-					char* filename_cstr = Output::make_filename(sys.pqr_restart, rank);
+					char* filename_cstr = Output::make_filename(sys.pqr_restart, (int) rank);
 					std::string basename = filename_cstr;
 					filename = basename + ".last";
 					SafeOps::free(filename_cstr);
@@ -2330,13 +2334,13 @@ bool SimulationControl::check_io_files_options() {
 				} // pqr.last
 
 
-				if (mpi ) {
+				if (mpi) {
 					#ifdef _MPI
 					MPI_Barrier(MPI_COMM_WORLD);
 					pqr_input_filenames.push_back(filename);
 					strcpy(sys.pqr_input, filename.c_str());
 					if (j == rank) {
-						sprintf(linebuf, "SIM_CONTROL: Thread/SYSTEM %d will be reading coordinates from file: /%s\n", rank, sys.pqr_input);
+						sprintf(linebuf, "SIM_CONTROL: Thread/SYSTEM %d will be reading coordinates from file: /%s\n", (int) rank, sys.pqr_input);
 						Output::out(linebuf);
 					}
 					#endif
@@ -2344,7 +2348,7 @@ bool SimulationControl::check_io_files_options() {
 				else {
 					
 					pqr_input_filenames.push_back(filename);
-					sprintf(linebuf, "INPUT (system %d): Reading coordinates from file: %s\n", j, pqr_input_filenames[j].c_str());
+					sprintf(linebuf, "INPUT (system %u): Reading coordinates from file: %s\n", (int)j, pqr_input_filenames[j].c_str());
 					Output::out1(linebuf);
 				}
 			}
@@ -2859,7 +2863,7 @@ bool SimulationControl::runSimulation() {
 	#ifdef _MPI
 	if (mpi) {	
 		MPI_Barrier(MPI_COMM_WORLD);
-		sprintf(start_up_msg, "SIM_CONTROL: all %d cores are in sync\n", size);
+		sprintf(start_up_msg, "SIM_CONTROL: all %d cores are in sync\n", (int) size);
 		Output::out1(start_up_msg);
 	}
 	#endif
@@ -2972,8 +2976,7 @@ bool SimulationControl::runSimulation() {
 void SimulationControl::add_orientation_site_entry(const char *id, const int site_idx ) {
 
 	//Check to see if entry already exists
-	std::map<std::string, int>::iterator it;
-	it = sorbate_data_index.find(id);
+	auto it = sorbate_data_index.find(id);
 	if (it == sorbate_data_index.end()) {
 
 		// no orientation site found, create new entry
@@ -2987,27 +2990,26 @@ void SimulationControl::add_orientation_site_entry(const char *id, const int sit
 		sorbate_data_index.insert(std::make_pair(id, metadata_idx));
 	
 	} else {
-		sorbate_data[it->second].orientation_site = site_idx;
+		sorbate_data[(uint32_t)it->second].orientation_site = site_idx;
 	}
 }
 int SimulationControl::get_orientation_site( std::string molecule_id) {
 
-	std::map<std::string, int>::iterator it;
-	it = sorbate_data_index.find(molecule_id);
+	auto it = sorbate_data_index.find(molecule_id);
 	if (it == sorbate_data_index.end()) {
 		return -1; // no orientation site found
-	}
 
-	return sorbate_data[it->second].orientation_site;
+	}
+	return (int) it->second;
 }
 
 
 
-void SimulationControl::add_bond_length_entry(const char *id, const double bond_length) {
+
+void SimulationControl::add_bond_length_entry(const char* id, const double bond_length) {
 
 	//Check to see if entry already exists
-	std::map<std::string, int>::iterator it;
-	it = sorbate_data_index.find(id);
+	auto it = sorbate_data_index.find(id);
 	if (it == sorbate_data_index.end()) {
 
 		// no orientation site found, create new entry
@@ -3017,17 +3019,17 @@ void SimulationControl::add_bond_length_entry(const char *id, const double bond_
 		data.reduced_mass = 0;
 		// add data to collection and log its index
 		sorbate_data.push_back(data);
-		int index = (int) sorbate_data.size() - 1;
+		int index = (int)sorbate_data.size() - 1;
 		sorbate_data_index.insert(std::make_pair(id, index));
 
-	} else {
+	}
+	else {
 		sorbate_data[it->second].bond_length = bond_length;
 	}
 }
 double SimulationControl::get_bond_length(std::string molecule_id) {
 
-	std::map<std::string, int>::iterator it;
-	it = sorbate_data_index.find(molecule_id);
+	auto it = sorbate_data_index.find(molecule_id);
 	if (it == sorbate_data_index.end()) {
 		return 0; // no orientation site found
 	}
@@ -3040,8 +3042,8 @@ double SimulationControl::get_bond_length(std::string molecule_id) {
 void SimulationControl::add_reduced_mass_entry(const char *id, const double reduced_mass) {
 
 	//Check to see if entry already exists
-	std::map<std::string, int>::iterator it;
-	it = sorbate_data_index.find(id);
+	//std::map<std::string, int>::iterator it;
+	auto it = sorbate_data_index.find(id);
 	if (it == sorbate_data_index.end()) {
 
 		// no orientation site found, create new entry
@@ -3061,8 +3063,7 @@ void SimulationControl::add_reduced_mass_entry(const char *id, const double redu
 }
 double SimulationControl::get_reduced_mass(std::string molecule_id) {
 
-	std::map<std::string, int>::iterator it;
-	it = sorbate_data_index.find(molecule_id);
+	auto it = sorbate_data_index.find(molecule_id);
 	if (it == sorbate_data_index.end()) {
 		return -1.0; // no orientation site found
 	}

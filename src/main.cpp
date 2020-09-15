@@ -2,15 +2,9 @@
 // Department of Chemistry
 // University of South Florida
 
-
-
 #ifndef VERSION
 #define VERSION "0.9"
 #endif
-
-int rank = 0;
-int size = 0;
-bool mpi = false;
 
 #include <stdio.h>
 #include <time.h>
@@ -20,6 +14,11 @@ bool mpi = false;
 #include "Output.h"
 #include "SafeOps.h"
 #include "SimulationControl.h"
+
+using uint = size_t;
+uint rank = 0;
+uint size = 0;
+bool mpi = false;
 
 
 

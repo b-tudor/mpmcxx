@@ -1,6 +1,5 @@
 #include "System.h"
-extern int rank;
-extern int size;
+extern uint rank, size;
 
 
 

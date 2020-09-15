@@ -4,7 +4,7 @@
 #include "SimulationControl.h"
 #include "Output.h"
 
-extern int rank, size;
+extern uint rank, size;
 
 
 
@@ -46,7 +46,7 @@ void SimulationControl::initialize_Gibbs_systems() {
 	if (strlen(systems[1]->pqr_input_B))
 		strcpy(systems[1]->pqr_input, systems[1]->pqr_input_B);
 
-	for (int i = 0; i<2; i++) {
+	for (uint32_t i = 0; i<2; i++) {
 
 		systems[i]->setup_simulation_box();
 
@@ -75,8 +75,6 @@ void SimulationControl::initialize_Gibbs_systems() {
 		if (systems[i]->calc_hist) {
 			systems[i]->setup_histogram();
 		}
-
-		// Seed RNG?
 
 		if (!systems[i]->use_sg || systems[i]->rd_only)
 		{
@@ -145,9 +143,9 @@ bool SimulationControl::Gibbs_mc() {
 	System::mpiData mpi[2];
 
 
-	for (int i = 0; i<2; i++) {
+	for (uint32_t i = 0; i<2; i++) {
 		if (systems[i]->sorbateCount > 1)
-			SafeOps::calloc(systems[i]->sorbateGlobal, systems[i]->sorbateCount, sizeof(System::sorbateAverages_t), __LINE__, __FILE__);
+			SafeOps::calloc(systems[i]->sorbateGlobal, (size_t) systems[i]->sorbateCount, sizeof(System::sorbateAverages_t), __LINE__, __FILE__);
 		if (systems[i]->cavity_bias)
 			systems[i]->cavity_update_grid(); // update the grid for the first time 
 		systems[i]->observables->volume = systems[i]->pbc.volume; // set volume observable
@@ -160,8 +158,8 @@ bool SimulationControl::Gibbs_mc() {
 	backup_observables_ALL_SYSTEMS();
 	move = System::pick_Gibbs_move(systems);
 
-	int s = 1;
-	int max_step = systems[0]->numsteps;
+	uint32_t s = 1;
+	uint32_t max_step = systems[0]->numsteps;
 
 	// main MC loop 
 	for (s = 1; s <= max_step; s++) {
@@ -198,7 +196,7 @@ bool SimulationControl::Gibbs_mc() {
 
 		if ((move == MOVETYPE_DISPLACE) || (move == MOVETYPE_SPINFLIP))
 		{
-			for (int i = 0; i < 2; i++)
+			for (uint32_t i = 0; i < 2; i++)
 			{
 				// Metropolis function (performed separately for each of the two systems.
 				if (( Rando::rand() < systems[i]->nodestats->boltzmann_factor) && !systems[i]->iterator_failed) {
@@ -210,7 +208,7 @@ bool SimulationControl::Gibbs_mc() {
 					// Simulated Annealing...
 					if (systems[i]->simulated_annealing) {
 						if( systems[i]->simulated_annealing_linear ) {
-							systems[i]->temperature = systems[i]->temperature + (systems[i]->simulated_annealing_target - systems[i]->temperature) / (max_step - s);
+							systems[i]->temperature = systems[i]->temperature + (systems[i]->simulated_annealing_target - systems[i]->temperature) / ((size_t)max_step - s);
 							if ((max_step - s) == 0)
 								systems[i]->temperature = systems[i]->simulated_annealing_target;
 						}
@@ -244,7 +242,7 @@ bool SimulationControl::Gibbs_mc() {
 
 				// ACCEPT ///////////////////////////////////////////////////////////////
 
-				for (int i = 0; i<2; i++) {
+				for (uint32_t i = 0; i<2; i++) {
 					current_energy[i] = final_energy[i];
 
 					// backup observables for this system only
@@ -256,7 +254,7 @@ bool SimulationControl::Gibbs_mc() {
 					{
 						if( systems[i]->simulated_annealing_linear )
 						{
-							systems[i]->temperature = systems[i]->temperature + (systems[i]->simulated_annealing_target - systems[i]->temperature) / (max_step - s);
+							systems[i]->temperature = systems[i]->temperature + (systems[i]->simulated_annealing_target - systems[i]->temperature) / ((size_t)max_step - s);
 							if ((max_step - s) == 0)
 								systems[i]->temperature = systems[i]->simulated_annealing_target;
 
@@ -270,7 +268,7 @@ bool SimulationControl::Gibbs_mc() {
 			else {
 
 				// REJECT ///////////////////////////////////////////////////////////////
-				for (int i = 0; i < 2; i++) {
+				for (uint32_t i = 0; i < 2; i++) {
 					current_energy[i] = initial_energy[i]; // used in parallel tempering
 					systems[i]->iterator_failed = 0;       // reset the polar iterative failure flag and...
 					systems[i]->restore();                 // ...restore from last checkpoint
@@ -303,7 +301,7 @@ bool SimulationControl::Gibbs_mc() {
 
 			// do this every correlation time, and at the very end
 			Output::out("\n");
-			for (int i = 0; i < 2; i++) {
+			for (uint32_t i = 0; i < 2; i++) {
 
 				systems[i]->do_corrtime_bookkeeping(mpi[0]);
 
@@ -319,7 +317,7 @@ bool SimulationControl::Gibbs_mc() {
 					Output::out("\n");
 				}
 
-				if (systems[i]->display_averages(i) < 0) {
+				if (systems[i]->display_averages((int)i) < 0) {
 					Output::err("MC: could not write statistics to stdout\n");
 					throw unknown_file_error;
 				}
@@ -331,7 +329,7 @@ bool SimulationControl::Gibbs_mc() {
 
 
 	  // output restart files for each node
-	for (int i = 0; i<2; i++) {
+	for (uint32_t i = 0; i<2; i++) {
 		if (systems[i]->write_molecules_wrapper(systems[i]->pqr_output) < 0) {
 			Output::err("MC: could not write final state to disk\n");
 			throw unknown_file_error;

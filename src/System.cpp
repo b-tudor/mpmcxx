@@ -1,3 +1,5 @@
+#include "System.h"
+
 #include <cstring>
 #include <stdio.h>
 
@@ -5,11 +7,10 @@
 #include "Output.h"
 #include "Pair.h"
 #include "PeriodicBoundary.h"
-#include "System.h"
 #include "SafeOps.h"
 #include "UsefulMath.h"
 
-extern int size, rank;
+extern uint size, rank;
 
 
 
@@ -887,8 +888,8 @@ void System::rebuild_arrays () {
 	if (molecule_array) { SafeOps::free(molecule_array); }
 
 	//allocate the arrays
-	SafeOps::calloc( molecule_array, natoms, sizeof( Molecule *), __LINE__, __FILE__ );
-	SafeOps::calloc( atom_array,     natoms, sizeof( Atom *    ), __LINE__, __FILE__ );
+	SafeOps::calloc( molecule_array, (size_t) natoms, sizeof( Molecule *), __LINE__, __FILE__ );
+	SafeOps::calloc( atom_array,     (size_t) natoms, sizeof( Atom *    ), __LINE__, __FILE__ );
 
 	int n=0;
 	//build the arrays
@@ -905,7 +906,7 @@ void System::rebuild_arrays () {
 
 
 
-int System::countN() {
+unsigned int System::countN() {
 // count the number of molecules currently in the system excluding frozen, adiabatic, etc.
 
 	Molecule * molecule_ptr;
@@ -1455,14 +1456,14 @@ void System::thole_resize_matrices() {
 	}
 
 	// (RE)allocate the A matrix
-	SafeOps::calloc( A_matrix, N_Atoms, sizeof(double*), __LINE__, __FILE__ );
+	SafeOps::calloc( A_matrix, (size_t) N_Atoms, sizeof(double*), __LINE__, __FILE__ );
 	
 	for (i=0; i< N_Atoms; i++ ) 
 		SafeOps::malloc( A_matrix[i], N_Atoms * sizeof(double), __LINE__, __FILE__ );
 
 	// (RE)allocate the B matrix if not iterative
 	if( ! polar_iterative ) {
-		SafeOps::calloc( B_matrix, N_Atoms, sizeof(double*), __LINE__, __FILE__ );
+		SafeOps::calloc( B_matrix, (size_t) N_Atoms, sizeof(double*), __LINE__, __FILE__ );
 		
 		for (i=0; i< N_Atoms; i++ ) 
 			SafeOps::malloc(B_matrix[i], N_Atoms * sizeof(double), __LINE__, __FILE__ );

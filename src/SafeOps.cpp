@@ -110,13 +110,13 @@ bool SafeOps::atou( const char * s, uint32_t &u) {
 		return fail;
 	}
 	if( l>=0 && l<=UINT32_MAX )
-		u = l;
+		u = (uint32_t) l;
 	return ok;
 
 }
 
 //converts string *a to a long and stores at *l.
-bool SafeOps::atol( const char * s, long unsigned int &l) {
+bool SafeOps::atol( const char * s, long &l) {
 	size_t idx;
 	std::string myLongString(s);
 	try {
@@ -130,17 +130,17 @@ bool SafeOps::atol( const char * s, long unsigned int &l) {
 	return ok;
 }
 
-bool SafeOps::strncasecmp(const char *A, const char *B, int n ) {
+bool SafeOps::strncasecmp(const char *A, const char *B, size_t n ) {
 
 	char *a, *b;
 	bool returnVal;
 
-	int ALen = (int) strlen(A);
-	int BLen = (int) strlen(B);
+	size_t ALen = strlen(A);
+	size_t BLen = strlen(B);
 	SafeOps::calloc( a, n, sizeof(char), __LINE__, __FILE__ );
 	SafeOps::calloc( b, n, sizeof(char), __LINE__, __FILE__ );
 
-	for( int i = 0; i < n; i++ ) {
+	for( size_t i = 0; i < n; i++ ) {
 		if( i < ALen ) 
 			a[i] = (char) tolower(A[i]);
 		else

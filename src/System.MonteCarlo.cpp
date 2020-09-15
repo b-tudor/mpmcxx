@@ -1,18 +1,18 @@
+#include "System.h"
+
 #include <cstring>
 #include <iostream>
-
-extern int rank, size;
-extern bool mpi;
-#ifdef _MPI
-#include <mpi.h>
-#endif
 
 #include "constants.h"
 #include "Pair.h"
 #include "PeriodicBoundary.h"
 #include "SafeOps.h"
-#include "System.h"
 
+extern uint rank, size;
+extern bool mpi;
+#ifdef _MPI
+#	include <mpi.h>
+#endif
 
 
 
@@ -24,11 +24,11 @@ bool System::mc() {
 	        final_energy    = 0,
 	        current_energy  = 0;
 	
-	if( sorbateCount > 1 ) SafeOps::calloc( sorbateGlobal, sorbateCount, sizeof(sorbateAverages_t), __LINE__, __FILE__ );
+	if( sorbateCount > 1 ) SafeOps::calloc( sorbateGlobal, (unsigned int) sorbateCount, sizeof(sorbateAverages_t), __LINE__, __FILE__ );
 	if( cavity_bias      ) cavity_update_grid(); // update the grid for the first time 
 	observables->volume = pbc.volume; // set volume observable
 	initial_energy = mc_initial_energy();
-	mpiData mpi = setup_mpi();
+	auto MPI_Data = setup_mpi();
 	
 	// save the initial state 
 	do_checkpoint();
@@ -106,7 +106,7 @@ bool System::mc() {
 
 		// do this every correlation time, and at the very end 
 		if(  !(step % corrtime)  ||  (step == numsteps)  ) 
-			do_corrtime_bookkeeping(mpi);
+			do_corrtime_bookkeeping(MPI_Data);
 
 	} // main loop 
 	
@@ -119,16 +119,16 @@ bool System::mc() {
 	}
 
 	if(!rank) {
-		SafeOps::free( mpi.rcv_strct   );
-		SafeOps::free( mpi.temperature );
+		SafeOps::free(MPI_Data.rcv_strct   );
+		SafeOps::free(MPI_Data.temperature );
 	}
 
 	if( sorbateCount > 1 ) 
-		SafeOps::free( mpi.sinfo );
+		SafeOps::free(MPI_Data.sinfo );
 	
-	SafeOps::free( mpi.snd_strct     );
-	SafeOps::free( mpi.observables   );
-	SafeOps::free( mpi.avg_nodestats );
+	SafeOps::free(MPI_Data.snd_strct     );
+	SafeOps::free(MPI_Data.observables   );
+	SafeOps::free(MPI_Data.avg_nodestats );
 
 	return ok;
 }
@@ -177,8 +177,8 @@ double System::mc_initial_energy() {
 
 System::mpiData System::setup_mpi() {
 
-	mpiData mpi;
-	setup_mpi_dataStructs( mpi );
+	mpiData MPI_Data;
+	setup_mpi_dataStructs(MPI_Data);
 
 	// write initial observables to stdout and logs
 	if( ! rank ) {
@@ -202,23 +202,23 @@ System::mpiData System::setup_mpi() {
 		display_averages();
 	}
 
-	return mpi;
+	return MPI_Data;
 }
 
 
 
 void System::setup_mpi_dataStructs(int qty) { setup_mpi_dataStructs(mpi_data, qty); }
 void System::setup_mpi_dataStructs( mpiData &md ) {	setup_mpi_dataStructs(md, size);}
-void System::setup_mpi_dataStructs( mpiData& md, int qty ) {
+void System::setup_mpi_dataStructs( mpiData &md, size_t qty ) {
 
 	// allocate the statistics structures 
-	SafeOps::calloc(md.observables, 1, sizeof(observables_t), __LINE__, __FILE__);
+	SafeOps::calloc(  md.observables, 1, sizeof(  observables_t), __LINE__, __FILE__);
 	SafeOps::calloc(md.avg_nodestats, 1, sizeof(avg_nodestats_t), __LINE__, __FILE__);
 
 	// if multiple-sorbates, allocate sorbate statistics structs
 	if (sorbateCount > 1) {
-		SafeOps::calloc(md.sinfo, sorbateCount, sizeof(sorbateInfo_t), __LINE__, __FILE__);
-		SafeOps::calloc(sorbateGlobal, sorbateCount, sizeof(sorbateAverages_t), __LINE__, __FILE__);
+		SafeOps::calloc     (md.sinfo, (size_t) sorbateCount, sizeof(    sorbateInfo_t), __LINE__, __FILE__);
+		SafeOps::calloc(sorbateGlobal, (size_t) sorbateCount, sizeof(sorbateAverages_t), __LINE__, __FILE__);
 	}
 
 	// compute MPI message size	(for reporting data to head node)
@@ -237,7 +237,7 @@ void System::setup_mpi_dataStructs( mpiData& md, int qty ) {
 	#endif
 
 	// allocate MPI structures 
-	SafeOps::calloc(md.snd_strct, md.msgsize, 1, __LINE__, __FILE__);
+	SafeOps::calloc(md.snd_strct, md.msgsize, (size_t) 1, __LINE__, __FILE__);
 
 	if ((!mpi) || (!rank)) {
 		// These structs will be allocated on all systems[] in a single-threaded run
@@ -382,11 +382,13 @@ void System::setup_mpi_dataStructs( mpiData& md, int qty ) {
 
 
 		case ENSEMBLE_NVT_GIBBS:
-			// see System.MonteCarlo.cpp:
+			// see System.MonteCarlo.cpp
+			// See SimulationControl.Gibbs.cpp
 			// System::backup_observables(systems);
 			// System::pick_Gibbs_move(systems);
 		case ENSEMBLE_PATH_INTEGRAL_NVT:
-			// see ...
+			// see System.PathIntegral.cpp
+			// SimulationControl.PathIntegral.cpp::PI_NVT_mc
 			
 		default:
 			Output::err("CHECKPOINT: invalid ensemble\n");
@@ -753,7 +755,7 @@ void System::make_move() {
 					} // end j 
 				} // end i 
 				// insert randomly at one of the free cavity points 
-				random_index = (cavities_open - 1) - (int)rint(((double)(cavities_open - 1))*get_rand());
+				random_index = (cavities_open - 1) - (int)rint(((double)((size_t)cavities_open - 1))*get_rand());
 				for( int p = 0; p < 3; p++ )
 					com[p] = cavities_array[random_index].pos[p];
 				// free the insertion array 
@@ -992,7 +994,7 @@ void System::make_move_Gibbs(std::vector<System*> &sys) {
 						} // end i 
 
 						// insert randomly at one of the free cavity points 
-						random_index = (sys[s]->cavities_open - 1) - (int)rint(((double)(sys[s]->cavities_open - 1)) * sys[s]->get_rand());
+						random_index = (sys[s]->cavities_open - 1) - (int)rint(((double)((size_t)sys[s]->cavities_open - 1)) * sys[s]->get_rand());
 						for (int p = 0; p < 3; p++)
 							com[p] = cavities_array[random_index].pos[p];
 						// free the insertion array 
@@ -1611,7 +1613,7 @@ void System::unupdate_pairs_insert() {
 			// build the pair pointer array
 			for( m=0, pair_ptr = atom_ptr->pairs;  pair_ptr;  pair_ptr = pair_ptr->next, m++ ) {
 
-				SafeOps::realloc( pair_array, sizeof(Pair *)*(m + 1), __LINE__, __FILE__ );
+				SafeOps::realloc( pair_array, sizeof(Pair *)*((size_t)m + 1), __LINE__, __FILE__ );
 				pair_array[m] = pair_ptr;
 			}
 
@@ -1895,7 +1897,7 @@ void System::temper_system( double current_energy ) {
 
 
 
-void System::do_corrtime_bookkeeping(mpiData &mpi) {
+void System::do_corrtime_bookkeeping(mpiData & MPI_Data) {
 	
 	// copy observables and avgs to the mpi send buffer 
 	// histogram array is at the end of the message 
@@ -1913,7 +1915,7 @@ void System::do_corrtime_bookkeeping(mpiData &mpi) {
 
 	//write trajectory files for each node -> one at a time to avoid disk congestion
 	#ifdef _MPI
-		for ( int j=0; j<size; j++ ) {
+		for ( uint j=0; j<size; j++ ) {
 			MPI_Barrier(MPI_COMM_WORLD);
 			if( j == rank )
 				write_states();
@@ -1931,7 +1933,7 @@ void System::do_corrtime_bookkeeping(mpiData &mpi) {
 	// dipole/field data for each node -> one at a time to avoid disk congestion
 	#ifdef _MPI
 		if ( polarization ) {
-			for ( int j=0; j<size; j++ ) {
+			for ( uint j=0; j<size; j++ ) {
 				MPI_Barrier(MPI_COMM_WORLD);
 				if ( j == rank ) {
 					write_dipole();
@@ -1947,31 +1949,31 @@ void System::do_corrtime_bookkeeping(mpiData &mpi) {
 	#endif
 
 	// zero the send buffer 
-	std::memset( mpi.snd_strct, 0, mpi.msgsize );
-	std::memcpy( mpi.snd_strct, observables, sizeof(observables_t) );
-	std::memcpy( mpi.snd_strct + sizeof(observables_t), avg_nodestats, sizeof(avg_nodestats_t) );
+	std::memset(MPI_Data.snd_strct, 0, MPI_Data.msgsize );
+	std::memcpy(MPI_Data.snd_strct, observables, sizeof(observables_t) );
+	std::memcpy(MPI_Data.snd_strct + sizeof(observables_t), avg_nodestats, sizeof(avg_nodestats_t) );
 	if( calc_hist )
 		mpi_copy_histogram_to_sendbuffer(
-			mpi.snd_strct + sizeof(observables_t) + sizeof(avg_nodestats_t), 
+			MPI_Data.snd_strct + sizeof(observables_t) + sizeof(avg_nodestats_t),
 			grids->histogram->grid
 		);
 	if ( sorbateCount > 1 )
 		std::memcpy(
-			mpi.snd_strct   +   sizeof(observables_t)   +   sizeof(avg_nodestats_t)   +   calc_hist * n_histogram_bins * sizeof(int), //compensate for the size of hist data, if neccessary
+			MPI_Data.snd_strct   +   sizeof(observables_t)   +   sizeof(avg_nodestats_t)   +  (size_t)(calc_hist) * n_histogram_bins * sizeof(int), //compensate for the size of hist data, if neccessary
 			sorbateInfo,
 			sorbateCount * sizeof( sorbateInfo_t )
 		);
 
 	if( ! rank )
-		std::memset(mpi.rcv_strct, 0, size * mpi.msgsize);
+		std::memset(MPI_Data.rcv_strct, 0, (size_t) size * (size_t)MPI_Data.msgsize);
 
 	#ifdef _MPI
-		MPI_Gather( mpi.snd_strct, 1, msgtype, mpi.rcv_strct, 1, msgtype, 0, MPI_COMM_WORLD );
-		MPI_Gather( &temperature, 1, MPI_DOUBLE, mpi.temperature, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD );
+		MPI_Gather(MPI_Data.snd_strct, 1,    msgtype, MPI_Data.rcv_strct,   1, msgtype,    0, MPI_COMM_WORLD );
+		MPI_Gather(      &temperature, 1, MPI_DOUBLE, MPI_Data.temperature, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD );
 		// need to gather data for sorbate stats also
 	#else
-		std::memcpy( mpi.rcv_strct, mpi.snd_strct, mpi.msgsize );
-		mpi.temperature[0] = temperature;
+		std::memcpy( mpi.rcv_strct, mpi.snd_strct, mpi_data.msgsize );
+		mpi_data.temperature[0] = temperature;
 	#endif // MPI 
 
 	// head node collects all observables and averages 
@@ -1979,41 +1981,41 @@ void System::do_corrtime_bookkeeping(mpiData &mpi) {
 		// clear avg_nodestats to avoid double-counting 
 		clear_avg_nodestats();
 		//loop for each core -> shift data into variable_mpi, then average into avg_observables
-		for( int j = 0; j < size; j++ ) { 
+		for( uint j = 0; j < size; j++ ) { 
 			// copy from the mpi buffer 
-			std::memcpy( mpi.observables,   mpi.rcv_strct + j*mpi.msgsize,                         sizeof(observables_t  ));
-			std::memcpy( mpi.avg_nodestats, mpi.rcv_strct + j*mpi.msgsize + sizeof(observables_t), sizeof(avg_nodestats_t));
+			std::memcpy(MPI_Data.observables,   MPI_Data.rcv_strct + (size_t) j* MPI_Data.msgsize, sizeof(observables_t));
+			std::memcpy(MPI_Data.avg_nodestats, MPI_Data.rcv_strct + (size_t) j* MPI_Data.msgsize + sizeof(observables_t), sizeof(avg_nodestats_t));
 			if( calc_hist )
-				mpi_copy_rcv_histogram_to_data( mpi.rcv_strct + j*mpi.msgsize + sizeof(observables_t) + sizeof(avg_nodestats_t), grids->histogram->grid );
+				mpi_copy_rcv_histogram_to_data(MPI_Data.rcv_strct + (size_t) j* MPI_Data.msgsize + sizeof(observables_t) + sizeof(avg_nodestats_t), grids->histogram->grid );
 			if( sorbateCount > 1 )
-				std::memcpy( mpi.sinfo, 
-					mpi.rcv_strct   +   j*mpi.msgsize   +   sizeof(observables_t)   +   sizeof(avg_nodestats_t)   +   calc_hist * n_histogram_bins * sizeof(int), //compensate for the size of hist data, if neccessary
+				std::memcpy(MPI_Data.sinfo,
+					MPI_Data.rcv_strct   +  (size_t) j* MPI_Data.msgsize   +   sizeof(observables_t)   +   sizeof(avg_nodestats_t)   +   (size_t) calc_hist * n_histogram_bins * sizeof(int), //compensate for the size of hist data, if neccessary
 					sorbateCount * sizeof(sorbateInfo_t)
 				);
 
 			// write observables 
 			if( fp_energy ) 
-				write_observables( fp_energy, mpi.observables, mpi.temperature[j] );
+				write_observables( fp_energy, MPI_Data.observables, MPI_Data.temperature[j] );
 			if( fp_energy_csv ) 
-				write_observables_csv( fp_energy_csv, mpi.observables, mpi.temperature[j] );
+				write_observables_csv( fp_energy_csv, MPI_Data.observables, MPI_Data.temperature[j] );
 			// collect the averages 
 			// if parallel tempering, we will collect obserables from the coldest bath. this can't be done for
 			// nodestats though, since nodestats are averaged over each corrtime, rather than based on a single 
 			// taken at the corrtime 
-			update_root_nodestats( mpi.avg_nodestats, avg_observables );
+			update_root_nodestats(MPI_Data.avg_nodestats, avg_observables );
 			if ( ! parallel_tempering ) {
-				update_root_averages( mpi.observables );
+				update_root_averages(MPI_Data.observables );
 				if( calc_hist )
 					update_root_histogram();
 				if( sorbateCount > 1 ) 
-					update_root_sorb_averages( mpi.sinfo );
+					update_root_sorb_averages(MPI_Data.sinfo );
 			}
 			else if ( ptemp->index[j] == 0 ) {
-				update_root_averages( mpi.observables );
+				update_root_averages(MPI_Data.observables );
 				if( calc_hist )
 					update_root_histogram();
 				if( sorbateCount > 1 )
-					update_root_sorb_averages( mpi.sinfo );
+					update_root_sorb_averages(MPI_Data.sinfo );
 			}
 		}
 

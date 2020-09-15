@@ -15,7 +15,7 @@
 #include "constants.h"
 #include "SafeOps.h"
 
-extern int rank;
+extern uint rank;
 extern bool mpi;
 
 
@@ -63,12 +63,12 @@ char * Output::make_filename( const char * basename, int fileno )
 		{
 			if ( basename[len-4] == '.' ) //only check this if previous check passes so we don't have a memory fault
 			{
-				unsigned int i;
-				int j;
-				for ( i=0; i < len-4; i++ ) //format pre-extension
+				size_t i;
+				size_t j;
+				for ( i=0; i<(len-4); i++ ) //format pre-extension
 					START[i] = basename[i];
 				START[i]='\0';
-				for ( i=(int)(len-4), j=0; i<len; i++, j++ ) //format extension
+				for ( i = (len-4), j=0; i<len; i++, j++ ) //format extension
 					STOP[j] = basename[i];
 				STOP[j]='\0';
 				//set string length
@@ -94,7 +94,7 @@ char * Output::make_filename( const char * basename, int fileno )
 
 
 double Output::calctimediff(struct timeval a, struct timeval b) {
-	return a.tv_sec - b.tv_sec + 1.0e-6 * (a.tv_usec - b.tv_usec);
+	return (size_t)a.tv_sec - b.tv_sec + 1.0e-6 * ((size_t)a.tv_usec - b.tv_usec);
 }
 
 

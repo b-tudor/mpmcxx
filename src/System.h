@@ -15,7 +15,7 @@ class Pair;
 #include "Molecule.h"
 #include "PeriodicBoundary.h"
 
-
+using uint = size_t;
 
 
 static const double  ewald_alpha_default = 0.5;
@@ -273,7 +273,7 @@ public:
 	void update_pbc();
 	void thole_resize_matrices();
 	void rebuild_arrays();
-	int  countN();
+	unsigned int  countN();
 	int  countNatoms();
 	void pairs();
 	void pair_exclusions( Molecule *molecule_i, Molecule *molecule_j, Atom *atom_i, Atom *atom_j, Pair *pair_ptr);
@@ -453,7 +453,7 @@ public:
 	mpiData     setup_mpi();
 	void        setup_mpi_dataStructs(int qty);
 	void        setup_mpi_dataStructs( mpiData &md );
-	void        setup_mpi_dataStructs(mpiData& md, int qty);
+	void        setup_mpi_dataStructs(mpiData& md, size_t qty);
 	void        do_corrtime_bookkeeping(mpiData &mpi);
 	void        output_file_data();
 
@@ -489,7 +489,7 @@ public:
 	void write_dipole();
 	FILE * open_field_file();
 	void write_field();
-	int write_performance( int i );
+	int write_performance( unsigned int i );
 	
 
 
@@ -514,12 +514,12 @@ public:
 
 
 	int         ensemble = 0;
-	char        job_name[maxLine] = { 'u', 'n','t','i','t','l','e','d','\0' }; // (CRC)
+	char        job_name[maxLine] = { "untitled" }; // (CRC)
 	
 	// Monte Carlo Controls
-	unsigned int numsteps   = 0;       // Total number of MC simulation steps to perform
-	unsigned int step       = 0;       // Current MC step
-	int          corrtime   = 0;       // Number of steps between MC correlation times
+	uint32_t     numsteps   = 0;       // Total number of MC simulation steps to perform
+	uint32_t     step       = 0;       // Current MC step
+	uint32_t     corrtime   = 0;       // Number of steps between MC correlation times
 	int          ptemp_freq = 0;
 
 	double       move_factor           = 1.0;
@@ -606,7 +606,7 @@ public:
 	std::mt19937   mt_rand;
 	std::uniform_real_distribution<double> dist{0,1};
 	int            preset_seed_on = 0;  //for manual specification of random seeds
-	uint32_t       preset_seed    = 0;
+	unsigned int   preset_seed    = 0;  // datatype taken by std::mt19937.seed( unsigned int SEED)
 	
 	int            read_pqr_box_on = 0; //read box basis from pqr
 	

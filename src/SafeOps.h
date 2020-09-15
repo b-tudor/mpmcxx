@@ -1,5 +1,4 @@
 #pragma once
-#pragma warning(default:4005)
 #ifndef SAFEOPS_H
 #define SAFEOPS_H
 
@@ -35,10 +34,10 @@ public:
 	static bool atou( const char * s, uint32_t &u );
 	
 	//converts string *s to a long and stores at *l.
-	static bool atol( const char * s, long unsigned int &l );
+	static bool atol( const char * s, long &l );
 	
 	// compares first n characters of A and B (ignoring case) and returns true if they match
-	static bool strncasecmp( const char *A, const char *B, int n );
+	static bool strncasecmp( const char *A, const char *B, size_t n );
 	
 	// returns true if all elements of string are identical, compared case-insensitively
 	static bool iequals( const char *A, const char *B );
@@ -85,7 +84,7 @@ public:
 	
 		
 		if( (qty * size) <= 0 ) {	
-			sprintf(linebuf, "[internal] Requested %ld bytes: [%d] %s", (long)(qty * size), line, file );
+			sprintf(linebuf, "[internal] Requested %d bytes: [%d] %s", (uint32_t)(qty * size), line, file );
 			Output::err(linebuf);
 			throw memory_request_invalid;
 		}
