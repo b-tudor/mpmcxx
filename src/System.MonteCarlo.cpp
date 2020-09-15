@@ -8,7 +8,7 @@
 #include "PeriodicBoundary.h"
 #include "SafeOps.h"
 
-extern uint rank, size;
+extern uidx rank, size;
 extern bool mpi;
 #ifdef _MPI
 #	include <mpi.h>
@@ -204,6 +204,7 @@ System::mpiData System::setup_mpi() {
 
 	return MPI_Data;
 }
+
 
 
 
@@ -1505,6 +1506,7 @@ void System::register_accept(int movetype) {
 
 
 
+
 void System::restore() {
 // this function 
 //    (a) undoes what make_move() did and...
@@ -1915,7 +1917,7 @@ void System::do_corrtime_bookkeeping(mpiData & MPI_Data) {
 
 	//write trajectory files for each node -> one at a time to avoid disk congestion
 	#ifdef _MPI
-		for ( uint j=0; j<size; j++ ) {
+		for ( uidx j=0; j<size; j++ ) {
 			MPI_Barrier(MPI_COMM_WORLD);
 			if( j == rank )
 				write_states();
@@ -1933,7 +1935,7 @@ void System::do_corrtime_bookkeeping(mpiData & MPI_Data) {
 	// dipole/field data for each node -> one at a time to avoid disk congestion
 	#ifdef _MPI
 		if ( polarization ) {
-			for ( uint j=0; j<size; j++ ) {
+			for ( uidx j=0; j<size; j++ ) {
 				MPI_Barrier(MPI_COMM_WORLD);
 				if ( j == rank ) {
 					write_dipole();
@@ -1981,7 +1983,7 @@ void System::do_corrtime_bookkeeping(mpiData & MPI_Data) {
 		// clear avg_nodestats to avoid double-counting 
 		clear_avg_nodestats();
 		//loop for each core -> shift data into variable_mpi, then average into avg_observables
-		for( uint j = 0; j < size; j++ ) { 
+		for( uidx j = 0; j < size; j++ ) { 
 			// copy from the mpi buffer 
 			std::memcpy(MPI_Data.observables,   MPI_Data.rcv_strct + (size_t) j* MPI_Data.msgsize, sizeof(observables_t));
 			std::memcpy(MPI_Data.avg_nodestats, MPI_Data.rcv_strct + (size_t) j* MPI_Data.msgsize + sizeof(observables_t), sizeof(avg_nodestats_t));

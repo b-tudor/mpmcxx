@@ -13,7 +13,7 @@
 #ifdef _MPI
 	#include <mpi.h>
 #endif
-extern uint size, rank;
+extern uidx size, rank;
 extern bool mpi;
 
 
@@ -34,7 +34,7 @@ SimulationControl::~SimulationControl() {
 	if (polarization_energies) SafeOps::free(polarization_energies);
 	if (vdw_energies         ) SafeOps::free(vdw_energies         );
 }
-SimulationControl::SimulationControl(char *inFilename, uint P, bool write_PI_frames, char *PI_fname):
+SimulationControl::SimulationControl(char *inFilename, uidx P, bool write_PI_frames, char *PI_fname):
 	nSys(P), write_PI_frames(write_PI_frames), PI_frames_filename(PI_fname)
 {
 	char linebuf[maxLine];
@@ -2196,7 +2196,7 @@ bool SimulationControl::check_spectre_options() {
 bool SimulationControl::check_io_files_options() {
 
 	char linebuf[maxLine*2];
-	uint file_count = mpi ? size : nSys;
+	uidx file_count = mpi ? size : nSys;
 
 
 	if (SafeOps::iequals(sys.pqr_restart, "off")) { // Optionally turn off restart configuration output
@@ -2213,7 +2213,7 @@ bool SimulationControl::check_io_files_options() {
 
 		
 		if (file_count > 1) {
-			for (uint j = 0; j < file_count; j++) {
+			for (uidx j = 0; j < file_count; j++) {
 				if (mpi) {
 					#ifdef _MPI
 						MPI_Barrier(MPI_COMM_WORLD);
@@ -2260,7 +2260,7 @@ bool SimulationControl::check_io_files_options() {
 
 		if (file_count > 1) {
 
-			for (uint j = 0; j < file_count; j++) {
+			for (uidx j = 0; j < file_count; j++) {
 					
 				if( mpi ) {
 					#ifdef _MPI
@@ -2300,12 +2300,12 @@ bool SimulationControl::check_io_files_options() {
 		
 
 		if (file_count > 1) {
-			for (uint j = 0; j < file_count; j++) {
+			for (uidx j = 0; j < file_count; j++) {
 
 				FILE *test;
 
 				// Try to open the plain restart file.
-				uint id = mpi ? rank : j;
+				uidx id = mpi ? rank : j;
 				std::string filename = Output::make_filename(sys.pqr_restart, (int)id);
 				test = fopen(filename.c_str(), "r");
 				if (test) {

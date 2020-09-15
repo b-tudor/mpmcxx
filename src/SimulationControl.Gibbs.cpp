@@ -4,7 +4,7 @@
 #include "SimulationControl.h"
 #include "Output.h"
 
-extern uint rank, size;
+extern uidx rank, size;
 
 
 

@@ -20,7 +20,7 @@
 #ifdef _MPI
 #	include <mpi.h>
 #endif
-extern uint rank, size;
+extern uidx rank, size;
 extern bool mpi;
 
 
@@ -63,6 +63,7 @@ int System::open_files()
 
 
 
+
 void System::close_files()
 {
 	if( fp_energy      ) fclose( fp_energy      );
@@ -77,6 +78,7 @@ void System::close_files()
 	fp_traj_replay = nullptr;
 	fp_surf        = nullptr;
 }
+
 
 
 
@@ -115,6 +117,7 @@ void System::write_frozen( FILE *fp )
 
 
 
+
 int System::count_frozen()
 {
 	int         count = 0;
@@ -129,6 +132,7 @@ int System::count_frozen()
 	}
 	return count;
 }
+
 
 
 
@@ -148,6 +152,8 @@ void System::print_frozen_coords( FILE *fp )
 		}
 	}
 }
+
+
 
 
 void System::print_frozen_bonds( FILE *fp )
@@ -178,6 +184,9 @@ void System::print_frozen_bonds( FILE *fp )
 	}
 }
 
+
+
+
 void System::print_frozen_masses( FILE *fp )
 {
 	if( !fp )
@@ -194,6 +203,7 @@ void System::print_frozen_masses( FILE *fp )
 		}
 	}
 }
+
 
 
 
@@ -233,6 +243,8 @@ void System::print_frozen_colors( FILE *fp )
 }
 
 
+
+
 void System::append_observables_to_output_file() {
 	write_observables(fp_energy, observables, temperature);
 }
@@ -259,6 +271,8 @@ void System::write_observables(FILE* fp, observables_t* obs, double core_temp) {
 }
 
 
+
+
 void System::append_observables_to_csv_file() {
 	write_observables_csv(fp_energy_csv, observables, temperature);
 }
@@ -283,6 +297,8 @@ void System::write_observables_csv( FILE *fp, observables_t * obs, double core_t
 	fprintf( fp, "\n" );
 	fflush( fp );
 }
+
+
 
 
 int System::display_averages() {
@@ -641,6 +657,7 @@ void System::update_nodestats( nodestats_t *nstats, avg_nodestats_t *avg_ns ) {
 
 
 
+
 void System::write_states() {
 
 	Molecule  * molecule_ptr           = nullptr;
@@ -771,6 +788,7 @@ void System::write_states() {
 
 
 
+
 FILE * System::open_traj_file() {
 	FILE * fp;
 	char * filename;
@@ -812,6 +830,7 @@ FILE * System::open_traj_file() {
 
 	return nullptr;
 }
+
 
 
 
@@ -875,6 +894,8 @@ int System::write_molecules_wrapper( char * filename ) {
 
 	return rval;
 }
+
+
 
 // write out the final system state as a PQR file 
 int System::write_molecules(FILE * fp) {
@@ -1071,6 +1092,7 @@ int System::write_molecules(FILE * fp) {
 
 
 
+
 FILE * System::open_dipole_file() {
 	FILE     * fp       = nullptr;
 	char     * filename = nullptr;
@@ -1135,6 +1157,7 @@ void System::write_dipole() {
 
 	return;
 }
+
 
 
 

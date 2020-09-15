@@ -15,7 +15,7 @@
 #include "constants.h"
 #include "SafeOps.h"
 
-extern uint rank;
+extern uidx rank;
 extern bool mpi;
 
 

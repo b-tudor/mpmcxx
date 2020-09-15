@@ -10,7 +10,7 @@
 #include "SafeOps.h"
 #include "UsefulMath.h"
 
-extern uint size, rank;
+extern uidx size, rank;
 
 
 

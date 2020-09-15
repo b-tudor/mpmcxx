@@ -15,9 +15,9 @@
 #include "SafeOps.h"
 #include "SimulationControl.h"
 
-using uint = size_t;
-uint rank = 0;
-uint size = 0;
+using uidx = size_t;
+uidx rank = 0;
+uidx size = 0;
 bool mpi = false;
 
 

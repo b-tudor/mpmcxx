@@ -11,7 +11,7 @@
 #include "Vector3D.h"
 
 
-using uint = size_t;
+using uidx = size_t;
 
 
 
@@ -24,7 +24,7 @@ public:
 	size_t nSys; // Trotter number for Path Integral runs, i.e. number of beads/images being used to represent each quantum object
 	size_t PI_trial_chain_length; // PI option--when perturbing COM configuration, the number of beads to move at a time
 
-	SimulationControl( char * inFilename, uint P, bool write_PI_frames, char *fname );
+	SimulationControl( char * inFilename, uidx P, bool write_PI_frames, char *fname );
 	~SimulationControl();
 	bool runSimulation();
 	void initializeSimulationObjects();
@@ -146,7 +146,7 @@ private:
 	void   PI_perturb_beads();
 	void   PI_perturb_bead_COMs_ENTIRE_SYSTEM();
 	void   PI_perturb_bead_COMs();      // perturb the user-specified number of beads
-	void   PI_perturb_bead_COMs(uint n); // specify number of beads to perturb
+	void   PI_perturb_bead_COMs(uidx n); // specify number of beads to perturb
 	void   PI_perturb_beads_orientations();
 	void   generate_orientation_configs();
 	void   generate_orientation_configs(unsigned int start, unsigned int end, unsigned int P, unsigned int numBeads, double b2, double uMkT );

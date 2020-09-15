@@ -2,7 +2,7 @@
 #ifndef OUTPUT_H
 #define OUTPUT_H
 
-using uint = size_t;
+using uidx = size_t;
 
 class Output
 {

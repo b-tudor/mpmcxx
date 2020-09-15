@@ -15,7 +15,7 @@ class Pair;
 #include "Molecule.h"
 #include "PeriodicBoundary.h"
 
-using uint = size_t;
+using uidx = size_t;
 
 
 static const double  ewald_alpha_default = 0.5;

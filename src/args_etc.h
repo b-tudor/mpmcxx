@@ -18,9 +18,9 @@
 #include "SafeOps.h"
 #include "SimulationControl.h"
 
-using uint = size_t;
-extern uint rank;
-extern uint size;
+using uidx = size_t;
+extern uidx rank;
+extern uidx size;
 extern bool mpi;
 
 
@@ -31,7 +31,7 @@ extern bool mpi;
 typedef struct _parameters {
 	char* prog_name;
 	char* in_filename;
-	uint  Ptrotter_number; // P AKA trotter number (this variable is prounounced "Trotter" -- think pterodactyl).
+	uidx  Ptrotter_number; // P AKA trotter number (this variable is prounounced "Trotter" -- think pterodactyl).
 	bool  write_PI_Frames_at_corrtime;
 	char* PI_frame_file; // file name of PI frames file
 } params;
@@ -144,7 +144,7 @@ void introduce_self() {
 	}
 	else {
 
-		uint thread_count = 1;
+		uidx thread_count = 1;
 				
 		#pragma omp parallel 
 		{
@@ -155,7 +155,7 @@ void introduce_self() {
 				id = omp_get_thread_num();
 			#endif
 			if (!id)
-				thread_count = (uint) np;
+				thread_count = (uidx) np;
 		}
 		sprintf(
 			linebuf,
@@ -172,7 +172,7 @@ void introduce_self() {
 
 
 //\/// Check if MPI or openMP service is available at runtime and configure job accordingly
-void parallel_introspection_and_initialization(int& argc, char* argv[], uint P) {
+void parallel_introspection_and_initialization(int& argc, char* argv[], uidx P) {
 
 	#ifdef _MPI	 // Start up the MPI chain
 		if (MPI_Init(&argc, &argv) == MPI_SUCCESS)
@@ -180,8 +180,8 @@ void parallel_introspection_and_initialization(int& argc, char* argv[], uint P) 
 			int r, s;
 			MPI_Comm_rank(MPI_COMM_WORLD, &r);
 			MPI_Comm_size(MPI_COMM_WORLD, &s);
-			rank = (uint) r;
-			size = (uint) s;
+			rank = (uidx) r;
+			size = (uidx) s;
 		}
 	#endif
 
@@ -264,7 +264,7 @@ void processArgs(int argc, char* argv[], params &p) {
 				n++;
 				int trotter;
 				if (SafeOps::atoi(argv[n], trotter )) {
-					p.Ptrotter_number = (uint) trotter;
+					p.Ptrotter_number = (uidx) trotter;
 					n++;
 					continue;
 				} 
