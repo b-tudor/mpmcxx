@@ -1,5 +1,3 @@
-#include "Output.h"
-
 #include <stdio.h>
 #include <cstring>
 
@@ -11,11 +9,12 @@
 #	include <sys/time.h>
 #endif
 
-
+#include "Output.h"
 #include "constants.h"
 #include "SafeOps.h"
 
-extern uidx rank;
+
+extern int  rank;
 extern bool mpi;
 
 

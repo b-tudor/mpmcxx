@@ -101,9 +101,9 @@ double Fugacity::h2_comp_back(double temperature, double pressure)
 	comp_factor_attractive = 0;
 	for(int n = 0; n < BACK_MAX_N; n++)
 		for(int m = 0; m < BACK_MAX_M; m++)
-			comp_factor_attractive += ((double)(m+1))*D[m][n]*pow(u/temperature, ((double)(n+1)))*pow(V0/V, ((double)(m+1)));
-
-	/* calculate repulsive part */
+			comp_factor_attractive += (m+1.0) * D[m][n] * pow(u/temperature, (n+1.0)) * pow(V0/V, m+1.0);
+	        
+	// calculate repulsive part 
 	alpha = BACK_H2_ALPHA;
 	y = (  pi*sqrt(2.0) / 6.0  )*(  pressure*ATM2PASCALS*1.0e-6  )/(  NA*kB*temperature  )   *   V0;
 	comp_factor_repulsive  = 1.0 + ( 3.0*alpha - 2.0 )  *  y;

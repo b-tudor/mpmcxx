@@ -8,7 +8,7 @@
 #include "PeriodicBoundary.h"
 #include "SafeOps.h"
 
-extern uidx rank, size;
+extern int rank, size;
 extern bool mpi;
 #ifdef _MPI
 #	include <mpi.h>
@@ -1917,7 +1917,7 @@ void System::do_corrtime_bookkeeping(mpiData & MPI_Data) {
 
 	//write trajectory files for each node -> one at a time to avoid disk congestion
 	#ifdef _MPI
-		for ( uidx j=0; j<size; j++ ) {
+		for ( int j=0; j<size; j++ ) {
 			MPI_Barrier(MPI_COMM_WORLD);
 			if( j == rank )
 				write_states();
@@ -1935,7 +1935,7 @@ void System::do_corrtime_bookkeeping(mpiData & MPI_Data) {
 	// dipole/field data for each node -> one at a time to avoid disk congestion
 	#ifdef _MPI
 		if ( polarization ) {
-			for ( uidx j=0; j<size; j++ ) {
+			for ( int j=0; j<size; j++ ) {
 				MPI_Barrier(MPI_COMM_WORLD);
 				if ( j == rank ) {
 					write_dipole();
@@ -1974,7 +1974,7 @@ void System::do_corrtime_bookkeeping(mpiData & MPI_Data) {
 		MPI_Gather(      &temperature, 1, MPI_DOUBLE, MPI_Data.temperature, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD );
 		// need to gather data for sorbate stats also
 	#else
-		std::memcpy( mpi.rcv_strct, mpi.snd_strct, mpi_data.msgsize );
+		std::memcpy( MPI_Data.rcv_strct, MPI_Data.snd_strct, MPI_Data.msgsize );
 		mpi_data.temperature[0] = temperature;
 	#endif // MPI 
 
@@ -1983,7 +1983,7 @@ void System::do_corrtime_bookkeeping(mpiData & MPI_Data) {
 		// clear avg_nodestats to avoid double-counting 
 		clear_avg_nodestats();
 		//loop for each core -> shift data into variable_mpi, then average into avg_observables
-		for( uidx j = 0; j < size; j++ ) { 
+		for( int j=0; j<size; j++ ) { 
 			// copy from the mpi buffer 
 			std::memcpy(MPI_Data.observables,   MPI_Data.rcv_strct + (size_t) j* MPI_Data.msgsize, sizeof(observables_t));
 			std::memcpy(MPI_Data.avg_nodestats, MPI_Data.rcv_strct + (size_t) j* MPI_Data.msgsize + sizeof(observables_t), sizeof(avg_nodestats_t));

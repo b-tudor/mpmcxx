@@ -13,7 +13,7 @@
 #ifdef _MPI
 	#include <mpi.h>
 #endif
-extern uidx size, rank;
+extern int size, rank;
 extern bool mpi;
 
 
@@ -34,7 +34,7 @@ SimulationControl::~SimulationControl() {
 	if (polarization_energies) SafeOps::free(polarization_energies);
 	if (vdw_energies         ) SafeOps::free(vdw_energies         );
 }
-SimulationControl::SimulationControl(char *inFilename, uidx P, bool write_PI_frames, char *PI_fname):
+SimulationControl::SimulationControl(char *inFilename, int P, bool write_PI_frames, char *PI_fname):
 	nSys(P), write_PI_frames(write_PI_frames), PI_frames_filename(PI_fname)
 {
 	char linebuf[maxLine];
@@ -52,7 +52,7 @@ SimulationControl::SimulationControl(char *inFilename, uidx P, bool write_PI_fra
 
 	if (mpi) {
 		if (nSys) {
-			if (nSys != (uint32_t) size) {
+			if (nSys != size) {
 				// Execution path should never arrive here, as this case should have caused a program exit in the mpi
 				// init function in args_etc.h: mpi_introspection_and_initialization()
 				Output::err("When computing path integrals with MPI, the Trotter number is set by the MPI\n");
@@ -104,7 +104,7 @@ void SimulationControl::initializeSimulationObjects() {
 	if (mpi) {
 
 		#ifdef _MPI
-			for( uint32_t i=0; i<size; i++ ) {
+			for( int i=0; i<size; i++ ) {
 				MPI_Barrier(MPI_COMM_WORLD);
 				if (rank == i) {
 					sprintf(linebuf, "SIM_CONTROL->SYSTEM[ %d ]: RNG initialized. Seed = %u\n", (int)rank, (int)seed);
@@ -2196,7 +2196,7 @@ bool SimulationControl::check_spectre_options() {
 bool SimulationControl::check_io_files_options() {
 
 	char linebuf[maxLine*2];
-	uidx file_count = mpi ? size : nSys;
+	int file_count = mpi ? size : nSys;
 
 
 	if (SafeOps::iequals(sys.pqr_restart, "off")) { // Optionally turn off restart configuration output
@@ -2213,7 +2213,7 @@ bool SimulationControl::check_io_files_options() {
 
 		
 		if (file_count > 1) {
-			for (uidx j = 0; j < file_count; j++) {
+			for (int j = 0; j < file_count; j++) {
 				if (mpi) {
 					#ifdef _MPI
 						MPI_Barrier(MPI_COMM_WORLD);
@@ -2260,27 +2260,27 @@ bool SimulationControl::check_io_files_options() {
 
 		if (file_count > 1) {
 
-			for (uidx j = 0; j < file_count; j++) {
+			for (int j = 0; j < file_count; j++) {
 					
 				if( mpi ) {
 					#ifdef _MPI
 					MPI_Barrier(MPI_COMM_WORLD);
-					char *filename_cstr = Output::make_filename(sys.pqr_output, (int)rank);
+					char *filename_cstr = Output::make_filename(sys.pqr_output, rank);
 					std::string filename = filename_cstr;
 					pqr_final_filenames.push_back(filename);
 					SafeOps::free(filename_cstr);
 					if (j == rank) {
-						sprintf(linebuf, "SIM_CONTROL: Thread/SYSTEM %d will be writing final configuration to ./%s\n", (int)rank, pqr_final_filenames[rank].c_str());
+						sprintf(linebuf, "SIM_CONTROL: Thread/SYSTEM %d will be writing final configuration to ./%s\n", rank, pqr_final_filenames[rank].c_str());
 						Output::out(linebuf);
 					}
 					#endif
 
 				} else {
-					char * filename_cstr = Output::make_filename(sys.pqr_output, (int)j);
+					char * filename_cstr = Output::make_filename(sys.pqr_output, j);
 					std::string filename = filename_cstr;
 					pqr_final_filenames.push_back(filename);
 					SafeOps::free(filename_cstr);
-					sprintf(linebuf, "SIM_CONTROL: SYSTEM %u will be writing final configuration to ./%s\n", (int)j, pqr_final_filenames[j].c_str());
+					sprintf(linebuf, "SIM_CONTROL: SYSTEM %u will be writing final configuration to ./%s\n", j, pqr_final_filenames[j].c_str());
 					Output::out(linebuf);
 				}
 			}
@@ -2300,12 +2300,12 @@ bool SimulationControl::check_io_files_options() {
 		
 
 		if (file_count > 1) {
-			for (uidx j = 0; j < file_count; j++) {
+			for( int j=0; j<file_count; j++ ) {
 
 				FILE *test;
 
 				// Try to open the plain restart file.
-				uidx id = mpi ? rank : j;
+				int id = mpi ? rank : j;
 				std::string filename = Output::make_filename(sys.pqr_restart, (int)id);
 				test = fopen(filename.c_str(), "r");
 				if (test) {

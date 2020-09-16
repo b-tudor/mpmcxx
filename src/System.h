@@ -15,7 +15,7 @@ class Pair;
 #include "Molecule.h"
 #include "PeriodicBoundary.h"
 
-using uidx = size_t;
+
 
 
 static const double  ewald_alpha_default = 0.5;
@@ -31,6 +31,7 @@ static const double  wolf_alpha_lookup_cutoff_default = 30.0; //angstroms
 
 class System
 {
+
 public:
 
     int printAtoms();

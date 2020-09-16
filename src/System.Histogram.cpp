@@ -2,7 +2,7 @@
 #include "System.h"
 #include "Output.h"
 
-extern uidx rank;
+extern int rank;
 
 
 void System::setup_histogram() 

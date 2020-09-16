@@ -13,14 +13,11 @@
 
 
 
-
 #include "Output.h"
 #include "SafeOps.h"
 #include "SimulationControl.h"
 
-using uidx = size_t;
-extern uidx rank;
-extern uidx size;
+extern int rank, size;
 extern bool mpi;
 
 
@@ -31,7 +28,7 @@ extern bool mpi;
 typedef struct _parameters {
 	char* prog_name;
 	char* in_filename;
-	uidx  Ptrotter_number; // P AKA trotter number (this variable is prounounced "Trotter" -- think pterodactyl).
+	int   Ptrotter_number; // P AKA trotter number (this variable is prounounced "Trotter" -- think pterodactyl).
 	bool  write_PI_Frames_at_corrtime;
 	char* PI_frame_file; // file name of PI frames file
 } params;
@@ -55,25 +52,6 @@ void die(int success_code) {
 	else
 		exit(EXIT_FAILURE);
 } //\////////////////////////////////////////////////////////////////////
-
-
-
-
-//\/// Install the signal handler for clean exits (on Unix systems) /////
-#ifdef __unix__
-#	include <unistd.h>
-#	include <signal.h>
-#endif 
-SimulationControl* sc;
-void install_signal_handler(SimulationControl* simControl) {
-	sc = simControl;
-#if defined( _POSIX_VERSION )  
-	signal(SIGTERM, signal_handler);
-	signal(SIGUSR1, signal_handler);
-	signal(SIGUSR2, signal_handler);
-#endif
-}
-//\//////////////////////////////////////////////////////////////////////
 
 
 
@@ -144,7 +122,7 @@ void introduce_self() {
 	}
 	else {
 
-		uidx thread_count = 1;
+		int thread_count = 1;
 				
 		#pragma omp parallel 
 		{
@@ -155,7 +133,7 @@ void introduce_self() {
 				id = omp_get_thread_num();
 			#endif
 			if (!id)
-				thread_count = (uidx) np;
+				thread_count = np;
 		}
 		sprintf(
 			linebuf,
@@ -172,16 +150,13 @@ void introduce_self() {
 
 
 //\/// Check if MPI or openMP service is available at runtime and configure job accordingly
-void parallel_introspection_and_initialization(int& argc, char* argv[], uidx P) {
+void parallel_introspection_and_initialization(int& argc, char* argv[], int P) {
 
 	#ifdef _MPI	 // Start up the MPI chain
 		if (MPI_Init(&argc, &argv) == MPI_SUCCESS)
 		{
-			int r, s;
-			MPI_Comm_rank(MPI_COMM_WORLD, &r);
-			MPI_Comm_size(MPI_COMM_WORLD, &s);
-			rank = (uidx) r;
-			size = (uidx) s;
+			MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+			MPI_Comm_size(MPI_COMM_WORLD, &size);
 		}
 	#endif
 
@@ -262,9 +237,7 @@ void processArgs(int argc, char* argv[], params &p) {
 			// report acceptance/rejection 
 			if (!strncmp(issOptionToken.str().c_str(), "-P", 3)) {
 				n++;
-				int trotter;
-				if (SafeOps::atoi(argv[n], trotter )) {
-					p.Ptrotter_number = (uidx) trotter;
+				if (SafeOps::atoi(argv[n], p.Ptrotter_number )) {
 					n++;
 					continue;
 				} 
@@ -324,13 +297,15 @@ void processArgs(int argc, char* argv[], params &p) {
  ////    ADD SUPPORT FOR CLEAN UP IN signal_handler()     ////
 /////////////////////////////////////////////////////////////
 
-
+#ifdef __unix__
+#	include <unistd.h>
+#	include <signal.h>
+#endif 
 
 // on SIGTERM, cleanup and exit 
 void signal_handler(int sigtype) {
+	
 	char linebuf[maxLine];
-
-
 
 
 	#ifdef __unix__
@@ -357,6 +332,21 @@ void signal_handler(int sigtype) {
 	#endif	
 	return;
 }
+
+
+
+//\/// Install the signal handler for clean exits (on Unix systems) /////
+SimulationControl* sc;
+void install_signal_handler(SimulationControl* simControl) {
+	sc = simControl;
+#if defined( _POSIX_VERSION )  
+	signal(SIGTERM, signal_handler);
+	signal(SIGUSR1, signal_handler);
+	signal(SIGUSR2, signal_handler);
+#endif
+}
+//\//////////////////////////////////////////////////////////////////////
+
 
 
 

@@ -2,10 +2,12 @@
 #ifndef OUTPUT_H
 #define OUTPUT_H
 
-using uidx = size_t;
+
 
 class Output
 {
+	
+
 public:
 	Output();
 	~Output();

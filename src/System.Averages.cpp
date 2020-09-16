@@ -1,5 +1,5 @@
 #include "System.h"
-extern uidx rank, size;
+extern int rank, size;
 
 
 

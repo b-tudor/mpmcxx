@@ -11,7 +11,7 @@
 #include "Vector3D.h"
 
 
-using uidx = size_t;
+
 
 
 
@@ -21,10 +21,10 @@ class SimulationControl
 public:
 
 	System sys; // Template system for creating system images. Can be used to retrieve certain info common to all systems (e.g. temperature)
-	size_t nSys; // Trotter number for Path Integral runs, i.e. number of beads/images being used to represent each quantum object
-	size_t PI_trial_chain_length; // PI option--when perturbing COM configuration, the number of beads to move at a time
+	int nSys; // Trotter number for Path Integral runs, i.e. number of beads/images being used to represent each quantum object
+	int PI_trial_chain_length; // PI option--when perturbing COM configuration, the number of beads to move at a time
 
-	SimulationControl( char * inFilename, uidx P, bool write_PI_frames, char *fname );
+	SimulationControl( char * inFilename, int P, bool write_PI_frames, char *fname );
 	~SimulationControl();
 	bool runSimulation();
 	void initializeSimulationObjects();
@@ -146,7 +146,7 @@ private:
 	void   PI_perturb_beads();
 	void   PI_perturb_bead_COMs_ENTIRE_SYSTEM();
 	void   PI_perturb_bead_COMs();      // perturb the user-specified number of beads
-	void   PI_perturb_bead_COMs(uidx n); // specify number of beads to perturb
+	void   PI_perturb_bead_COMs(int n); // specify number of beads to perturb
 	void   PI_perturb_beads_orientations();
 	void   generate_orientation_configs();
 	void   generate_orientation_configs(unsigned int start, unsigned int end, unsigned int P, unsigned int numBeads, double b2, double uMkT );

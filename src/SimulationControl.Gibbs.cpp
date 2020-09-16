@@ -4,7 +4,7 @@
 #include "SimulationControl.h"
 #include "Output.h"
 
-extern uidx rank, size;
+extern int rank, size;
 
 
 
@@ -143,7 +143,7 @@ bool SimulationControl::Gibbs_mc() {
 	System::mpiData mpi[2];
 
 
-	for (uint32_t i = 0; i<2; i++) {
+	for (int i = 0; i<2; i++) {
 		if (systems[i]->sorbateCount > 1)
 			SafeOps::calloc(systems[i]->sorbateGlobal, (size_t) systems[i]->sorbateCount, sizeof(System::sorbateAverages_t), __LINE__, __FILE__);
 		if (systems[i]->cavity_bias)

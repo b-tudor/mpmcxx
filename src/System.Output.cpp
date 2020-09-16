@@ -20,7 +20,7 @@
 #ifdef _MPI
 #	include <mpi.h>
 #endif
-extern uidx rank, size;
+extern int rank, size;
 extern bool mpi;
 
 
@@ -843,7 +843,7 @@ int System::write_molecules_wrapper( char * filename ) {
 
 		#ifdef _MPI
 
-			uint32_t j = 0;
+			int j = 0;
 			char* filenameno = nullptr;
 
 			//make a new filename with the core/or bath number appended

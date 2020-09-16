@@ -68,7 +68,7 @@ void SafeOps::closeFile(FILE *fp) {
 
 //convert string *a to a double and store at *d.
 bool SafeOps::atod( const char * s, double &d) {
-	uidx idx;
+	size_t idx;
 	std::string myDoubleString(s);
 	try {
 		d = std::stod(myDoubleString, &idx);
@@ -83,7 +83,7 @@ bool SafeOps::atod( const char * s, double &d) {
 
 //convert string *a to an int and store at *i.
 bool SafeOps::atoi( const char * s, int &i) {
-	uidx idx;
+	size_t idx;
 	std::string myIntString(s);
 	try {
 		i = std::stoi(myIntString, &idx);
@@ -140,7 +140,7 @@ bool SafeOps::strncasecmp(const char *A, const char *B, size_t n ) {
 	SafeOps::calloc( a, n, sizeof(char), __LINE__, __FILE__ );
 	SafeOps::calloc( b, n, sizeof(char), __LINE__, __FILE__ );
 
-	for( uidx i = 0; i < n; i++ ) {
+	for( size_t i = 0; i < n; i++ ) {
 		if( i < ALen ) 
 			a[i] = (char) tolower(A[i]);
 		else
